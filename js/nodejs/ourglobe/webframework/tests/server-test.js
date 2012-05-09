@@ -23,92 +23,6 @@ var ProviderCache =
 	require("ourglobe/webframework").ProviderCache
 ;
 
-var _logFailureFunc = undefined;
-var _logErrorFunc = undefined;
-
-var _logFailure =
-sys.getFunc(
-Server.LOG_VALIDATION_FAILURE_FV,
-function()
-{
-	_callStack.push( "logFailure" );
-});
-
-var _logError =
-sys.getFunc(
-Server.LOG_ERROR_FV,
-function()
-{
-	_callStack.push( "logError" );
-});
-
-var TestProvider = require("./testprovider").TestProvider;
-
-var _failureProvider = new TestProvider( "failureProvider" );
-
-var _errorProvider = new TestProvider( "errorProvider" );
-
-var _topReqProvider = new TestProvider(
-	"topReqProvider", _failureProvider, _errorProvider
-);
-
-var _overridingFailureProvider =
-	new TestProvider( "overridingFailureProvider" )
-;
-
-var _USED_PROVIDERS = [
-	_failureProvider,
-	_errorProvider,
-	_topReqProvider,
-	_overridingFailureProvider
-];
-
-var _server = new Server(
-	_topReqProvider,
-	_failureProvider,
-	sys.getFunc(
-	Server.LOG_VALIDATION_FAILURE_FV,
-	function()
-	{
-		_logFailureFunc.apply( _logFailureFunc, arguments );
-	}),
-	_errorProvider,
-	sys.getFunc(
-	Server.LOG_ERROR_FV,
-	function()
-	{
-		_logErrorFunc.apply( _logErrorFunc, arguments );
-	}),
-	[ _overridingFailureProvider ]
-);
-
-_server.start();
-
-_REQ_DATA =
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "
-;
-
-var _callStack = undefined;
-
 var _validate =
 sys.getFunc(
 RequestProvider.VALIDATE_FV,
@@ -207,97 +121,204 @@ function( request, cb )
 	);
 });
 
-var _request =
+var _getProvider =
 sys.getFunc(
-new FuncVer()
-	.addArgs(  [ "str", "func" ] )
-	.addArgs( [
-		"str",
-		{
-			types:"obj/undef",
-			props:
-			{
-				method:"str/undef"
-			},
-			extraProps:false
-		}
-	] ),
-function( data, opts, cb )
+new FuncVer( undefined, "func" ),
+function()
 {
-	if( sys.hasType( opts, "func" ) === true )
+	var Provider =
+	sys.getFunc(
+	new FuncVer( [
+		RequestProvider.PROVIDER_NAME_S,
+		[ RequestProvider, "undef" ],
+		[ RequestProvider, "undef" ]
+	]),
+	function( providerName, failureProvider, errorProvider )
 	{
-		cb = opts;
-		opts = undefined;
-	}
+		Provider.super_.call(
+			this, providerName, failureProvider, errorProvider
+		);
+	});
 	
-	opts = opts !== undefined ? opts : {};
+	Provider.prototype.validate = _validate;
+	Provider.prototype.provide = _provide;
 	
-	var method = opts.method !== undefined ? opts.method : "GET";
+	sys.inherits( Provider, RequestProvider );
 	
-
+	return Provider;
 });
+
+var _callStack = undefined;
+
+var TopReqProvider = _getProvider();
+var FailureProvider = _getProvider();
+var OverridingFailureProvider = _getProvider();
+var ErrorProvider = _getProvider();
+
+var _topReqProvider = new TopReqProvider( "topReqProvider" );
+var _failureProvider = new FailureProvider( "failureProvider" );
+var _overridingFailureProvider =
+	new OverridingFailureProvider( "overridingFailureProvider" )
+;
+var _errorProvider = new ErrorProvider( "errorProvider" );
+
+var _USED_PROVIDERS = [
+	TopReqProvider,
+	FailureProvider,
+	OverridingFailureProvider,
+	ErrorProvider
+];
+
+var _logFailure =
+sys.getFunc(
+Server.LOG_VALIDATION_FAILURE_FV,
+function()
+{
+	_callStack.push( "logFailure" );
+});
+
+var _logError =
+sys.getFunc(
+Server.LOG_ERROR_FV,
+function()
+{
+	_callStack.push( "logError" );
+});
+
+var _server = new Server(
+	_topReqProvider,
+	_failureProvider,
+	sys.getFunc(
+	Server.LOG_VALIDATION_FAILURE_FV,
+	function()
+	{
+		_logFailureFunc.apply( _logFailureFunc, arguments );
+	}),
+	_errorProvider,
+	sys.getFunc(
+	Server.LOG_ERROR_FV,
+	function()
+	{
+		_logErrorFunc.apply( _logErrorFunc, arguments );
+	}),
+	[ _overridingFailureProvider ]
+);
+
+_server.start();
+
+_REQ_DATA =
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "+
+"Mariam DainHolm was walking the longer road home for a walk "
+;
 
 var _resetTests =
 sys.getFunc(
 new FuncVer(),
 function()
 {
+	_callStack = [];
+	
 	for( var item in _USED_PROVIDERS )
 	{
-		var provider = _USED_PROVIDERS[ item ];
+		var Provider = _USED_PROVIDERS[ item ];
 		
-		provider.validate = _validate;
+		Provider.prototype.validate = _validate;
 		
-		if( "prepare" in provider === true )
+		if( "prepare" in Provider.prototype === true )
 		{
-			delete provider.prepare;
+			delete Provider.prototype.prepare;
 		}
 		
-		if( "handOver" in provider === true )
+		if( "handOver" in Provider.prototype === true )
 		{
-			delete provider.handOver;
+			delete Provider.prototype.handOver;
 		}
 		
-		provider.provide = _provide;
+		Provider.prototype.provide = _provide;
 	}
 	
 	_logFailureFunc = _logFailure;
 	
 	_logErrorFunc = _logError;
-}
-);
+});
 
 var _testRequest =
 sys.getFunc(
 new FuncVer(
 	[ "func", "arr", "str/undef", "str/undef" ], "obj"
 ),
-function( testFunc, callStack, sendStr, recStr )
+function(
+	testFunc,
+	callStack,
+	providers,
+	sendStr,
+	recStr
+)
 {
-	return Testing.getTests(
+	var returnVar =
+	Testing.getTests(
 		
 		"topic",
 		function()
 		{
-			_callStack = [];
-			
 			_resetTests();
 			
 			testFunc();
 			
-			MoreHttp.request(
-				"localhost",
+			var server = new Server(
+				_topReqProvider,
+				_failureProvider,
+				_logFailure,
+				_errorProvider,
+				_logError,
+				providers,
+				sys.getFunc(
+				new FuncVer( [ Error ] ),
+				function( err )
 				{
-					method:"GET",
-					port:1337,
-					data:sendStr,
-					headers:
-					{
-						"Content-Length": sendStr.length,
-						"Content-Type": "application/x-www-form-urlencoded"
-					}
-				},
-				this.callback
+					throw err;
+				})
+			);
+			
+			server.start(
+				sys.getFunc(
+				new FuncVer(),
+				function()
+				{
+					MoreHttp.request(
+						"localhost",
+						{
+							method:"GET",
+							port:1337,
+							data:sendStr,
+							headers:
+							{
+								"Content-Length": sendStr.length,
+								"Content-Type":
+									"application/x-www-form-urlencoded"
+							}
+						},
+						this.callback
+					);
+				})
 			);
 		},
 		
@@ -314,8 +335,7 @@ function( testFunc, callStack, sendStr, recStr )
 			
 			var res = resBuf.toString();
 			
-			try
-			{
+			try {
 			
 			assert(
 				res === recStr, "Didnt receive expected response data"
@@ -329,13 +349,12 @@ function( testFunc, callStack, sendStr, recStr )
 			}
 			finally
 			{
-			
-			_resetTests();
-			
+				server.close();
 			}
-			
 		})
 	);
+	
+	return returnVar;
 });
 
 var suite = vows.describe( "server" );

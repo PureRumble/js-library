@@ -17,16 +17,18 @@ function()
 		"func",
 		RequestProvider,
 		"func",
-		{ extraItems:RequestProvider }
+		{ extraItems:RequestProvider },
+		"func"
 	] );
 },
-function (
+function(
 	topRequestProvider,
 	failureProvider,
 	logValidationFailure,
 	errorProvider,
 	logError,
-	providers
+	providers,
+	cbOnErr
 )
 {
 	this.providers = [];
@@ -37,6 +39,8 @@ function (
 	this.errorProvider = errorProvider;
 	this.logError = logError;
 	
+	this.serverStarted = false;
+	
 	this._addProvider( topRequestProvider );
 	this._addProvider( failureProvider );
 	this._addProvider( errorProvider );
@@ -45,7 +49,80 @@ function (
 	{
 		this._addProvider( providers[ pos ] );
 	}
+	
+	var thisServer = this;
+	
+	this.server =
+	http.createServer(
+		function( serverRequest, serverResponse )
+		{
+			var request = new Request( serverRequest, serverResponse );
+			
+			thisServer._useProvider(
+				thisServer.topRequestProvider, request
+			);
+		}
+	);
+	
+// An error event causes the close event to occur directly after,
+// therefore the logging of the error and call of cbOnErr is
+// done once the server has been closed
+	
+	server.on(
+		"error",
+		sys.getFunc(
+		new FuncVer( [ Error ] ),
+		function( err )
+		{
+			server.once(
+				"close",
+				sys.getFunc(
+				new FuncVer(),
+				function()
+				{
+					thisServer._logError(
+						undefined,
+						undefined,
+						Server.ERROR_IN_SERVER,
+						err,
+						{
+							cb:
+							sys.getFunc(
+								new FuncVer(),
+								function()
+								{
+									cbOnErr( err );
+								}
+							)
+						}
+					);
+				});
+			);
+		});
+	);
+	
+	server.on(
+		"listening",
+		sys.getFunc(
+		new FuncVer(),
+		function()
+		{
+			this.serverStarted = true;
+		}
+	);
+	
+	server.on(
+		"close",
+		sys.getFunc(
+		new FuncVer(),
+		function()
+		{
+			this.serverStarted = false;
+		}
+	);
 });
+
+Server.ERROR_IN_SERVER = "ErrorInServer";
 
 Server.ERROR_AT_VALIDATION = "ErrorAtValidation";
 Server.ERROR_AT_VALIDATION_CB = "ErrorAtValidationCb";
@@ -73,14 +150,11 @@ Server.ERROR_AT_ERROR_LOGGING_CB = "ErrorAtErrorLoggingCb";
 
 Server.ERROR_CODE_S = { minStrLen:1, chars:"letters" };
 
-exports.Server = Server;
+Server.CB_ON_ERR_FV = new FuncVer( [ Error ] );
 
-var RequestProvider =
-	require("./requestprovider").RequestProvider
-;
-var ProviderCache = require("./providercache").ProviderCache;
+Server.START_CB_FV = new FuncVer();
 
-var Request = require("./request").Request;
+Server.STOP_CB_FV = new FuncVer();
 
 Server.LOG_VALIDATION_FAILURE_FV =
 new FuncVer( [
@@ -113,11 +187,20 @@ new FuncVer( [
 	"func"
 ]);
 
+exports.Server = Server;
+
+var RequestProvider =
+	require("./requestprovider").RequestProvider
+;
+var ProviderCache = require("./providercache").ProviderCache;
+
+var Request = require("./request").Request;
+
 Server.prototype._logErrorOfErrorLogging =
 sys.getFunc(
 new FuncVer( [
-	RequestProvider.PROVIDER_NAME_S,
-	Request,
+	[ RequestProvider.PROVIDER_NAME_S, "undef" ],
+	[ Request, "undef" ],
 	Server.ERROR_CODE_S,
 	Error,
 	Server.ERROR_CODE_S,
@@ -130,7 +213,8 @@ new FuncVer( [
 			failureProviderName:[
 				RequestProvider.PROVIDER_NAME_S, "undef"
 			],
-			failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ]
+			failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ],
+			cb:"func/undef"
 		},
 		extraProps:false
 	}
@@ -146,26 +230,13 @@ function(
 	opts
 )
 {
-	try
+	// TODO: Decide how to log
+	
+	opts = opts !== undefined ? opts : {};
+	
+	if( opts.cb !== undefined )
 	{
-		// TODO: Decide what to log and how
-		
-		console.log(
-			{
-				time: time,
-				request: request,
-				currProviderName: currProviderName,
-				firstErrorCode: firstErrorCode,
-				firstError: firstError,
-				secondErrorCode: secondErrorCode,
-				secondError: secondError,
-				additionalFields: opts
-			}
-		);
-	}
-	catch( e )
-	{
-		
+		cb();
 	}
 });
 
@@ -175,13 +246,14 @@ new FuncVer( [
 	RequestProvider,
 	Request,
 	RequestProvider,
-	RequestProvider.FAILURE_CODE_S,
-	Date
+	RequestProvider.FAILURE_CODE_S
 ]),
 function(
-	currProvider, request, failureProvider, failureCode, time
+	currProvider, request, failureProvider, failureCode
 )
 {
+	var time = new Date();
+	
 	var currProviderName =
 		currProvider !== undefined ?
 		currProvider.getName() :
@@ -214,7 +286,6 @@ function(
 					request,
 					Server.ERROR_AT_VALIDATION_FAILURE_LOGGING_CB,
 					err,
-					new Date(),
 					{
 						"failureProvider": failureProvider,
 						"failureCode": failureCode
@@ -232,7 +303,6 @@ function(
 			request,
 			Server.ERROR_AT_VALIDATION_FAILURE_LOGGING,
 			e,
-			new Date(),
 			{
 				"failureProvider": failureProvider,
 				"failureCode": failureCode
@@ -245,27 +315,28 @@ Server.prototype._logError =
 sys.getFunc(
 new FuncVer(
 	[
-		RequestProvider,
-		Request,
+		[ RequestProvider, "undef" ],
+		[ Request, "undef" ],
 		Server.ERROR_CODE_S,
 		Error,
-		Date,
 		{
 			types:"obj/undef",
 			props:
 			{
 				failureProvider:[ RequestProvider, "undef" ],
-				failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ]
+				failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ],
+				cb:"func/undef"
 			},
 			extraProps:false
 		}
-	],
-	"bool"
+	]
 ),
 function(
-	currProvider, request, errorCode, err, time, opts
+	currProvider, request, errorCode, err, opts
 )
 {
+	var time = new Date();
+	
 	opts = opts !== undefined ? opts : {};
 	var newOpts = {};
 	
@@ -276,6 +347,7 @@ function(
 	;
 	
 	newOpts.failureCode = opts.failureCode;
+	newOpts.cb = opts.cb;
 	
 	var currProviderName =
 		currProvider !== undefined ?
@@ -308,9 +380,15 @@ function(
 					err,
 					Server.ERROR_AT_ERROR_LOGGING_CB,
 					cbErr,
-					new Date(),
+					time,
 					newOpts
-				)
+				);
+			}
+			else if( opts.cb !== undefined )
+			{
+				opts.cb();
+				
+				return;
 			}
 		})
 	);
@@ -325,14 +403,10 @@ function(
 			err,
 			Server.ERROR_AT_ERROR_LOGGING,
 			e,
-			new Date(),
+			time,
 			newOpts
 		);
-		
-		return false;
 	}
-	
-	return true;
 });
 
 Server.prototype._handleError =
@@ -362,8 +436,6 @@ function(
 {
 	throw err;
 	
-	var time = new Date();
-	
 	var thisServer = this;
 	
 	request.resetRequestObject();
@@ -373,7 +445,7 @@ function(
 	opts = opts === undefined ? {} : opts;
 	
 	thisServer._logError(
-		currProvider, request, errorCode, err, time, opts
+		currProvider, request, errorCode, err, opts
 	);
 	
 // An attempt to send response to client is done even if
@@ -454,8 +526,7 @@ function(
 					currProvider,
 					request,
 					Server.ERROR_AT_ERROR_PROVISION_CB,
-					err,
-					new Date()
+					err
 				);
 				
 				return;
@@ -475,8 +546,7 @@ function(
 			currProvider,
 			request,
 			Server.ERROR_AT_ERROR_PROVISION,
-			e,
-			new Date()
+			e
 		);
 		
 		return;
@@ -495,8 +565,6 @@ function(
 	currProvider, request, failureCode, overridingFailureProvider
 )
 {
-	var time = new Date();
-	
 	var providerCache = request.getProviderCache();
 	
 	var thisServer = this;
@@ -519,8 +587,7 @@ function(
 		currProvider,
 		request,
 		failureProviderToUse,
-		failureCode,
-		time
+		failureCode
 	);
 	
 // An attempt to send response to client is done even if
@@ -802,7 +869,10 @@ function( requestProvider )
 	var providerName = requestProvider.getName();
 	var providers = this.providers;
 	
-	if( providers[ providerName ] !== undefined )
+	if(
+		providers[ providerName ] !== undefined &&
+		providers[ providerName ] !== requestProvider
+	)
 	{
 		throw new RuntimeError(
 			"RequestProvider '"+providerName+"' has already been "+
@@ -812,8 +882,7 @@ function( requestProvider )
 	}
 	
 	providers[ providerName ] = requestProvider;
-}
-);
+});
 
 Server.prototype.verifyProvider =
 sys.getFunc(
@@ -878,26 +947,57 @@ function( requestProvider )
 
 Server.prototype.start =
 sys.getFunc(
-new FuncVer(),
-function()
+new FuncVer( "func/undef" ),
+function( cb )
 {
-	if( conf.doVer() === true )
+	if( this.serverStarted === true )
 	{
-		new FuncVer().verArgs( arguments );
+		throw new RuntimeError( "The Server is already running" );
 	}
 	
-	var thisServer = this;
+	var server = this.server;
 	
-	http.createServer(
-		function( serverRequest, serverResponse )
+	server.listen( 1337, "127.0.0.1" );
+	
+	server.once(
+		"listening",
+		sys.getFunc(
+		new FuncVer(),
+		function()
 		{
-			var request = new Request( serverRequest, serverResponse );
-			
-			thisServer._useProvider(
-				thisServer.topRequestProvider, request
-			);
-		}
-	)
-		.listen( 1337, "127.0.0.1" )
-	;
+			if( cb !== undefined )
+			{
+				cb();
+			}
+		})
+	);
+	
+});
+
+Server.prototype.stop =
+sys.getFunc(
+new FuncVer( "func/undef" ),
+function( cb )
+{
+	if( this.serverStarted === false )
+	{
+		throw new RuntimeError( "The Server isnt running" );
+	}
+	
+	var server = this.server;
+	
+	server.close();
+	
+	server.once(
+		"close",
+		sys.getFunc(
+		new FuncVer(),
+		function()
+		{
+			if( cb !== undefined )
+			{
+				cb();
+			}
+		});
+	);
 });
