@@ -23,11 +23,120 @@ var ProviderCache =
 	require("ourglobe/webframework").ProviderCache
 ;
 
-var _getProvider =
+var _getProviderClass =
 sys.getFunc(
-new FuncVer( undefined, "func" ),
-function()
+new FuncVer(
+	[
+		{
+			types:"obj/undef",
+			extraProps:false,
+			props:
+			{
+				validate:"func/undef",
+				prepare:"bool/func/undef",
+				handOver:"bool/func/undef",
+				provide:"func/undef"
+			}
+		}
+	],
+	"func"
+),
+function( opts )
 {
+	opts = opts !== undefined ? opts : {};
+	
+	opts.prepare =
+		opts.prepare !== undefined ?
+		opts.prepare :
+		false
+	;
+	
+	opts.handOver =
+		opts.handOver !== undefined ?
+		opts.handOver :
+		false
+	;
+	
+	var validateFunc =
+		opts.validate !== undefined ?
+		opts.validate :
+		sys.getFunc(
+			RequestProvider.VALIDATE_FV,
+			function( request, cb )
+			{
+				cb( undefined, true );
+			}
+		)
+	;
+	
+	var prepareFunc =
+		sys.hasType( opts.prepare, "func" ) === true ?
+			opts.prepare :
+		opts.prepare === true ?
+			sys.getFunc(
+				RequestProvider.PREPARE_FV,
+				function( request, cb )
+				{
+					cb( undefined );
+				}
+			) :
+		undefined
+	;
+	
+	var handOverFunc =
+		sys.hasType( opts.handOver, "func" ) === true ?
+			opts.handOver :
+		opts.handOver === true ?
+			sys.getFunc(
+				RequestProvider.HAND_OVER_FV,
+				function( request ) { }
+			) :
+		undefined
+	;
+	
+	var provideFunc =
+		opts.provide !== undefined ?
+		opts.provide :
+		sys.getFunc(
+			RequestProvider.PROVIDE_FV,
+			function( request, cb )
+			{
+				var serverReq = request.getReqObj().serverReq;
+				var serverRes = request.getReqObj().serverRes;
+				
+				serverReq.setEncoding( "utf8" );
+				
+				var reqData = "";
+				
+				serverReq.on(
+					"data",
+					sys.getFunc(
+						new FuncVer( [ "str" ] ),
+						function( chunk )
+						{
+							reqData += chunk;
+						}
+					)
+				);
+				
+				serverReq.on(
+					"end",
+					sys.getFunc(
+						new FuncVer(),
+						function()
+						{
+							serverRes.write( reqData, "utf8" );
+							
+							serverRes.end();
+							
+							cb();
+						}
+					)
+				);
+			}
+		)
+	;
+	
 	var Provider =
 	sys.getFunc(
 	new FuncVer( [
@@ -42,69 +151,99 @@ function()
 		);
 	});
 	
-	Provider.prototype.validate = _validate;
-	Provider.prototype.provide = _provide;
-	
 	sys.inherits( Provider, RequestProvider );
+	
+	Provider.prototype.validate =
+	sys.getFunc(
+	RequestProvider.VALIDATE_FV,
+	function( request, cb )
+	{
+		_callStack.push( this.getName()+".validate" );
+		
+		validateFunc( request, cb );
+	});
+	
+	if( opts.prepare !== false )
+	{
+		Provider.prototype.prepare =
+		sys.getFunc(
+		RequestProvider.PREPARE_FV,
+		function( request, cb )
+		{
+			_callStack.push( this.getName()+".prepare" );
+			
+			prepareFunc( request, cb );
+		});
+	}
+	
+	if( opts.handOver !== false )
+	{
+		Provider.prototype.handOver =
+		sys.getFunc(
+		RequestProvider.HAND_OVER_FV,
+		function( request, cb )
+		{
+			_callStack.push( this.getName()+".handOver" );
+			
+			return handOverFunc( request );
+		});
+	}
+	
+	Provider.prototype.provide =
+	sys.getFunc(
+	RequestProvider.PROVIDE_FV,
+	function( request, cb )
+	{
+		_callStack.push( this.getName()+".provide" );
+		
+		provideFunc( request, cb );
+	});
 	
 	return Provider;
 });
 
-var TopReqProvider = _getProvider();
-var FailureProvider = _getProvider();
-var OverridingFailureProvider = _getProvider();
-var ErrorProvider = _getProvider();
-
-var _callStack = undefined;
-
-var _topReqProvider = new TopReqProvider( "topReqProvider" );
-var _failureProvider = new FailureProvider( "failureProvider" );
-var _overridingFailureProvider =
-	new OverridingFailureProvider( "overridingFailureProvider" )
-;
-var _errorProvider = new ErrorProvider( "errorProvider" );
-
-var _USED_PROVIDERS = [
-	TopReqProvider,
-	FailureProvider,
-	OverridingFailureProvider,
-	ErrorProvider
-];
-
-var _failureLog = undefined;
-var _errorLog = undefined;
-
-_REQ_DATA =
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "+
-"Mariam DainHolm was walking the longer road home for a walk "
-;
-
-var _validate =
+var _getProvider =
 sys.getFunc(
-RequestProvider.VALIDATE_FV,
-function( request, cb )
+new FuncVer(
+	[
+		RequestProvider.PROVIDER_NAME_S,
+		{
+			types: [ RequestProvider, "obj", "undef" ],
+			extraProps:false,
+			props:
+			{
+				validate: "func/undef",
+				prepare: "bool/func/undef",
+				handOver: "bool/func/undef",
+				provide: "func/undef",
+				failureProvider: [ RequestProvider, "undef" ],
+				errorProvider: [ RequestProvider, "undef" ]
+			}
+		}
+	],
+	RequestProvider
+),
+function( name, opts )
 {
-	_callStack.push( this.getName()+".validate" );
+	if( opts instanceof RequestProvider === true )
+	{
+		return opts;
+	}
 	
-	cb( undefined, true );
+	if( opts === undefined )
+	{
+		opts = {};
+	}
+	
+	var ProviderClass = _getProviderClass( opts );
+	
+	var provider =
+		new ProviderClass(
+			name, opts.failureProvider, opts.errorProvider
+		)
+	;
+	
+	return provider;
 });
 
 var _validateWithFailure =
@@ -112,8 +251,6 @@ sys.getFunc(
 RequestProvider.VALIDATE_FV,
 function( request, cb )
 {
-	_callStack.push( this.getName()+".validateWithFailure" );
-	
 	cb( undefined, false, "ValidationFailed" );
 });
 
@@ -122,10 +259,6 @@ sys.getFunc(
 RequestProvider.VALIDATE_FV,
 function( request, cb )
 {
-	_callStack.push(
-		this.getName()+".validateWithFailureAndProvider"
-	);
-	
 	cb(
 		undefined,
 		false,
@@ -134,171 +267,10 @@ function( request, cb )
 	);
 });
 
-var _prepare =
-sys.getFunc(
-RequestProvider.PREPARE_FV,
-function( request, cb )
-{
-	_callStack.push( this.getName()+".prepare" );
-	
-	cb( undefined );
-});
-
-var _handOver =
-sys.getFunc(
-RequestProvider.HAND_OVER_FV,
-function( request )
-{
-	_callStack.push( this.getName()+".handOver" );
-	
-	return undefined;
-});
-
-var _provide =
-sys.getFunc(
-RequestProvider.PROVIDE_FV,
-function( request, cb )
-{
-	_callStack.push( this.getName()+".provide" );
-	
-	var serverReq = request.getReqObj().serverReq;
-	var serverRes = request.getReqObj().serverRes;
-	
-	serverReq.setEncoding( "utf8" );
-	
-	var reqData = "";
-	
-	serverReq.on(
-		"data",
-		sys.getFunc(
-			new FuncVer( [ "str" ] ),
-			function( chunk )
-			{
-				reqData += chunk;
-			}
-		)
-	);
-	
-	serverReq.on(
-		"end",
-		sys.getFunc(
-			new FuncVer(),
-			function()
-			{
-				serverRes.write( reqData, "utf8" );
-				
-				serverRes.end();
-				
-				cb();
-			}
-		)
-	);
-});
-
-var _logFailure =
-sys.getFunc(
-Server.LOG_VALIDATION_FAILURE_FV,
-function(
-	currProviderName,
-	request,
-	failureProviderName,
-	failureCode,
-	time,
-	cb
-)
-{
-	var logObj = {};
-	
-	logObj.currProviderName = currProviderName;
-	logObj.failureProviderName= failureProviderName;
-	logObj.failureCode = failureCode;
-	
-	_failureLog.push( logObj );
-	
-	_callStack.push( "logFailure" );
-	
-	cb();
-});
-
-
-var _logError =
-sys.getFunc(
-Server.LOG_ERROR_FV,
-function(
-	currProviderName,
-	request,
-	err,
-	errorCode,
-	time,
-	newOpts,
-	cb
-)
-{
-	var logObj = {};
-	
-// currProviderName is undefined for errorCode ERROR_IN_SERVER
-	
-	if( currProviderName !== undefined )
-	{
-		logObj.currProviderName = currProviderName;
-	}
-	
-	logObj.errorCode = errorCode;
-	
-	if( newOpts.failureProviderName !== undefined )
-	{
-		logObj.failureProviderName = newOpts.failureProviderName;
-	}
-	
-	if( newOpts.failureCode !== undefined )
-	{
-		logObj.failureCode = newOpts.failureCode;
-	}
-	
-	_errorLog.push( logObj );
-	
-	_callStack.push( "logError" );
-});
-
-var _resetTests =
-sys.getFunc(
-new FuncVer(),
-function()
-{
-	_failureLog = [];
-	_errorLog = [];
-	
-	_callStack = [];
-	
-	for( var item in _USED_PROVIDERS )
-	{
-		var Provider = _USED_PROVIDERS[ item ];
-		
-		Provider.prototype.validate = _validate;
-		
-		if( "prepare" in Provider.prototype === true )
-		{
-			delete Provider.prototype.prepare;
-		}
-		
-		if( "handOver" in Provider.prototype === true )
-		{
-			delete Provider.prototype.handOver;
-		}
-		
-		Provider.prototype.provide = _provide;
-	}
-	
-	_logFailureFunc = _logFailure;
-	
-	_logErrorFunc = _logError;
-});
-
 var _testRequest =
 sys.getFunc(
 new FuncVer(
 	[
-		"func",
 		{ extraItems:"str" },
 		"str/undef",
 		"str/undef",
@@ -315,33 +287,177 @@ new FuncVer(
 				,
 				errorLog:
 					{ types:"arr/undef", extraItems:"obj" }
+				,
+				topReqProvider:
+				{
+					types: [ RequestProvider, "obj", "undef" ],
+					extraProps: false,
+					props:
+					{
+						validate: "func/undef",
+						prepare: "bool/func/undef",
+						handOver: "bool/func/undef",
+						provide: "func/undef"
+					}
+				},
+				failureProvider:
+				{
+					types: [ RequestProvider, "obj", "undef" ],
+					extraProps: false,
+					props:
+					{
+						validate: "func/undef",
+						prepare: "bool/func/undef",
+						handOver: "bool/func/undef",
+						provide: "func/undef"
+					}
+				},
+				errorProvider:
+				{
+					types: [ RequestProvider, "obj", "undef" ],
+					extraProps: false,
+					props:
+					{
+						validate: "func/undef",
+						prepare: "bool/func/undef",
+						handOver: "bool/func/undef",
+						provide: "func/undef"
+					}
+				},
+				logFailure: "func/undef",
+				logError: "func/undef"
 			},
 			extraProps:false
 		}
 	],
 	"obj"
 ),
-function(
-	testFunc, callStack, sendStr, recStr, opts
-)
+function( callStack, sendStr, recStr, opts )
 {
-	opts = opts !== undefined ? opts: {};
+	if( opts === undefined )
+	{
+		opts = {};
+	}
 	
 	var providers = opts.providers;
-	var failureLog = opts.failureLog;
-	var errorLog = opts.errorLog;
+	if( providers === undefined )
+	{
+		providers = [];
+	}
 	
-	var providers = providers !== undefined ? providers : [];
-	var failureLog = failureLog !== undefined ? failureLog : []; 
-	var errorLog = errorLog !== undefined ? errorLog : []; 
+	var failureLog = opts.failureLog;
+	if( failureLog === undefined )
+	{
+		failureLog = [];
+	}
+	
+	var errorLog = opts.errorLog;
+	if( errorLog === undefined )
+	{
+		errorLog = [];
+	}
+	
+	var topReqProvider =
+		_getProvider( "topReqProvider", opts.topReqProvider )
+	;
+	var failureProvider =
+		_getProvider(  "failureProvider", opts.failureProvider )
+	;
+	var errorProvider =
+		_getProvider( "errorProvider", opts.errorProvider )
+	;
+	
+	var logFailure =
+	sys.getFunc(
+	Server.LOG_VALIDATION_FAILURE_FV,
+	function(
+		currProviderName,
+		request,
+		failureProviderName,
+		failureCode,
+		time,
+		cb
+	)
+	{
+		var logObj = {};
+		
+		logObj.currProviderName = currProviderName;
+		logObj.failureProviderName= failureProviderName;
+		logObj.failureCode = failureCode;
+		
+		_failureLog.push( logObj );
+		
+		_callStack.push( "logFailure" );
+		
+		if( opts.logFailure !== undefined )
+		{
+			opts.logFailure( cb );
+			
+			return;
+		}
+		else
+		{
+			cb();
+		}
+	});
+	
+	var logError =
+	sys.getFunc(
+	Server.LOG_ERROR_FV,
+	function(
+		currProviderName,
+		request,
+		err,
+		errorCode,
+		time,
+		newOpts,
+		cb
+	)
+	{
+		var logObj = {};
+		
+// currProviderName is undefined for errorCode ERROR_IN_SERVER
+		
+		if( currProviderName !== undefined )
+		{
+			logObj.currProviderName = currProviderName;
+		}
+		
+		logObj.errorCode = errorCode;
+		
+		if( newOpts.failureProviderName !== undefined )
+		{
+			logObj.failureProviderName = newOpts.failureProviderName;
+		}
+		
+		if( newOpts.failureCode !== undefined )
+		{
+			logObj.failureCode = newOpts.failureCode;
+		}
+		
+		_errorLog.push( logObj );
+		
+		_callStack.push( "logError" );
+		
+		if( opts.logError !== undefined )
+		{
+			opts.logError( cb );
+			
+			return;
+		}
+		else
+		{
+			cb();
+		}
+	});
 	
 	var server =
 	new Server(
-		_topReqProvider,
-		_failureProvider,
-		_logFailure,
-		_errorProvider,
-		_logError,
+		topReqProvider,
+		failureProvider,
+		logFailure,
+		errorProvider,
+		logError,
 		providers,
 		sys.getFunc(
 			new FuncVer( [ Error ] ),
@@ -360,9 +476,9 @@ function(
 		{
 			var thisTopic = this;
 			
-			_resetTests();
-			
-			testFunc();
+			_failureLog = [];
+			_errorLog = [];
+			_callStack = [];
 			
 			server.start(
 				sys.getFunc(
@@ -479,17 +595,33 @@ function(
 	return returnVar;
 });
 
+var _overridingFailureProvider =
+	_getProvider( "overridingFailureProvider" )
+;
+
+var _callStack = undefined;
+
+var _failureLog = undefined;
+var _errorLog = undefined;
+
+_REQ_DATA =
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "+
+	"Mariam DainHolm was walking the longer road home "
+;
+
 var suite = vows.describe( "server" );
 suite.options.error = false;
-
 
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate, provide",
 	_testRequest(
-		function()
-		{
-		},
 		[ "topReqProvider.validate", "topReqProvider.provide" ],
 		_REQ_DATA,
 		_REQ_DATA
@@ -497,17 +629,10 @@ suite.addBatch( Testing.getTests(
 	
 ));
 
-// _topReqProvider provides
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate, prepare, handOver, provide",
 	_testRequest(
-		function()
-		{
-			TopReqProvider.prototype.prepare = _prepare;
-			
-			TopReqProvider.prototype.handOver = _handOver;
-		},
 		[
 			"topReqProvider.validate",
 			"topReqProvider.prepare",
@@ -515,7 +640,10 @@ suite.addBatch( Testing.getTests(
 			"topReqProvider.provide"
 		],
 		_REQ_DATA,
-		_REQ_DATA
+		_REQ_DATA,
+		{
+			topReqProvider: { prepare: true, handOver: true }
+		}
 	)
 	
 ));
@@ -524,21 +652,20 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validateWithFailure",
 	_testRequest(
-		function()
-		{
-			TopReqProvider.prototype.validate =
-				_validateWithFailure
-			;
-		},
 		[
-			"topReqProvider.validateWithFailure",
+			"topReqProvider.validate",
 			"logFailure",
 			"failureProvider.provide"
 		],
 		_REQ_DATA,
 		_REQ_DATA,
 		{
-			failureLog:[
+			topReqProvider:
+			{
+				validate: _validateWithFailure
+			},
+			failureLog:
+			[
 				{
 					currProviderName: "topReqProvider",
 					failureProviderName: "failureProvider",
@@ -554,22 +681,21 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validateWithFailureAndProvider",
 	_testRequest(
-		function()
-		{
-			TopReqProvider.prototype.validate =
-				_validateWithFailureAndProvider
-			;
-		},
 		[
-			"topReqProvider.validateWithFailureAndProvider",
+			"topReqProvider.validate",
 			"logFailure",
 			"overridingFailureProvider.provide"
 		],
 		_REQ_DATA,
 		_REQ_DATA,
 		{
+			topReqProvider:
+			{
+				validate: _validateWithFailureAndProvider
+			},
 			providers: [ _overridingFailureProvider ],
-			failureLog:[
+			failureLog:
+			[
 				{
 					currProviderName: "topReqProvider",
 					failureProviderName: "overridingFailureProvider",
