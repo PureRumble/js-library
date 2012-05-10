@@ -31,28 +31,28 @@ function(
 	cbOnErr
 )
 {
-	this.providers = [];
+	var thisServer = this;
 	
-	this.topRequestProvider = topRequestProvider;
-	this.failureProvider = failureProvider;
-	this.logFailure = logValidationFailure;
-	this.errorProvider = errorProvider;
-	this.logError = logError;
+	thisServer.providers = [];
 	
-	this.serverStarted = false;
+	thisServer.topRequestProvider = topRequestProvider;
+	thisServer.failureProvider = failureProvider;
+	thisServer.logFailure = logValidationFailure;
+	thisServer.errorProvider = errorProvider;
+	thisServer.logError = logError;
 	
-	this._addProvider( topRequestProvider );
-	this._addProvider( failureProvider );
-	this._addProvider( errorProvider );
+	thisServer.isRunning = false;
+	
+	thisServer._addProvider( topRequestProvider );
+	thisServer._addProvider( failureProvider );
+	thisServer._addProvider( errorProvider );
 	
 	for( var pos in providers )
 	{
-		this._addProvider( providers[ pos ] );
+		thisServer._addProvider( providers[ pos ] );
 	}
 	
-	var thisServer = this;
-	
-	this.server =
+	var server =
 	http.createServer(
 		function( serverRequest, serverResponse )
 		{
@@ -64,6 +64,8 @@ function(
 		}
 	);
 	
+	thisServer.server = server;
+	
 // An error event causes the close event to occur directly after,
 // therefore the logging of the error and call of cbOnErr is
 // done once the server has been closed
@@ -71,54 +73,58 @@ function(
 	server.on(
 		"error",
 		sys.getFunc(
-		new FuncVer( [ Error ] ),
-		function( err )
-		{
-			server.once(
-				"close",
-				sys.getFunc(
-				new FuncVer(),
-				function()
-				{
-					thisServer._logError(
-						undefined,
-						undefined,
-						Server.ERROR_IN_SERVER,
-						err,
+			new FuncVer( [ Error ] ),
+			function( err )
+			{
+				server.once(
+					"close",
+					sys.getFunc(
+						new FuncVer(),
+						function()
 						{
-							cb:
-							sys.getFunc(
-								new FuncVer(),
-								function()
+							thisServer._logError(
+								undefined,
+								undefined,
+								Server.ERROR_IN_SERVER,
+								err,
 								{
-									cbOnErr( err );
+									cb:
+									sys.getFunc(
+										new FuncVer(),
+										function()
+										{
+											cbOnErr( err );
+										}
+									)
 								}
-							)
+							);
 						}
-					);
-				});
-			);
-		});
+					)
+				);
+			}
+		)
 	);
 	
 	server.on(
 		"listening",
 		sys.getFunc(
-		new FuncVer(),
-		function()
-		{
-			this.serverStarted = true;
-		}
+			new FuncVer(),
+			function()
+			{
+				thisServer.isRunning = true;
+			}
+		)
 	);
 	
 	server.on(
 		"close",
 		sys.getFunc(
-		new FuncVer(),
-		function()
-		{
-			this.serverStarted = false;
-		}
+			new FuncVer(),
+			function()
+			{
+				thisServer.isRunning = false;
+			}
+		)
 	);
 });
 
@@ -156,6 +162,15 @@ Server.START_CB_FV = new FuncVer();
 
 Server.STOP_CB_FV = new FuncVer();
 
+exports.Server = Server;
+
+var RequestProvider =
+	require("./requestprovider").RequestProvider
+;
+var ProviderCache = require("./providercache").ProviderCache;
+
+var Request = require("./request").Request;
+
 Server.LOG_VALIDATION_FAILURE_FV =
 new FuncVer( [
 	RequestProvider.PROVIDER_NAME_S,
@@ -186,15 +201,6 @@ new FuncVer( [
 	},
 	"func"
 ]);
-
-exports.Server = Server;
-
-var RequestProvider =
-	require("./requestprovider").RequestProvider
-;
-var ProviderCache = require("./providercache").ProviderCache;
-
-var Request = require("./request").Request;
 
 Server.prototype._logErrorOfErrorLogging =
 sys.getFunc(
@@ -252,6 +258,8 @@ function(
 	currProvider, request, failureProvider, failureCode
 )
 {
+	var thisServer = this;
+	
 	var time = new Date();
 	
 	var currProviderName =
@@ -269,7 +277,7 @@ function(
 	try
 	{
 	
-	this.logFailure(
+	thisServer.logFailure(
 		currProviderName,
 		request,
 		failureProviderName,
@@ -281,7 +289,7 @@ function(
 		{
 			if( err !== undefined )
 			{
-				this._logError(
+				thisServer._logError(
 					currProvider,
 					request,
 					Server.ERROR_AT_VALIDATION_FAILURE_LOGGING_CB,
@@ -298,7 +306,7 @@ function(
 	}
 	catch( e )
 	{
-		this._logError(
+		thisServer._logError(
 			currProvider,
 			request,
 			Server.ERROR_AT_VALIDATION_FAILURE_LOGGING,
@@ -331,10 +339,10 @@ new FuncVer(
 		}
 	]
 ),
-function(
-	currProvider, request, errorCode, err, opts
-)
+function( currProvider, request, errorCode, err, opts )
 {
+	var thisServer = this;
+	
 	var time = new Date();
 	
 	opts = opts !== undefined ? opts : {};
@@ -360,7 +368,7 @@ function(
 	
 // Arg newOpts is always set to an obj, even if it may be empty
 	
-	this.logError(
+	thisServer.logError(
 		currProviderName,
 		request,
 		err,
@@ -373,7 +381,7 @@ function(
 		{
 			if( cbErr !== undefined )
 			{
-				this._logErrorOfErrorLogging(
+				thisServer._logErrorOfErrorLogging(
 					currProviderName,
 					request,
 					errorCode,
@@ -396,7 +404,7 @@ function(
 	}
 	catch( e )
 	{
-		this._logErrorOfErrorLogging(
+		thisServer._logErrorOfErrorLogging(
 			currProviderName,
 			request,
 			errorCode,
@@ -462,7 +470,7 @@ function(
 	currErrorProvider =
 		currErrorProvider !== undefined ?
 		currErrorProvider :
-		this.errorProvider
+		thisServer.errorProvider
 	;
 	
 	thisServer.verifyProvider( currErrorProvider );
@@ -506,32 +514,28 @@ function(
 	
 	currErrorProvider.provide(
 		request,
-		function( err )
-		{
-			if( conf.doVer() === true )
+		sys.getFunc(
+			new FuncVer( [ [ Error, "undef" ] ] ),
+			function( err )
 			{
-				new FuncVer( [ [ Error, "undef" ] ] )
-					.verArgs( arguments )
-				;
+				if( err !== undefined )
+				{
+					
+	// Arg opts isnt passed on since its information isnt relevant
+	// for the logging of the error that occurred when provide()
+	// of the errorProvider was called
+					
+					thisServer._logError(
+						currProvider,
+						request,
+						Server.ERROR_AT_ERROR_PROVISION_CB,
+						err
+					);
+					
+					return;
+				}
 			}
-			
-			if( err !== undefined )
-			{
-				
-// Arg opts isnt passed on since its information isnt relevant
-// for the logging of the error that occurred when provide()
-// of the errorProvider was called
-				
-				thisServer._logError(
-					currProvider,
-					request,
-					Server.ERROR_AT_ERROR_PROVISION_CB,
-					err
-				);
-				
-				return;
-			}
-		}
+		)
 	);
 	
 	}
@@ -565,9 +569,9 @@ function(
 	currProvider, request, failureCode, overridingFailureProvider
 )
 {
-	var providerCache = request.getProviderCache();
-	
 	var thisServer = this;
+	
+	var providerCache = request.getProviderCache();
 	
 	request.resetRequestObject();
 	
@@ -648,9 +652,9 @@ sys.getFunc(
 new FuncVer( [ RequestProvider, Request ] ),
 function( currProvider, request )
 {
-	var providerCache = request.getProviderCache();
-	
 	var thisServer = this;
+	
+	var providerCache = request.getProviderCache();
 	
 	try
 	{
@@ -947,15 +951,17 @@ function( requestProvider )
 
 Server.prototype.start =
 sys.getFunc(
-new FuncVer( "func/undef" ),
+new FuncVer( [ "func/undef" ] ),
 function( cb )
 {
-	if( this.serverStarted === true )
+	var thisServer = this;
+	
+	if( thisServer.isRunning === true )
 	{
 		throw new RuntimeError( "The Server is already running" );
 	}
 	
-	var server = this.server;
+	var server = thisServer.server;
 	
 	server.listen( 1337, "127.0.0.1" );
 	
@@ -976,28 +982,31 @@ function( cb )
 
 Server.prototype.stop =
 sys.getFunc(
-new FuncVer( "func/undef" ),
+new FuncVer( [ "func/undef" ] ),
 function( cb )
 {
-	if( this.serverStarted === false )
+	var thisServer = this;
+	
+	if( thisServer.isRunning === false )
 	{
 		throw new RuntimeError( "The Server isnt running" );
 	}
 	
-	var server = this.server;
+	var server = thisServer.server;
 	
 	server.close();
 	
 	server.once(
 		"close",
 		sys.getFunc(
-		new FuncVer(),
-		function()
-		{
-			if( cb !== undefined )
+			new FuncVer(),
+			function()
 			{
-				cb();
+				if( cb !== undefined )
+				{
+					cb();
+				}
 			}
-		});
+		)
 	);
 });
