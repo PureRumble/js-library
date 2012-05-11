@@ -3,9 +3,12 @@ var vows = require("vows");
 var timers = require("timers");
 var crypto = require("crypto");
 
-var Testing = require("ourglobe/testing").Testing;
-
 var RuntimeError = require("ourglobe").RuntimeError;
+var TestRuntimeError =
+	require("ourglobe/testing").TestRuntimeError
+;
+
+var Testing = require("ourglobe/testing").Testing;
 
 var assert = require("ourglobe").assert;
 var FuncVer = require("ourglobe").FuncVer;
@@ -235,7 +238,14 @@ function( name, opts )
 		opts = {};
 	}
 	
-	var ProviderClass = _getProviderClass( opts );
+	var newOpts = {};
+	
+	newOpts.validate = opts.validate;
+	newOpts.prepare = opts.prepare;
+	newOpts.handOver = opts.handOver;
+	newOpts.provide = opts.provide;
+	
+	var ProviderClass = _getProviderClass( newOpts );
 	
 	var provider =
 		new ProviderClass(
@@ -254,7 +264,7 @@ function( request, cb )
 	cb( undefined, false, "ValidationFailed" );
 });
 
-var _validateWithFailureAndProvider =
+var _validateWithFailureAndOverridingProvider =
 sys.getFunc(
 RequestProvider.VALIDATE_FV,
 function( request, cb )
@@ -264,6 +274,45 @@ function( request, cb )
 		false,
 		"ValidationFailed",
 		_overridingFailureProvider
+	);
+});
+
+var _throwErr =
+sys.getFunc(
+new FuncVer().setExtraArgs( "any" ),
+function()
+{
+	throw new TestRuntimeError(
+		"This Error was thrown from _throwErr() in "+
+		"server-test.js"
+	);
+});
+
+var _giveErrToCb =
+sys.getFunc(
+new FuncVer().setExtraArgs( "any" ),
+function()
+{
+	var nrArgs = arguments.length;
+	
+	if(
+		nrArgs === 0 ||
+		sys.hasType( arguments[ nrArgs-1 ] !== "func" )
+	)
+	{
+		throw new RuntimeError(
+			"Last arg must be a func but is: "+
+			Testing.getPrettyStr( arguments[ nrArgs-1 ] )
+		);
+	}
+	
+	var cb = arguments[ nrArgs-1 ];
+	
+	cb(
+		new TestRuntimeError(
+			"This Error was given to cb from _throwErr() in "+
+			"server-test.js"
+		)
 	);
 });
 
@@ -297,7 +346,9 @@ new FuncVer(
 						validate: "func/undef",
 						prepare: "bool/func/undef",
 						handOver: "bool/func/undef",
-						provide: "func/undef"
+						provide: "func/undef",
+						failureProvider: [ RequestProvider, "undef" ],
+						errorProvider: [ RequestProvider, "undef" ]
 					}
 				},
 				failureProvider:
@@ -414,6 +465,11 @@ function( callStack, sendStr, recStr, opts )
 		cb
 	)
 	{
+		if( err instanceof TestRuntimeError === false )
+		{
+			_unexpectedErrors.push( err );
+		}
+		
 		var logObj = {};
 		
 // currProviderName is undefined for errorCode ERROR_IN_SERVER
@@ -438,6 +494,9 @@ function( callStack, sendStr, recStr, opts )
 		_errorLog.push( logObj );
 		
 		_callStack.push( "logError" );
+		
+// Arg opts belongs to the containing function, and not this
+// function. opts.logError is to be executed if its defined
 		
 		if( opts.logError !== undefined )
 		{
@@ -475,6 +534,8 @@ function( callStack, sendStr, recStr, opts )
 		function()
 		{
 			var thisTopic = this;
+			
+			_unexpectedErrors = [];
 			
 			_failureLog = [];
 			_errorLog = [];
@@ -521,6 +582,22 @@ function( callStack, sendStr, recStr, opts )
 			);
 		},
 		
+		"doesnt cause unexpected errors",
+		sys.getFunc(
+			MoreHttp.REQUEST_CB_FV,
+			function( err, statusCode, resBuf )
+			{
+				Testing.errorCheckArgs( arguments );
+				
+				assert(
+					_unexpectedErrors.length === 0,
+					"The test gave rise to the following unexpected "+
+					"errors: "+
+					Testing.getPrettyStr( _unexpectedErrors )
+				);
+			}
+		),
+		
 		"gives expected data",
 		sys.getFunc(
 			MoreHttp.REQUEST_CB_FV,
@@ -548,6 +625,8 @@ function( callStack, sendStr, recStr, opts )
 			MoreHttp.REQUEST_CB_FV,
 			function( err, statusCode, resBuf )
 			{
+				Testing.errorCheckArgs( arguments );
+				
 				assert(
 					Testing.areEqual( _callStack, callStack ),
 					"Server funcs havent been called in the expected "+
@@ -564,6 +643,8 @@ function( callStack, sendStr, recStr, opts )
 			MoreHttp.REQUEST_CB_FV,
 			function( err, statusCode, resBuf )
 			{
+				Testing.errorCheckArgs( arguments );
+				
 				assert(
 					Testing.areEqual( _errorLog, errorLog ),
 					"The errorLog isnt as expected. Current and expected "+
@@ -580,6 +661,8 @@ function( callStack, sendStr, recStr, opts )
 			MoreHttp.REQUEST_CB_FV,
 			function( err, statusCode, resBuf )
 			{
+				Testing.errorCheckArgs( arguments );
+				
 				assert(
 					Testing.areEqual( _failureLog, failureLog ),
 					"The validationFailureLog isnt as expected. Current "+
@@ -595,10 +678,15 @@ function( callStack, sendStr, recStr, opts )
 	return returnVar;
 });
 
+var _localFailureProvider =
+	_getProvider( "localFailureProvider" )
+;
+
 var _overridingFailureProvider =
 	_getProvider( "overridingFailureProvider" )
 ;
 
+var _unexpectedErrors = undefined;
 var _callStack = undefined;
 
 var _failureLog = undefined;
@@ -650,7 +738,7 @@ suite.addBatch( Testing.getTests(
 
 suite.addBatch( Testing.getTests(
 	
-	"topReqProvider validateWithFailure",
+	"topReqProvider validate with failure",
 	_testRequest(
 		[
 			"topReqProvider.validate",
@@ -679,7 +767,40 @@ suite.addBatch( Testing.getTests(
 
 suite.addBatch( Testing.getTests(
 	
-	"topReqProvider validateWithFailureAndProvider",
+	"topReqProvider validate with failure and local "+
+	"failureProvider",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logFailure",
+			"localFailureProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _validateWithFailure,
+				failureProvider: _localFailureProvider
+			},
+			providers:[ _localFailureProvider ],
+			failureLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					failureProviderName: "localFailureProvider",
+					failureCode: "ValidationFailed"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with failure and overriding "+
+	"failureProvider",
 	_testRequest(
 		[
 			"topReqProvider.validate",
@@ -691,7 +812,7 @@ suite.addBatch( Testing.getTests(
 		{
 			topReqProvider:
 			{
-				validate: _validateWithFailureAndProvider
+				validate: _validateWithFailureAndOverridingProvider
 			},
 			providers: [ _overridingFailureProvider ],
 			failureLog:
@@ -700,6 +821,34 @@ suite.addBatch( Testing.getTests(
 					currProviderName: "topReqProvider",
 					failureProviderName: "overridingFailureProvider",
 					failureCode: "ValidationFailed"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with error",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _throwErr
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtValidation"
 				}
 			]
 		}

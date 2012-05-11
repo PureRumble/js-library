@@ -442,8 +442,6 @@ function(
 	opts
 )
 {
-	throw err;
-	
 	var thisServer = this;
 	
 	request.resetRequestObject();
