@@ -277,15 +277,15 @@ function(
 		{
 			if( err !== undefined )
 			{
+				
+// failureProviderName and failureCode arent relevant when
+// logging an error that occurred during validationFailureLogging
+				
 				thisServer._logError(
 					currProvider,
 					request,
 					Server.ERROR_AT_VALIDATION_FAILURE_LOGGING_CB,
-					err,
-					{
-						"failureProvider": failureProvider,
-						"failureCode": failureCode
-					}
+					err
 				);
 			}
 		})
@@ -294,15 +294,15 @@ function(
 	}
 	catch( e )
 	{
+		
+// failureProviderName and failureCode arent relevant when
+// logging an error that occurred during validationFailureLogging
+		
 		thisServer._logError(
 			currProvider,
 			request,
 			Server.ERROR_AT_VALIDATION_FAILURE_LOGGING,
-			e,
-			{
-				"failureProvider": failureProvider,
-				"failureCode": failureCode
-			}
+			e
 		);
 	}
 });

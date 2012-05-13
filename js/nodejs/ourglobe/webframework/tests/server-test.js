@@ -826,6 +826,37 @@ suite.addBatch( Testing.getTests(
 
 suite.addBatch( Testing.getTests(
 	
+	"topReqProvider has local failureProvider, validate with "+
+	"failure and overriding failureProvider",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logFailure",
+			"overridingFailureProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _validateWithFailureAndOverridingProvider,
+				failureProvider: _localFailureProvider
+			},
+			failureLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					failureProviderName: "overridingFailureProvider",
+					failureCode: "ValidationFailed"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
 	"topReqProvider validate with error",
 	_testRequest(
 		[
@@ -1148,10 +1179,6 @@ suite.addBatch( Testing.getVar( function() {
 					validate: _validateWithFailure,
 					failureProvider: localFailureProvider
 				},
-				failureProvider:
-				{
-					provide: _giveErrToCb
-				},
 				errorLog:
 				[
 					{
@@ -1175,5 +1202,113 @@ suite.addBatch( Testing.getVar( function() {
 	
 	return returnVar;
 }));
+
+suite.addBatch( Testing.getVar( function() {
+	
+	var overridingFailureProvider =
+		_getProvider(
+			"overridingFailureProvider",
+			{
+				provide: _giveErrToCb
+			}
+		)
+	;
+	
+	var returnVar =
+	Testing.getTests(
+		
+		"topReqProvider validate with failure and overriding "+
+		"failureProvider, "+
+		"overridingFailureProvider provide with error at cb",
+		_testRequest(
+			[
+				"topReqProvider.validate",
+				"logFailure",
+				"overridingFailureProvider.provide",
+				"logError",
+				"errorProvider.provide"
+			],
+			_REQ_DATA,
+			_REQ_DATA,
+			{
+				topReqProvider:
+				{
+					validate:
+					sys.getFunc(
+						RequestProvider.VALIDATE_FV,
+						function( request, cb )
+						{
+							cb(
+								undefined,
+								false,
+								"ValidationFailed",
+								overridingFailureProvider
+							);
+						}
+					),
+				},
+				errorLog:
+				[
+					{
+						currProviderName: "topReqProvider",
+						errorCode: "ErrorAtValidationFailureProvisionCb",
+						failureProviderName: "overridingFailureProvider",
+						failureCode: "ValidationFailed"
+					}
+				],
+				failureLog:
+				[
+					{
+						currProviderName: "topReqProvider",
+						failureProviderName: "overridingFailureProvider",
+						failureCode: "ValidationFailed"
+					}
+				]
+			}
+		)
+	);
+	
+	return returnVar;
+}));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with failure, "+
+	"logFailure with error, "+
+	"failureProvider provide",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logFailure",
+			"logError",
+			"failureProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _validateWithFailure
+			},
+			logFailure: _throwErr,
+			failureLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					failureProviderName: "failureProvider",
+					failureCode: "ValidationFailed"
+				}
+			],
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtValidationFailureLogging"
+				}
+			]
+		}
+	)
+	
+));
 
 suite.export( module );
