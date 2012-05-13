@@ -297,7 +297,7 @@ function()
 	
 	if(
 		nrArgs === 0 ||
-		sys.hasType( arguments[ nrArgs-1 ] !== "func" )
+		sys.hasType( arguments[ nrArgs-1 ], "func" ) === false
 	)
 	{
 		throw new RuntimeError(
@@ -589,11 +589,20 @@ function( callStack, sendStr, recStr, opts )
 			{
 				Testing.errorCheckArgs( arguments );
 				
+				var errors = [];
+				
+				for( var item in _unexpectedErrors )
+				{
+					errors.push( {
+						error: _unexpectedErrors[ item ],
+						stackTrace: _unexpectedErrors[ item ].stack
+					} );
+				}
+				
 				assert(
-					_unexpectedErrors.length === 0,
-					"The test gave rise to the following unexpected "+
-					"errors: "+
-					Testing.getPrettyStr( _unexpectedErrors )
+					errors.length === 0,
+					"The test caused the following unexpected errors: "+
+					Testing.getPrettyStr( errors )
 				);
 			}
 		),
@@ -855,5 +864,330 @@ suite.addBatch( Testing.getTests(
 	)
 	
 ));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with error at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _giveErrToCb
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtValidationCb"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider prepare with error",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.prepare",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				prepare: _throwErr
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtPreparation"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider prepare with error at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.prepare",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				prepare: _giveErrToCb
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtPreparationCb"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider handOver with error",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.handOver",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				handOver: _throwErr
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtHandover"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider provide with error",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				provide: _throwErr
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvision"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider provide with error at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				provide: _giveErrToCb
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvisionCb"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with failure, "+
+	"failureProvider provide with error",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logFailure",
+			"failureProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _validateWithFailure
+			},
+			failureProvider:
+			{
+				provide: _throwErr
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtValidationFailureProvision",
+					failureProviderName: "failureProvider",
+					failureCode: "ValidationFailed"
+				}
+			],
+			failureLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					failureProviderName: "failureProvider",
+					failureCode: "ValidationFailed"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider validate with failure, "+
+	"failureProvider provide with error at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"logFailure",
+			"failureProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				validate: _validateWithFailure
+			},
+			failureProvider:
+			{
+				provide: _giveErrToCb
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtValidationFailureProvisionCb",
+					failureProviderName: "failureProvider",
+					failureCode: "ValidationFailed"
+				}
+			],
+			failureLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					failureProviderName: "failureProvider",
+					failureCode: "ValidationFailed"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getVar( function() {
+	
+	var localFailureProvider =
+		_getProvider(
+			"localFailureProvider",
+			{
+				provide: _giveErrToCb
+			}
+		)
+	;
+	
+	var returnVar =
+	Testing.getTests(
+		
+		"topReqProvider validate with failure and local "+
+		"failureProvider, "+
+		"localFailureProvider provide with error at cb",
+		_testRequest(
+			[
+				"topReqProvider.validate",
+				"logFailure",
+				"localFailureProvider.provide",
+				"logError",
+				"errorProvider.provide"
+			],
+			_REQ_DATA,
+			_REQ_DATA,
+			{
+				topReqProvider:
+				{
+					validate: _validateWithFailure,
+					failureProvider: localFailureProvider
+				},
+				failureProvider:
+				{
+					provide: _giveErrToCb
+				},
+				providers:[ localFailureProvider ],
+				errorLog:
+				[
+					{
+						currProviderName: "topReqProvider",
+						errorCode: "ErrorAtValidationFailureProvisionCb",
+						failureProviderName: "localFailureProvider",
+						failureCode: "ValidationFailed"
+					}
+				],
+				failureLog:
+				[
+					{
+						currProviderName: "topReqProvider",
+						failureProviderName: "localFailureProvider",
+						failureCode: "ValidationFailed"
+					}
+				]
+			}
+		)
+	);
+	
+	return returnVar;
+}));
 
 suite.export( module );

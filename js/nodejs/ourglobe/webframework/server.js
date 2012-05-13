@@ -784,7 +784,7 @@ function( currProvider, request )
 							thisServer._handleError(
 								currProvider,
 								request,
-								Server.ERROR_AT_HAND_OVER,
+								Server.ERROR_AT_HANDOVER,
 								e
 							);
 							
@@ -921,7 +921,7 @@ function( requestProvider )
 		{
 			throw new RuntimeError(
 				"The given RequestProvider's ValidationFailureProvider "+
-				" isnt part of this Server",
+				"isnt part of this Server",
 				Server.prototype.verifyProvider
 			);
 		}
