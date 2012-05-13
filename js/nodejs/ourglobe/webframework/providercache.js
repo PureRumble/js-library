@@ -19,6 +19,12 @@ var RequestProvider =
 	require("./requestprovider").RequestProvider
 ;
 
+ProviderCache.GET_CACHE_FV =
+	new FuncVer( [ [ RequestProvider, "undef" ] ], "obj" )
+;
+
+ProviderCache.SET_CACHE_FV = new FuncVer( [ "obj" ] );
+
 ProviderCache.prototype.setProvider =
 sys.getFunc(
 new FuncVer( [ RequestProvider] ),
@@ -26,21 +32,14 @@ function( requestProvider )
 {
 	this.currProvider = requestProvider;
 	
-	var providerName = requestProvider.getName();
-	
-	if( this.cache[ providerName ] === undefined )
-	{
-		this.cache[ providerName ] = {};
-	}
+// The ProviderCache is initialized to an empty obj for the
+// RequestProvider once its cache is requested, so it doesnt
+// need to be done here
 });
-
-ProviderCache.GET_CACHE_S =
-	new FuncVer( [ [ RequestProvider, "undef" ] ], "obj" )
-;
 
 ProviderCache.prototype.getCache =
 sys.getFunc(
-ProviderCache.GET_CACHE_S,
+ProviderCache.GET_CACHE_FV,
 function( requestProvider )
 {
 	
@@ -60,25 +59,22 @@ function( requestProvider )
 		this.currProvider
 	;
 	
-	var cacheObj = this.cache[ requestProvider.getName() ];
+	var requestProviderName = requestProvider.getName();
+	
+	var cacheObj = this.cache[ requestProviderName ];
 	
 	if( cacheObj === undefined )
 	{
-		throw new RuntimeError(
-			"The given RequestProvider isnt part of this "+
-			"ProviderCache",
-			ProviderCache.prototype.getCache
-		);
+		cacheObj = {};
+		this.cache[ requestProviderName ] = cacheObj;
 	}
 	
 	return cacheObj;
 });
 
-ProviderCache.SET_CACHE_S = new FuncVer( [ "obj" ] );
-
 ProviderCache.prototype.setCache =
 sys.getFunc(
-ProviderCache.SET_CACHE_S,
+ProviderCache.SET_CACHE_FV,
 function( cacheObj )
 {
 	

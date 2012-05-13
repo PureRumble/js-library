@@ -33,7 +33,6 @@ RequestProvider.FAILURE_CODE_S =
 
 exports.RequestProvider = RequestProvider;
 
-var ProviderCache = require("./providercache").ProviderCache;
 var Request = require("./request").Request;
 
 RequestProvider.VALIDATE_FV =

@@ -327,10 +327,6 @@ new FuncVer(
 			types:"obj/undef",
 			props:
 			{
-				providers:
-				{
-					types:"arr/undef", extraItems:RequestProvider
-				},
 				failureLog:
 					{ types:"arr/undef", extraItems:"obj" }
 				,
@@ -388,12 +384,6 @@ function( callStack, sendStr, recStr, opts )
 	if( opts === undefined )
 	{
 		opts = {};
-	}
-	
-	var providers = opts.providers;
-	if( providers === undefined )
-	{
-		providers = [];
 	}
 	
 	var failureLog = opts.failureLog;
@@ -517,7 +507,6 @@ function( callStack, sendStr, recStr, opts )
 		logFailure,
 		errorProvider,
 		logError,
-		providers,
 		sys.getFunc(
 			new FuncVer( [ Error ] ),
 			function( err )
@@ -792,7 +781,6 @@ suite.addBatch( Testing.getTests(
 				validate: _validateWithFailure,
 				failureProvider: _localFailureProvider
 			},
-			providers:[ _localFailureProvider ],
 			failureLog:
 			[
 				{
@@ -823,7 +811,6 @@ suite.addBatch( Testing.getTests(
 			{
 				validate: _validateWithFailureAndOverridingProvider
 			},
-			providers: [ _overridingFailureProvider ],
 			failureLog:
 			[
 				{
@@ -1165,7 +1152,6 @@ suite.addBatch( Testing.getVar( function() {
 				{
 					provide: _giveErrToCb
 				},
-				providers:[ localFailureProvider ],
 				errorLog:
 				[
 					{

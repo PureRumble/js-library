@@ -17,7 +17,6 @@ function()
 		"func",
 		RequestProvider,
 		"func",
-		{ extraItems:RequestProvider },
 		"func"
 	] );
 },
@@ -27,13 +26,10 @@ function(
 	logValidationFailure,
 	errorProvider,
 	logError,
-	providers,
 	cbOnErr
 )
 {
 	var thisServer = this;
-	
-	thisServer.providers = [];
 	
 	thisServer.topRequestProvider = topRequestProvider;
 	thisServer.failureProvider = failureProvider;
@@ -42,15 +38,6 @@ function(
 	thisServer.logError = logError;
 	
 	thisServer.isRunning = false;
-	
-	thisServer._addProvider( topRequestProvider );
-	thisServer._addProvider( failureProvider );
-	thisServer._addProvider( errorProvider );
-	
-	for( var pos in providers )
-	{
-		thisServer._addProvider( providers[ pos ] );
-	}
 	
 	var server =
 	http.createServer(
@@ -68,7 +55,8 @@ function(
 	
 // An error event causes the close event to occur directly after,
 // therefore the logging of the error and call of cbOnErr is
-// done once the server has been closed
+// done once the server has been closed. cbOnErr isnt to be
+// called before the logging has been done
 	
 	server.on(
 		"error",
@@ -471,8 +459,6 @@ function(
 		thisServer.errorProvider
 	;
 	
-	thisServer.verifyProvider( currErrorProvider );
-	
 	var currErrorProviderName = currErrorProvider.getName();
 	var failureProviderName =
 		opts.failureProvider !== undefined ?
@@ -598,8 +584,6 @@ function(
 	try
 	{
 	
-	thisServer.verifyProvider( failureProviderToUse );
-	
 	providerCache.setProvider( failureProviderToUse );
 	
 	failureProviderToUse.provide(
@@ -656,8 +640,6 @@ function( currProvider, request )
 	
 	try
 	{
-	
-	thisServer.verifyProvider( currProvider );
 	
 	providerCache.setProvider( currProvider );
 	
@@ -860,90 +842,6 @@ function( currProvider, request )
 		);
 		
 		return;
-	}
-});
-
-Server.prototype._addProvider =
-sys.getFunc(
-new FuncVer( [ RequestProvider ] ),
-function( requestProvider )
-{
-	var providerName = requestProvider.getName();
-	var providers = this.providers;
-	
-	if(
-		providers[ providerName ] !== undefined &&
-		providers[ providerName ] !== requestProvider
-	)
-	{
-		throw new RuntimeError(
-			"RequestProvider '"+providerName+"' has already been "+
-			"added to this Server",
-			Server.prototype._addProvider
-		);
-	}
-	
-	providers[ providerName ] = requestProvider;
-});
-
-Server.prototype.verifyProvider =
-sys.getFunc(
-new FuncVer( [ RequestProvider ] ),
-function( requestProvider )
-{
-	var providers = this.providers;
-	
-	var requestProviderName = requestProvider.getName();
-	
-	if(
-		providers[ requestProviderName ] === undefined ||
-		providers[ requestProviderName ] !== requestProvider
-	)
-	{
-		throw new RuntimeError(
-			"The given RequestProvider isnt part of this Server",
-			Server.prototype.verifyProvider
-		);
-	}
-	
-	var failureProvider =
-		requestProvider.getValidationFailureProvider()
-	;
-	
-	if( failureProvider !== undefined )
-	{
-		var failureProviderName = failureProvider.getName();
-		
-		if(
-			providers[ failureProviderName ] === undefined ||
-			providers[ failureProviderName ] !== failureProvider
-		)
-		{
-			throw new RuntimeError(
-				"The given RequestProvider's ValidationFailureProvider "+
-				"isnt part of this Server",
-				Server.prototype.verifyProvider
-			);
-		}
-	}
-	
-	var errorProvider = requestProvider.getErrorProvider();
-	
-	if( errorProvider !== undefined )
-	{
-		var errorProviderName = errorProvider.getName();
-		
-		if(
-			providers[ errorProviderName ] === undefined ||
-			providers[ errorProviderName ] !== errorProvider
-		)
-		{
-			throw new RuntimeError(
-				"The given RequestProvider's ErrorProvider isnt part "+
-				"of this Server",
-				Server.prototype.verifyProvider
-			);
-		}
 	}
 });
 
