@@ -132,7 +132,16 @@ function( opts )
 							
 							serverRes.end();
 							
-							cb();
+							serverRes.on(
+								"close",
+								sys.getFunc(
+									new FuncVer(),
+									function()
+									{
+										cb();
+									}
+								)
+							);
 						}
 					)
 				);
@@ -211,7 +220,7 @@ new FuncVer(
 	[
 		RequestProvider.PROVIDER_NAME_S,
 		{
-			types: [ RequestProvider, "obj", "undef" ],
+			types: [ "obj", "undef" ],
 			extraProps:false,
 			props:
 			{
@@ -228,11 +237,6 @@ new FuncVer(
 ),
 function( name, opts )
 {
-	if( opts instanceof RequestProvider === true )
-	{
-		return opts;
-	}
-	
 	if( opts === undefined )
 	{
 		opts = {};
@@ -684,6 +688,8 @@ var _overridingFailureProvider =
 	_getProvider( "overridingFailureProvider" )
 ;
 
+var _localErrorProvider = _getProvider( "localErrorProvider" );
+
 var _unexpectedErrors = undefined;
 var _callStack = undefined;
 
@@ -703,6 +709,10 @@ _REQ_DATA =
 
 var suite = vows.describe( "server" );
 suite.options.error = false;
+
+var _testOrdinaryRequests =
+function()
+{
 
 suite.addBatch( Testing.getTests(
 	
@@ -733,6 +743,12 @@ suite.addBatch( Testing.getTests(
 	)
 	
 ));
+
+}
+
+var _testFailingValidation =
+function()
+{
 
 suite.addBatch( Testing.getTests(
 	
@@ -854,6 +870,12 @@ suite.addBatch( Testing.getTests(
 	)
 	
 ));
+
+}
+
+var _testBasicErrors =
+function()
+{
 
 suite.addBatch( Testing.getTests(
 	
@@ -1058,6 +1080,43 @@ suite.addBatch( Testing.getTests(
 
 suite.addBatch( Testing.getTests(
 	
+	"topReqProvider with localErrorProvider, "+
+	"provide with error at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"localErrorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:
+			{
+				provide: _giveErrToCb,
+				errorProvider: _localErrorProvider
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvisionCb"
+				}
+			]
+		}
+	)
+	
+));
+
+}
+
+var _testErrorsAtValidationFailureProvision =
+function()
+{
+
+suite.addBatch( Testing.getTests(
+	
 	"topReqProvider validate with failure, "+
 	"failureProvider provide with error",
 	_testRequest(
@@ -1146,7 +1205,8 @@ suite.addBatch( Testing.getTests(
 	
 ));
 
-suite.addBatch( Testing.getVar( function() {
+suite.addBatch( Testing.getVar(
+function() {
 	
 	var localFailureProvider =
 		_getProvider(
@@ -1203,7 +1263,9 @@ suite.addBatch( Testing.getVar( function() {
 	return returnVar;
 }));
 
-suite.addBatch( Testing.getVar( function() {
+suite.addBatch( Testing.getVar(
+function()
+{
 	
 	var overridingFailureProvider =
 		_getProvider(
@@ -1270,6 +1332,107 @@ suite.addBatch( Testing.getVar( function() {
 	
 	return returnVar;
 }));
+
+}
+
+var _testErrorsAtErrorProvision =
+function()
+{
+
+suite.addBatch( Testing.getTests(
+
+"topReqProvider prepare with err, "+
+"errorProvider provide with err",
+_testRequest(
+	[
+		"topReqProvider.validate",
+		"topReqProvider.prepare",
+		"logError",
+		"errorProvider.provide",
+		"logError"
+	],
+	_REQ_DATA,
+	undefined,
+	{
+		topReqProvider:
+		{
+			prepare: _throwErr
+		},
+		errorProvider:
+		{
+			provide: _throwErr
+		},
+		errorLog:
+		[
+			{
+				currProviderName: "topReqProvider",
+				errorCode: "ErrorAtPreparation"
+			},
+			{
+				currProviderName: "topReqProvider",
+				errorCode: "ErrorAtErrorProvision"
+			}
+		]
+	}
+)
+
+));
+
+suite.addBatch( Testing.getVar(
+function()
+{
+	var localErrorProvider =
+	_getProvider(
+		"localErrorProvider",
+		{
+			provide: _throwErr
+		}
+	);
+	
+	var returnVar =
+	Testing.getTests(
+	
+	"topReqProvider with localErrProvider, "+
+	"prepare with err at cb, "+
+	"localErrorProvider provide with err at cb",
+	_testRequest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.prepare",
+			"logError",
+			"localErrorProvider.provide",
+			"logError"
+		],
+		_REQ_DATA,
+		undefined,
+		{
+			topReqProvider:
+			{
+				prepare: _throwErr,
+				errorProvider: localErrorProvider
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtPreparation"
+				},
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtErrorProvision"
+				}
+			]
+		}
+	));
+	
+	return returnVar;
+}));
+
+}
+
+var _testErrorsAtValidationFailureLogging =
+function()
+{
 
 suite.addBatch( Testing.getTests(
 	
@@ -1403,7 +1566,15 @@ suite.addBatch( Testing.getTests(
 	
 ));
 
-suite.addBatch( Testing.getVar( function() {
+}
+
+var _testErrorsAtErrorLogging =
+function()
+{
+
+suite.addBatch( Testing.getVar(
+function()
+{
 	
 	var overridingFailureProvider =
 		_getProvider(
@@ -1419,8 +1590,9 @@ suite.addBatch( Testing.getVar( function() {
 		
 		"topReqProvider validate with failure and overriding "+
 		"failureProvider, "+
+		"overridingFailureProvider provide with error at cb, "+
 		"logError with error at cb, "+
-		"overridingFailureProvider provide with error at cb",
+		"errorProvider provide",
 		_testRequest(
 			[
 				"topReqProvider.validate",
@@ -1508,5 +1680,15 @@ suite.addBatch( Testing.getTests(
 	)
 	
 ));
+
+}
+
+_testOrdinaryRequests();
+_testFailingValidation();
+_testBasicErrors();
+_testErrorsAtValidationFailureProvision();
+_testErrorsAtErrorProvision();
+_testErrorsAtValidationFailureLogging();
+_testErrorsAtErrorLogging();
 
 suite.export( module );

@@ -74,3 +74,32 @@ function( cacheObj )
 {
 	return this.providerCache.setCache( cacheObj );
 });
+
+Request.prototype.isWritable =
+sys.getFunc(
+new FuncVer( undefined, "bool/undef" ),
+function( cacheObj )
+{
+	var returnVar =
+		this.serverResponse !== undefined ?
+		this.serverResponse.writable :
+		undefined
+	;
+	
+	return returnVar;
+});
+
+Request.prototype.forcefullyClose =
+sys.getFunc(
+new FuncVer(),
+function()
+{
+	try
+	{
+		this.serverResponse.end();
+	}
+	catch( e )
+	{
+		
+	}
+});

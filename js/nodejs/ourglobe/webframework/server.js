@@ -443,7 +443,20 @@ function(
 	);
 	
 // An attempt to send response to client is done even if
-// error logging has failed
+// error logging has failed, but only if it can be determined
+// that the Request is still open
+	
+	var isWritable = request.isWritable();
+	
+	if( isWritable === undefined )
+	{
+		request.forcefullyClose();
+	}
+	
+	if( isWritable === false || isWritable === undefined )
+	{
+		return;
+	}
 	
 	try
 	{
@@ -466,34 +479,6 @@ function(
 			undefined
 	;
 	
-// If the errorProvider is the same RequestProvider that caused
-// the error during provision, then an attempt to provide for
-// the error using the same RequestProvider again isnt made
-	
-	if(
-		(
-			(
-				errorCode ===
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION
-				||
-				errorCode ===
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB
-			) &&
-			currErrorProviderName === failureProviderName
-		)
-		||
-		(
-			(
-				errorCode === Server.ERROR_AT_PROVISION ||
-				errorCode === Server.ERROR_AT_PROVISION_CB 
-			) &&
-			currErrorProviderName === currProvider.getName()
-		)
-	)
-	{
-		return;
-	}
-	
 	providerCache.setProvider( currErrorProvider );
 	
 	currErrorProvider.provide(
@@ -502,12 +487,42 @@ function(
 			new FuncVer( [ [ Error, "undef" ] ] ),
 			function( err )
 			{
+				var isWritable = request.isWritable();
+				
+// At this stage the request's ServerResponse must be closed
+// no matter what
+				
+				if( isWritable === undefined || isWritable === true )
+				{
+					request.forcefullyClose();
+				}
+				
+				if( err === undefined )
+				{
+					if( isWritable === undefined )
+					{
+						err = new RuntimeError(
+							"It cant be verified if the request's "+
+							"serverResponse obj has been closed"
+						);
+					}
+					else if( isWritable === true )
+					{
+						err = new RuntimeError(
+							"The request's ServerResponse object is "+
+							"still writable even if the final "+
+							"RequestProvider reports having "+
+							"successfully provided for the request"
+						);
+					}
+				}
+				
 				if( err !== undefined )
 				{
 					
-	// Arg opts isnt passed on since its information isnt relevant
-	// for the logging of the error that occurred when provide()
-	// of the errorProvider was called
+// Arg opts isnt passed on since its information isnt relevant
+// for the logging of the error that occurred when provide()
+// of the errorProvider was called
 					
 					thisServer._logError(
 						currProvider,
@@ -525,6 +540,15 @@ function(
 	}
 	catch( e )
 	{
+		
+		var isWritable = request.isWritable();
+		
+		// At this stage the request must be closed no matter what
+		
+		if( isWritable === undefined || isWritable === true )
+		{
+			request.forcefullyClose();
+		}
 		
 // Arg opts isnt passed on since its information isnt relevant
 // for the logging of the error that occurred when provide()
@@ -592,6 +616,28 @@ function(
 		new FuncVer( [ [ Error, "undef" ] ] ),
 		function( err )
 		{
+			if( err === undefined )
+			{
+				var isWritable = request.isWritable();
+				
+				if( isWritable === undefined )
+				{
+					err = new RuntimeError(
+						"It cant be verified if the request's "+
+						"serverResponse obj has been closed"
+					);
+				}
+				else if( isWritable === true )
+				{
+					err = new RuntimeError(
+						"The request's ServerResponse object is "+
+						"still writable even if the final "+
+						"RequestProvider reports having "+
+						"successfully provided for the request"
+					);
+				}
+			}
+			
 			if( err !== undefined )
 			{
 				thisServer._handleError(
@@ -789,6 +835,28 @@ function( currProvider, request )
 							new FuncVer( [ [ Error, "undef" ] ] ),
 							function( err )
 							{
+								if( err === undefined )
+								{
+									var isWritable = request.isWritable();
+									
+									if( isWritable === undefined )
+									{
+										err = new RuntimeError(
+											"It cant be verified if the request's "+
+											"serverResponse obj has been closed"
+										);
+									}
+									else if( isWritable !== false )
+									{
+										err = new RuntimeError(
+											"The request's ServerResponse object is "+
+											"still writable even if the final "+
+											"RequestProvider reports having "+
+											"successfully provided for the request"
+										);
+									}
+								}
+								
 								if( err !== undefined )
 								{
 									thisServer._handleError(
