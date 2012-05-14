@@ -17,7 +17,8 @@ function()
 		"func",
 		RequestProvider,
 		"func",
-		"func"
+		"func",
+		FuncVer.NON_NEG_INT
 	] );
 },
 function(
@@ -26,7 +27,8 @@ function(
 	logValidationFailure,
 	errorProvider,
 	logError,
-	cbOnErr
+	cbOnErr,
+	port
 )
 {
 	var thisServer = this;
@@ -36,6 +38,7 @@ function(
 	thisServer.logFailure = logValidationFailure;
 	thisServer.errorProvider = errorProvider;
 	thisServer.logError = logError;
+	thisServer.port = port;
 	
 	thisServer.isRunning = false;
 	
@@ -927,7 +930,7 @@ function( cb )
 	
 	var server = thisServer.server;
 	
-	server.listen( 1337, "127.0.0.1" );
+	server.listen( this.port, "127.0.0.1" );
 	
 	server.once(
 		"listening",

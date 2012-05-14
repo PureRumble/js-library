@@ -26,6 +26,21 @@ var ProviderCache =
 	require("ourglobe/webframework").ProviderCache
 ;
 
+var _REQUEST_PROVIDER_S =
+{
+	types: [ "obj", "undef" ],
+	extraProps:false,
+	props:
+	{
+		validate: "func/undef",
+		prepare: "bool/func/undef",
+		handOver: "bool/func/undef",
+		provide: "func/undef",
+		failureProvider: [ RequestProvider, "undef" ],
+		errorProvider: [ RequestProvider, "undef" ]
+	}
+};
+
 var _getProviderClass =
 sys.getFunc(
 new FuncVer(
@@ -217,22 +232,7 @@ function( opts )
 var _getProvider =
 sys.getFunc(
 new FuncVer(
-	[
-		RequestProvider.PROVIDER_NAME_S,
-		{
-			types: [ "obj", "undef" ],
-			extraProps:false,
-			props:
-			{
-				validate: "func/undef",
-				prepare: "bool/func/undef",
-				handOver: "bool/func/undef",
-				provide: "func/undef",
-				failureProvider: [ RequestProvider, "undef" ],
-				errorProvider: [ RequestProvider, "undef" ]
-			}
-		}
-	],
+	[ RequestProvider.PROVIDER_NAME_S, _REQUEST_PROVIDER_S ],
 	RequestProvider
 ),
 function( name, opts )
@@ -320,7 +320,7 @@ function()
 	);
 });
 
-var _testRequest =
+var _getBasicRequestTest =
 sys.getFunc(
 new FuncVer(
 	[
@@ -337,44 +337,11 @@ new FuncVer(
 				errorLog:
 					{ types:"arr/undef", extraItems:"obj" }
 				,
-				topReqProvider:
-				{
-					types: [ RequestProvider, "obj", "undef" ],
-					extraProps: false,
-					props:
-					{
-						validate: "func/undef",
-						prepare: "bool/func/undef",
-						handOver: "bool/func/undef",
-						provide: "func/undef",
-						failureProvider: [ RequestProvider, "undef" ],
-						errorProvider: [ RequestProvider, "undef" ]
-					}
-				},
+				topReqProvider: [ RequestProvider, _REQUEST_PROVIDER_S ],
 				failureProvider:
-				{
-					types: [ RequestProvider, "obj", "undef" ],
-					extraProps: false,
-					props:
-					{
-						validate: "func/undef",
-						prepare: "bool/func/undef",
-						handOver: "bool/func/undef",
-						provide: "func/undef"
-					}
-				},
-				errorProvider:
-				{
-					types: [ RequestProvider, "obj", "undef" ],
-					extraProps: false,
-					props:
-					{
-						validate: "func/undef",
-						prepare: "bool/func/undef",
-						handOver: "bool/func/undef",
-						provide: "func/undef"
-					}
-				},
+					[ RequestProvider, _REQUEST_PROVIDER_S ]
+				,
+				errorProvider: [ RequestProvider, _REQUEST_PROVIDER_S ],
 				logFailure: "func/undef",
 				logError: "func/undef"
 			},
@@ -385,6 +352,8 @@ new FuncVer(
 ),
 function( callStack, sendStr, recStr, opts )
 {
+	var port = 1337;
+	
 	if( opts === undefined )
 	{
 		opts = {};
@@ -403,12 +372,18 @@ function( callStack, sendStr, recStr, opts )
 	}
 	
 	var topReqProvider =
+		opts.topReqProvider instanceof RequestProvider === true ?
+		opts.topReqProvider :
 		_getProvider( "topReqProvider", opts.topReqProvider )
 	;
 	var failureProvider =
+		opts.failureProvider instanceof RequestProvider === true ?
+		opts.failureProvider :
 		_getProvider(  "failureProvider", opts.failureProvider )
 	;
 	var errorProvider =
+		opts.errorProvider instanceof RequestProvider === true ?
+		opts.errorProvider :
 		_getProvider( "errorProvider", opts.errorProvider )
 	;
 	
@@ -517,7 +492,8 @@ function( callStack, sendStr, recStr, opts )
 			{
 				throw err;
 			}
-		)
+		),
+		port
 	);
 	
 	var returnVar =
@@ -543,7 +519,7 @@ function( callStack, sendStr, recStr, opts )
 							"localhost",
 							{
 								method:"GET",
-								port:1337,
+								port:port,
 								data:sendStr,
 								headers:
 								{
@@ -680,6 +656,153 @@ function( callStack, sendStr, recStr, opts )
 	return returnVar;
 });
 
+var _getRequestTest =
+sys.getFunc(
+new FuncVer(
+	[
+		{ extraItems:"str" },
+		"str/undef",
+		"str/undef",
+		{
+			types:"obj/undef",
+			props:
+			{
+				nrHandovers: [ FuncVer.NON_NEG_INT, "undef" ],
+				failureLog:
+					{ types:"arr/undef", extraItems:"obj" }
+				,
+				errorLog:
+					{ types:"arr/undef", extraItems:"obj" }
+				,
+				topReqProvider: _REQUEST_PROVIDER_S,
+				failureProvider: _REQUEST_PROVIDER_S,
+				errorProvider: _REQUEST_PROVIDER_S,
+				logFailure: "func/undef",
+				logError: "func/undef"
+			},
+			extraProps:false
+		}
+	],
+	"obj"
+),
+function( callStack, sendStr, recStr, opts )
+{
+	if( opts === undefined )
+	{
+		opts = {};
+	}
+	
+	if( opts.nrHandovers === undefined )
+	{
+		opts.nrHandovers = 2;
+	}
+	
+	var nrHandovers = opts.nrHandovers;
+	delete opts.nrHandovers;
+	
+	if( nrHandovers === 0 )
+	{
+		var returnVar =
+			_getBasicRequestTest( callStack, sendStr, recStr, opts )
+		;
+		
+		return returnVar;
+	}
+	
+		var topReqProvider =
+			_getProvider( "topReqProvider", opts.topReqProvider )
+		;
+	
+	var testObj = {};
+	var currObj = testObj;
+	
+	for(
+		var currNrHandovers = 0;
+		currNrHandovers <= nrHandovers;
+		currNrHandovers++
+	)
+	{
+		var topReqProviderToUse = topReqProvider;
+		var callStackToUse = callStack.slice();
+		
+		for( var i = 0; i < currNrHandovers; i++ )
+		{
+			
+// The handoverProvider must return the next RequestProvider in
+// handOver(), this requires a scope where the variable pointing
+// to the RequestProvider doesnt change. The handoverProvider is
+// therefore produced within an inner function that is called per
+// loop of this for-stmt
+			
+			var produceHandover =
+			sys.getFunc(
+				new FuncVer(),
+				function()
+				{
+					var handoverNr = currNrHandovers - i - 1;
+					
+// The variable that holds the next RequestProvider (to be handed
+// handed over) and doesnt change is handoverProvider
+					
+					var handoverProvider = topReqProviderToUse;
+					
+					var providerName = "handoverProvider"+handoverNr;
+					
+					topReqProviderToUse =
+					_getProvider(
+						providerName,
+						{
+							prepare: true,
+							handOver:
+							sys.getFunc(
+								RequestProvider.HAND_OVER_FV,
+								function( request )
+								{
+									return handoverProvider;
+								}
+							)
+						}
+					);
+					
+					var beforeCurrStack =
+					[
+						providerName+".validate",
+						providerName+".prepare",
+						providerName+".handOver",
+					];
+					
+					callStackToUse =
+						beforeCurrStack.concat( callStackToUse )
+					;
+				}
+			);
+			
+			produceHandover();
+		}
+		
+		opts.topReqProvider = topReqProviderToUse;
+		
+// The tests must be executed sequentially (due to global vars
+// that are used). The test objs are therefore baked into one
+// another
+		
+		currObj[ "testing with "+currNrHandovers+" handovers" ] =
+			_getBasicRequestTest(
+				callStackToUse,
+				sendStr,
+				recStr,
+				opts
+			)
+		;
+		
+		currObj =
+			currObj[ "testing with "+currNrHandovers+" handovers" ]
+		;
+	}
+	
+	return testObj;
+});
+
 var _localFailureProvider =
 	_getProvider( "localFailureProvider" )
 ;
@@ -717,7 +840,7 @@ function()
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate, provide",
-	_testRequest(
+	_getRequestTest(
 		[ "topReqProvider.validate", "topReqProvider.provide" ],
 		_REQ_DATA,
 		_REQ_DATA
@@ -728,7 +851,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate, prepare, handOver, provide",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.prepare",
@@ -753,7 +876,7 @@ function()
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with failure",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -783,7 +906,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with failure and local "+
 	"failureProvider",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -814,7 +937,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with failure and overriding "+
 	"failureProvider",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -844,7 +967,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider has local failureProvider, validate with "+
 	"failure and overriding failureProvider",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -880,7 +1003,7 @@ function()
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with error",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logError",
@@ -908,7 +1031,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logError",
@@ -936,7 +1059,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider prepare with error",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.prepare",
@@ -965,7 +1088,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider prepare with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.prepare",
@@ -994,7 +1117,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider handOver with error",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.handOver",
@@ -1023,7 +1146,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider provide with error",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.provide",
@@ -1052,7 +1175,7 @@ suite.addBatch( Testing.getTests(
 suite.addBatch( Testing.getTests(
 	
 	"topReqProvider provide with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.provide",
@@ -1082,7 +1205,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider with localErrorProvider, "+
 	"provide with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.provide",
@@ -1119,7 +1242,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with failure, "+
 	"failureProvider provide with error",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -1164,7 +1287,7 @@ suite.addBatch( Testing.getTests(
 	
 	"topReqProvider validate with failure, "+
 	"failureProvider provide with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -1223,7 +1346,7 @@ function() {
 		"topReqProvider validate with failure and local "+
 		"failureProvider, "+
 		"localFailureProvider provide with error at cb",
-		_testRequest(
+		_getRequestTest(
 			[
 				"topReqProvider.validate",
 				"logFailure",
@@ -1282,7 +1405,7 @@ function()
 		"topReqProvider validate with failure and overriding "+
 		"failureProvider, "+
 		"overridingFailureProvider provide with error at cb",
-		_testRequest(
+		_getRequestTest(
 			[
 				"topReqProvider.validate",
 				"logFailure",
@@ -1343,7 +1466,7 @@ suite.addBatch( Testing.getTests(
 
 "topReqProvider prepare with err, "+
 "errorProvider provide with err",
-_testRequest(
+_getRequestTest(
 	[
 		"topReqProvider.validate",
 		"topReqProvider.prepare",
@@ -1395,7 +1518,7 @@ function()
 	"topReqProvider with localErrProvider, "+
 	"prepare with err at cb, "+
 	"localErrorProvider provide with err at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"topReqProvider.prepare",
@@ -1439,7 +1562,7 @@ suite.addBatch( Testing.getTests(
 	"topReqProvider validate with failure, "+
 	"logFailure with error, "+
 	"failureProvider provide",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -1479,7 +1602,7 @@ suite.addBatch( Testing.getTests(
 	"topReqProvider validate with failure, "+
 	"logFailure with error at cb, "+
 	"failureProvider provide",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -1519,7 +1642,7 @@ suite.addBatch( Testing.getTests(
 	"topReqProvider validate with failure, "+
 	"logFailure with error at cb, "+
 	"failureProvider provide with error at cb",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logFailure",
@@ -1593,7 +1716,7 @@ function()
 		"overridingFailureProvider provide with error at cb, "+
 		"logError with error at cb, "+
 		"errorProvider provide",
-		_testRequest(
+		_getRequestTest(
 			[
 				"topReqProvider.validate",
 				"logFailure",
@@ -1655,7 +1778,7 @@ suite.addBatch( Testing.getTests(
 	"topReqProvider validate with err, "+
 	"logError with err, "+
 	"errorProvider provide",
-	_testRequest(
+	_getRequestTest(
 		[
 			"topReqProvider.validate",
 			"logError",
