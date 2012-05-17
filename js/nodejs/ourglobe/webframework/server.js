@@ -46,6 +46,10 @@ function(
 	http.createServer(
 		function( serverRequest, serverResponse )
 		{
+			serverResponse.ourGlobe = {};
+			serverResponse.ourGlobe.hasEnded = false;
+			serverResponse.once( "finish", Server._handleFinishEvent );
+			
 			var request = new Request( serverRequest, serverResponse );
 			
 			thisServer._useProvider(
@@ -118,6 +122,15 @@ function(
 		)
 	);
 });
+
+Server._handleFinishEvent =
+sys.getFunc(
+	new FuncVer(),
+	function()
+	{
+		this.ourGlobe.hasEnded = true;
+	}
+);
 
 Server.ERROR_IN_SERVER = "ErrorInServer";
 
@@ -438,31 +451,36 @@ function(
 {
 	var thisServer = this;
 	
-	request.resetRequestObject();
-	
-	var providerCache = request.getProviderCache();
-	
 	opts = opts === undefined ? {} : opts;
 	
 	thisServer._logError(
 		currProvider, request, errorCode, err, opts
 	);
 	
-// An attempt to send response to client is done even if
-// error logging has failed, but only if it can be determined
-// that the Request is still open
-	
-	var isWritable = request.isWritable();
-	
-	if( isWritable === undefined )
+	if(
+		errorCode === Server.ERROR_AT_ERROR_PROVISION ||
+		errorCode === Server.ERROR_AT_ERROR_PROVISION_CB
+	)
 	{
-		request.forcefullyClose();
-	}
-	
-	if( isWritable === false || isWritable === undefined )
-	{
+		var hasEnded = request.hasEnded();
+		
+// The errorProvider was the last chance to server the request.
+// At this stage it must be closed no matter what
+		
+		if( hasEnded === false )
+		{
+			request.forcefullyEnd();
+		}
+		
 		return;
 	}
+	
+// requestObj isnt reset a second time if error was caused by
+// error provision since this was done the last time
+	
+	request.resetRequestObject();
+	
+	var providerCache = request.getProviderCache();
 	
 	try
 	{
@@ -493,29 +511,11 @@ function(
 			new FuncVer( [ [ Error, "undef" ] ] ),
 			function( err )
 			{
-				var isWritable = request.isWritable();
-				
-// At this stage the request's ServerResponse must be closed
-// no matter what
-				
-				if( isWritable === undefined || isWritable === true )
-				{
-					request.forcefullyClose();
-				}
-				
 				if( err === undefined )
 				{
-					if( isWritable === undefined )
-					{
-						err = new ServerRuntimeError(
-							"It cant be verified if the request's "+
-							"serverResponse obj has been closed",
-							{
-								code: "ServerResponseObjWritabilityNotVerifiable"
-							}
-						);
-					}
-					else if( isWritable === true )
+					var hasEnded = request.hasEnded();
+					
+					if( hasEnded === false )
 					{
 						err = new ServerRuntimeError(
 							"The request's ServerResponse object is "+
@@ -531,12 +531,11 @@ function(
 				
 				if( err !== undefined )
 				{
-					
 // Arg opts isnt passed on since its information isnt relevant
 // for the logging of the error that occurred when provide()
 // of the errorProvider was called
 					
-					thisServer._logError(
+					thisServer._handleError(
 						currProvider,
 						request,
 						Server.ERROR_AT_ERROR_PROVISION_CB,
@@ -552,21 +551,11 @@ function(
 	}
 	catch( e )
 	{
-		
-		var isWritable = request.isWritable();
-		
-		// At this stage the request must be closed no matter what
-		
-		if( isWritable === undefined || isWritable === true )
-		{
-			request.forcefullyClose();
-		}
-		
 // Arg opts isnt passed on since its information isnt relevant
 // for the logging of the error that occurred when provide()
 // of the errorProvider was called
 		
-		thisServer._logError(
+		thisServer._handleError(
 			currProvider,
 			request,
 			Server.ERROR_AT_ERROR_PROVISION,
@@ -630,19 +619,9 @@ function(
 		{
 			if( err === undefined )
 			{
-				var isWritable = request.isWritable();
+				var hasEnded = request.hasEnded();
 				
-				if( isWritable === undefined )
-				{
-					err = new ServerRuntimeError(
-						"It cant be verified if the request's "+
-						"serverResponse obj has been closed",
-						{
-							code: "ServerResponseObjWritabilityNotVerifiable"
-						}
-					);
-				}
-				else if( isWritable === true )
+				if( hasEnded === false )
 				{
 					err = new ServerRuntimeError(
 						"The request's ServerResponse object is "+
@@ -855,21 +834,9 @@ function( currProvider, request )
 							{
 								if( err === undefined )
 								{
-									var isWritable = request.isWritable();
+									var hasEnded = request.hasEnded();
 									
-									if( isWritable === undefined )
-									{
-										err = new ServerRuntimeError(
-											"It cant be verified if the request's "+
-											"serverResponse obj has been closed",
-											{
-												code:
-													"ServerResponseObjWritability"+
-													"NotVerifiable"
-											}
-										);
-									}
-									else if( isWritable === true )
+									if( hasEnded === false )
 									{
 										err = new ServerRuntimeError(
 											"The request's ServerResponse object is "+

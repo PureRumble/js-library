@@ -148,10 +148,8 @@ function( opts )
 						{
 							serverRes.write( reqData, "utf8" );
 							
-							serverRes.end();
-							
 							serverRes.once(
-								"close",
+								"finish",
 								sys.getFunc(
 									new FuncVer(),
 									function()
@@ -160,6 +158,8 @@ function( opts )
 									}
 								)
 							);
+							
+							serverRes.end();
 						}
 					)
 				);
@@ -1851,90 +1851,7 @@ var _testEndingOfServerResponseAndErrors =
 function()
 {
 
-suite.addBatch( Testing.getTests(
 
-"topReqProvider provide with no error but "+
-"doesnt end ServerResponse",
-_getRequestTest(
-	[
-		"topReqProvider.validate",
-		"topReqProvider.provide",
-		"logError",
-		"errorProvider.provide"
-	],
-	_REQ_DATA,
-	_REQ_DATA,
-	{
-		topReqProvider:
-		{
-			provide:
-			sys.getFunc(
-				RequestProvider.PROVIDE_FV,
-				function( request, cb )
-				{
-					cb();
-				}
-			)
-		},
-		errorLog:
-		[
-			{
-				currProviderName: "topReqProvider",
-				errorCode: "ErrorAtProvisionCb",
-				errorClass: ServerRuntimeError,
-				ourGlobeCode: "ServerResponseObjIsStillWritable"
-			}
-		]
-	}
-)
-
-));
-
-suite.addBatch( Testing.getTests(
-
-"topReqProvider provide with err but ends ServerResponse, "+
-"NO errorProvider",
-_getRequestTest(
-	[
-		"topReqProvider.validate",
-		"topReqProvider.provide"
-	],
-	_REQ_DATA,
-	undefined,
-	{
-		topReqProvider:
-		{
-			provide:
-			sys.getFunc(
-				RequestProvider.PROVIDE_FV,
-				function( request, cb )
-				{
-					var serverRes = request.getReqObj().serverRes;
-					
-					serverRes.end();
-					
-					serverRes.once(
-						"close",
-						sys.getFunc(
-							new FuncVer(),
-							function()
-							{
-								cb(
-									new TestRuntimeError(
-										"This err was given to cb of provide() in "+
-										"server-test.js"
-									)
-								);
-							}
-						)
-					);
-				}
-			)
-		}
-	}
-)
-
-));
 
 }
 

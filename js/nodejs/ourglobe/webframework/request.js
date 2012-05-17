@@ -75,21 +75,15 @@ function( cacheObj )
 	return this.providerCache.setCache( cacheObj );
 });
 
-Request.prototype.isWritable =
+Request.prototype.hasEnded =
 sys.getFunc(
-new FuncVer( undefined, "bool/undef" ),
+new FuncVer( undefined, "bool" ),
 function( cacheObj )
 {
-	var returnVar =
-		this.serverResponse !== undefined ?
-		this.serverResponse.writable :
-		undefined
-	;
-	
-	return returnVar;
+	return this.serverResponse.ourGlobe.hasEnded;
 });
 
-Request.prototype.forcefullyClose =
+Request.prototype.forcefullyEnd =
 sys.getFunc(
 new FuncVer(),
 function()
