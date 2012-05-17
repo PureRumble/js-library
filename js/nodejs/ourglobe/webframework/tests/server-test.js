@@ -7,6 +7,9 @@ var RuntimeError = require("ourglobe").RuntimeError;
 var TestRuntimeError =
 	require("ourglobe/testing").TestRuntimeError
 ;
+var ServerRuntimeError =
+	require("ourglobe/webframework").ServerRuntimeError
+;
 
 var Testing = require("ourglobe/testing").Testing;
 
@@ -137,7 +140,7 @@ function( opts )
 					)
 				);
 				
-				serverReq.on(
+				serverReq.once(
 					"end",
 					sys.getFunc(
 						new FuncVer(),
@@ -147,7 +150,7 @@ function( opts )
 							
 							serverRes.end();
 							
-							serverRes.on(
+							serverRes.once(
 								"close",
 								sys.getFunc(
 									new FuncVer(),
@@ -434,11 +437,6 @@ function( callStack, sendStr, recStr, opts )
 		cb
 	)
 	{
-		if( err instanceof TestRuntimeError === false )
-		{
-			_unexpectedErrors.push( err );
-		}
-		
 		var logObj = {};
 		
 // currProviderName is undefined for errorCode ERROR_IN_SERVER
@@ -459,6 +457,11 @@ function( callStack, sendStr, recStr, opts )
 		{
 			logObj.failureCode = newOpts.failureCode;
 		}
+		
+		logObj.ourGlobeCode = err.ourGlobeCode;
+		logObj.errorClass = err.constructor;
+		logObj.err = {};
+		logObj.err.stack = err.stack;
 		
 		_errorLog.push( logObj );
 		
@@ -504,8 +507,6 @@ function( callStack, sendStr, recStr, opts )
 		{
 			var thisTopic = this;
 			
-			_unexpectedErrors = [];
-			
 			_failureLog = [];
 			_errorLog = [];
 			_callStack = [];
@@ -550,31 +551,6 @@ function( callStack, sendStr, recStr, opts )
 				)
 			);
 		},
-		
-		"doesnt cause unexpected errors",
-		sys.getFunc(
-			MoreHttp.REQUEST_CB_FV,
-			function( err, statusCode, resBuf )
-			{
-				Testing.errorCheckArgs( arguments );
-				
-				var errors = [];
-				
-				for( var item in _unexpectedErrors )
-				{
-					errors.push( {
-						error: _unexpectedErrors[ item ],
-						stackTrace: _unexpectedErrors[ item ].stack
-					} );
-				}
-				
-				assert(
-					errors.length === 0,
-					"The test caused the following unexpected errors: "+
-					Testing.getPrettyStr( errors )
-				);
-			}
-		),
 		
 		"gives expected data",
 		sys.getFunc(
@@ -623,14 +599,79 @@ function( callStack, sendStr, recStr, opts )
 			{
 				Testing.errorCheckArgs( arguments );
 				
-				assert(
-					Testing.areEqual( _errorLog, errorLog ),
-					"The errorLog isnt as expected. Current and expected "+
-					"errorLogs are: "+
-					Testing.getPrettyStr( {
-						current:_errorLog, expected:errorLog
-					})
-				);
+				var areEqual = true;
+				
+				if( _errorLog.length !== errorLog.length )
+				{
+					areEqual = false;
+				}
+				else
+				{
+					for(
+						var item = 0;
+						item < _errorLog.length;
+						item++
+					)
+					{
+						var currEntry = _errorLog[ item ];
+						var errClass = currEntry.errorClass;
+						var ourGlobeCode = currEntry.ourGlobeCode;
+						
+						var expectedEntry = errorLog[ item ];
+						
+						if(
+							(
+								(
+									errClass === expectedEntry.errorClass ||
+									(
+										errClass === TestRuntimeError &&
+										expectedEntry.errorClass === undefined
+									)
+								) &&
+								ourGlobeCode === expectedEntry.ourGlobeCode
+							) === false
+						)
+						{
+							areEqual = false;
+							break;
+						}
+						else
+						{
+							currEntry.errorClass = expectedEntry.errorClass;
+							if( "errorClass" in expectedEntry === false )
+							{
+								delete currEntry.errorClass;
+							}
+							
+							currEntry.ourGlobeCode =
+								expectedEntry.ourGlobeCode
+							;
+							
+							if( "ourGlobeCode" in expectedEntry === false )
+							{
+								delete currEntry.ourGlobeCode;
+							}
+							
+							delete currEntry.err;
+						}
+					}
+					
+					if( areEqual === true )
+					{
+						areEqual = Testing.areEqual( _errorLog, errorLog );
+					}
+				}
+				
+				if( areEqual === false )
+				{
+					throw new RuntimeError(
+						"The errorLog isnt as expected. Current and "+
+						"expected errorLogs are: "+
+						Testing.getPrettyStr( {
+							current:_errorLog, expected:errorLog
+						})
+					);
+				}
 			}
 		),
 			
@@ -786,7 +827,11 @@ function( callStack, sendStr, recStr, opts )
 // that are used). The test objs are therefore baked into one
 // another
 		
-		currObj[ "testing with "+currNrHandovers+" handovers" ] =
+		var testName =
+			"- testing with "+currNrHandovers+" handovers"
+		;
+		
+		currObj[ testName ] =
 			_getBasicRequestTest(
 				callStackToUse,
 				sendStr,
@@ -795,9 +840,7 @@ function( callStack, sendStr, recStr, opts )
 			)
 		;
 		
-		currObj =
-			currObj[ "testing with "+currNrHandovers+" handovers" ]
-		;
+		currObj = currObj[ testName ];
 	}
 	
 	return testObj;
@@ -813,9 +856,7 @@ var _overridingFailureProvider =
 
 var _localErrorProvider = _getProvider( "localErrorProvider" );
 
-var _unexpectedErrors = undefined;
 var _callStack = undefined;
-
 var _failureLog = undefined;
 var _errorLog = undefined;
 
@@ -1806,6 +1847,97 @@ suite.addBatch( Testing.getTests(
 
 }
 
+var _testEndingOfServerResponseAndErrors =
+function()
+{
+
+suite.addBatch( Testing.getTests(
+
+"topReqProvider provide with no error but "+
+"doesnt end ServerResponse",
+_getRequestTest(
+	[
+		"topReqProvider.validate",
+		"topReqProvider.provide",
+		"logError",
+		"errorProvider.provide"
+	],
+	_REQ_DATA,
+	_REQ_DATA,
+	{
+		topReqProvider:
+		{
+			provide:
+			sys.getFunc(
+				RequestProvider.PROVIDE_FV,
+				function( request, cb )
+				{
+					cb();
+				}
+			)
+		},
+		errorLog:
+		[
+			{
+				currProviderName: "topReqProvider",
+				errorCode: "ErrorAtProvisionCb",
+				errorClass: ServerRuntimeError,
+				ourGlobeCode: "ServerResponseObjIsStillWritable"
+			}
+		]
+	}
+)
+
+));
+
+suite.addBatch( Testing.getTests(
+
+"topReqProvider provide with err but ends ServerResponse, "+
+"NO errorProvider",
+_getRequestTest(
+	[
+		"topReqProvider.validate",
+		"topReqProvider.provide"
+	],
+	_REQ_DATA,
+	undefined,
+	{
+		topReqProvider:
+		{
+			provide:
+			sys.getFunc(
+				RequestProvider.PROVIDE_FV,
+				function( request, cb )
+				{
+					var serverRes = request.getReqObj().serverRes;
+					
+					serverRes.end();
+					
+					serverRes.once(
+						"close",
+						sys.getFunc(
+							new FuncVer(),
+							function()
+							{
+								cb(
+									new TestRuntimeError(
+										"This err was given to cb of provide() in "+
+										"server-test.js"
+									)
+								);
+							}
+						)
+					);
+				}
+			)
+		}
+	}
+)
+
+));
+
+}
+
 _testOrdinaryRequests();
 _testFailingValidation();
 _testBasicErrors();
@@ -1813,5 +1945,6 @@ _testErrorsAtValidationFailureProvision();
 _testErrorsAtErrorProvision();
 _testErrorsAtValidationFailureLogging();
 _testErrorsAtErrorLogging();
+_testEndingOfServerResponseAndErrors();
 
 suite.export( module );

@@ -3,7 +3,7 @@ OurGlobeError may only depend on the following funcs in
 ourglobe:
  /conf/conf
 */
-function OurGlobeError( msg, caller )
+function OurGlobeError( msg, opts )
 {
 	if( conf.doVer() === true )
 	{
@@ -22,23 +22,55 @@ function OurGlobeError( msg, caller )
 			);
 		}
 		
-		if( caller !== undefined && typeof( caller ) !== "function" )
+		if(
+			opts !== undefined &&
+			typeof( opts ) !== "function" &&
+			typeof( opts ) !== "object"
+		)
 		{
 			throw new Error(
-				"Arg caller must be undef or a func but is:\n" + caller
+				"Arg opts must be an obj, func or undef but is:\n"+
+				caller
+			);
+		}
+		
+		if(
+			typeof( opts ) === "object" &&
+			opts.code !== undefined &&
+			(
+				typeof( opts.code ) !== "string" ||
+				opts.code.length === 0
+			)
+		)
+		{
+			throw new Error(
+				"Arg opts.code must be undefined or a non-empty str "+
+				"but is:\n"+opts.code
 			);
 		}
 	}
 	
-	if( caller === undefined )
+	if( opts === undefined )
 	{
-		caller = OurGlobeError;
+		opts = { caller:OurGlobeError };
 	}
+	else if( typeof( opts ) === "function" )
+	{
+		opts = { caller:opts }
+	}
+	
+	var caller =
+		opts.caller !== undefined ?
+		opts.caller :
+		OurGlobeError
+	;
 	
 	OurGlobeError.super_.call( this, msg );
 	
 	this.message = msg;
-	this.name = this.constructor.name;
+	this.name = "OurGlobeError";
+	this.ourGlobeCode = opts.code;
+	this.ourGlobeVar = opts.var;
 	
 	Error.captureStackTrace( this, caller );
 }
@@ -48,7 +80,7 @@ RuntimeError may only depend on the following funcs in
 ourglobe:
  /conf/conf
 */
-function RuntimeError( msg, caller )
+function RuntimeError( msg, opts )
 {
 	if( conf.doVer() === true )
 	{
@@ -67,21 +99,50 @@ function RuntimeError( msg, caller )
 			);
 		}
 		
-		if( caller !== undefined && typeof( caller ) !== "function" )
+		if(
+			opts !== undefined &&
+			typeof( opts ) !== "function" &&
+			typeof( opts ) !== "object"
+		)
 		{
 			throw new Error(
-				"Arg caller must be undef or a func but is:\n" + caller
+				"Arg opts must be an obj, func or undef but is:\n"+
+				caller
 			);
 		}
 	}
 	
-	if( caller === undefined )
+	if( opts === undefined )
 	{
-		caller = RuntimeError;
+		opts = { caller: RuntimeError };
+	}
+	else if( typeof( opts ) === "function" )
+	{
+		opts = { caller: opts };
+	}
+	else if( opts.caller === undefined )
+	{
+		opts.caller = RuntimeError;
 	}
 	
-	RuntimeError.super_.call( this, msg, caller );
+	RuntimeError.super_.call( this, msg, opts );
 }
+
+OurGlobeError.ERROR_MSG_S = { minStrLen: 1 };
+OurGlobeError.OPTS_S =
+{
+	types: "obj/func/undef",
+	extraProps: false,
+	props:
+	{
+		caller: "func/undef",
+		code: { types:"str/undef", minStrLen: 1 },
+		var: "any"
+	}
+}
+
+RuntimeError.ERROR_MSG_S = OurGlobeError.ERROR_MSG_S;
+RuntimeError.OPTS_S = OurGlobeError.OPTS_S;
 
 exports.OurGlobeError = OurGlobeError;
 exports.RuntimeError = RuntimeError;

@@ -155,6 +155,9 @@ Server.STOP_CB_FV = new FuncVer();
 
 exports.Server = Server;
 
+var ServerRuntimeError =
+	require("./errors").ServerRuntimeError
+;
 var RequestProvider =
 	require("./requestprovider").RequestProvider
 ;
@@ -504,18 +507,24 @@ function(
 				{
 					if( isWritable === undefined )
 					{
-						err = new RuntimeError(
+						err = new ServerRuntimeError(
 							"It cant be verified if the request's "+
-							"serverResponse obj has been closed"
+							"serverResponse obj has been closed",
+							{
+								code: "ServerResponseObjWritabilityNotVerifiable"
+							}
 						);
 					}
 					else if( isWritable === true )
 					{
-						err = new RuntimeError(
+						err = new ServerRuntimeError(
 							"The request's ServerResponse object is "+
 							"still writable even if the final "+
 							"RequestProvider reports having "+
-							"successfully provided for the request"
+							"successfully provided for the request",
+							{
+								code: "ServerResponseObjIsStillWritable"
+							}
 						);
 					}
 				}
@@ -625,18 +634,24 @@ function(
 				
 				if( isWritable === undefined )
 				{
-					err = new RuntimeError(
+					err = new ServerRuntimeError(
 						"It cant be verified if the request's "+
-						"serverResponse obj has been closed"
+						"serverResponse obj has been closed",
+						{
+							code: "ServerResponseObjWritabilityNotVerifiable"
+						}
 					);
 				}
 				else if( isWritable === true )
 				{
-					err = new RuntimeError(
+					err = new ServerRuntimeError(
 						"The request's ServerResponse object is "+
 						"still writable even if the final "+
 						"RequestProvider reports having "+
-						"successfully provided for the request"
+						"successfully provided for the request",
+						{
+							code: "ServerResponseObjIsStillWritable"
+						}
 					);
 				}
 			}
@@ -844,18 +859,26 @@ function( currProvider, request )
 									
 									if( isWritable === undefined )
 									{
-										err = new RuntimeError(
+										err = new ServerRuntimeError(
 											"It cant be verified if the request's "+
-											"serverResponse obj has been closed"
+											"serverResponse obj has been closed",
+											{
+												code:
+													"ServerResponseObjWritability"+
+													"NotVerifiable"
+											}
 										);
 									}
-									else if( isWritable !== false )
+									else if( isWritable === true )
 									{
-										err = new RuntimeError(
+										err = new ServerRuntimeError(
 											"The request's ServerResponse object is "+
 											"still writable even if the final "+
 											"RequestProvider reports having "+
-											"successfully provided for the request"
+											"successfully provided for the request",
+											{
+												code: "ServerResponseObjIsStillWritable"
+											}
 										);
 									}
 								}
@@ -925,7 +948,12 @@ function( cb )
 	
 	if( thisServer.isRunning === true )
 	{
-		throw new RuntimeError( "The Server is already running" );
+		throw new ServerRuntimeError(
+			"The Server is already running",
+			{
+				code: "ServerIsAlreadyRunning"
+			}
+		);
 	}
 	
 	var server = thisServer.server;
@@ -956,7 +984,12 @@ function( cb )
 	
 	if( thisServer.isRunning === false )
 	{
-		throw new RuntimeError( "The Server isnt running" );
+		throw new ServerRuntimeError(
+			"The Server isnt running",
+			{
+				code: "ServerIsNotRunning"
+			}
+		);
 	}
 	
 	var server = thisServer.server;
