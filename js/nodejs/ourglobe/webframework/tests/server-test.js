@@ -122,6 +122,11 @@ function( opts )
 			RequestProvider.PROVIDE_FV,
 			function( request, cb )
 			{
+				if( request.hasEnded() === true )
+				{
+					cb();
+				}
+				
 				var serverReq = request.getReqObj().serverReq;
 				var serverRes = request.getReqObj().serverRes;
 				
@@ -321,6 +326,29 @@ function()
 			"server-test.js"
 		)
 	);
+});
+
+var _callCb =
+sys.getFunc(
+new FuncVer().setExtraArgs( "any" ),
+function()
+{
+	var nrArgs = arguments.length;
+	
+	if(
+		nrArgs === 0 ||
+		sys.hasType( arguments[ nrArgs-1 ], "func" ) === false
+	)
+	{
+		throw new RuntimeError(
+			"Last arg must be a func but is: "+
+			Testing.getPrettyStr( arguments[ nrArgs-1 ] )
+		);
+	}
+	
+	var cb = arguments[ nrArgs-1 ];
+	
+	cb();
 });
 
 var _getBasicRequestTest =
@@ -1851,7 +1879,124 @@ var _testEndingOfServerResponseAndErrors =
 function()
 {
 
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider provide that ends response but with err",
+	_getRequestTest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		undefined,
+		{
+			topReqProvider:
+			{
+				provide:
+					sys.getFunc(
+						RequestProvider.PROVIDE_FV,
+						function( request, cb )
+						{
+							var serverRes = request.getReqObj().serverRes;
+							
+							serverRes.once(
+								"finish",
+								sys.getFunc(
+									new FuncVer(),
+									function()
+									{
+										cb(
+											new TestRuntimeError(
+												"This err was handed to cb in "+
+												"server-test.js"
+											)
+										);
+									}
+								)
+							);
+							
+							serverRes.end();
+						}
+					)
+			},
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvisionCb"
+				}
+			]
+		}
+	)
+	
+));
 
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider provide that doesnt end response",
+	_getRequestTest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"errorProvider.provide"
+		],
+		_REQ_DATA,
+		_REQ_DATA,
+		{
+			topReqProvider:{ provide: _callCb },
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvisionCb",
+					errorClass: ServerRuntimeError,
+					ourGlobeCode: "ServerResponseObjHasNotEnded"
+				}
+			]
+		}
+	)
+	
+));
+
+suite.addBatch( Testing.getTests(
+	
+	"topReqProvider provide that doesnt end response, "+
+	"errorProvider provide that doesnt end response",
+	_getRequestTest(
+		[
+			"topReqProvider.validate",
+			"topReqProvider.provide",
+			"logError",
+			"errorProvider.provide",
+			"logError"
+		],
+		_REQ_DATA,
+		undefined,
+		{
+			topReqProvider:{ provide: _callCb },
+			errorProvider:{ provide: _callCb },
+			errorLog:
+			[
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtProvisionCb",
+					errorClass: ServerRuntimeError,
+					ourGlobeCode: "ServerResponseObjHasNotEnded"
+				},
+				{
+					currProviderName: "topReqProvider",
+					errorCode: "ErrorAtErrorProvisionCb",
+					errorClass: ServerRuntimeError,
+					ourGlobeCode: "ServerResponseObjHasNotEnded"
+				}
+			]
+		}
+	)
+	
+));
 
 }
 

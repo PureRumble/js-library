@@ -123,15 +123,6 @@ function(
 	);
 });
 
-Server._handleFinishEvent =
-sys.getFunc(
-	new FuncVer(),
-	function()
-	{
-		this.ourGlobe.hasEnded = true;
-	}
-);
-
 Server.ERROR_IN_SERVER = "ErrorInServer";
 
 Server.ERROR_AT_VALIDATION = "ErrorAtValidation";
@@ -208,6 +199,106 @@ new FuncVer( [
 	},
 	"func"
 ]);
+
+Server._handleFinishEvent =
+sys.getFunc(
+	new FuncVer(),
+	function()
+	{
+		this.ourGlobe.hasEnded = true;
+	}
+);
+
+Server.prototype._callProvide =
+sys.getFunc(
+new FuncVer()
+	.addArgs( [
+		RequestProvider,
+		{ values:[ "requestProvider", "errorProvider" ] },
+		Request,
+		RequestProvider
+	])
+	.addArgs( [
+		RequestProvider,
+		{ values:[ "failureProvider" ] },
+		Request,
+		RequestProvider,
+		{
+			extraProps: false,
+			props:{ failureCode: RequestProvider.FAILURE_CODE_S }
+		}
+	])
+,
+function(
+	providerToUse, providerType, request, currProvider, opts
+)
+{
+	var thisServer = this;
+	
+	var errOpts = {};
+	if( providerType === "failureProvider" )
+	{
+		errOpts.failureProvider = providerToUse;
+		errOpts.failureCode = opts.failureCode;
+	}
+	
+	try
+	{
+	
+	providerToUse.provide(
+		request,
+		sys.getFunc(
+		new FuncVer( [ [ Error, "undef" ] ] ),
+		function( err )
+		{
+			if( err === undefined )
+			{
+				var hasEnded = request.hasEnded();
+				
+				if( hasEnded === false )
+				{
+					err = new ServerRuntimeError(
+						"The request's ServerResponse object has not been "+
+						"ended even if the final RequestProvider reports "+
+						"having successfully provided for the request",
+						{ code: "ServerResponseObjHasNotEnded" }
+					);
+				}
+			}
+			
+			if( err !== undefined )
+			{
+				var errorCode =
+					providerType === "requestProvider" ?
+						Server.ERROR_AT_PROVISION_CB :
+					providerType === "failureProvider" ?
+						Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB :
+					Server.ERROR_AT_ERROR_PROVISION_CB
+				;
+				
+				thisServer._handleError(
+					currProvider, request, errorCode, err, errOpts
+				);
+			}
+		})
+	);
+
+	}
+	catch( e )
+	{
+		var errorCode =
+			providerType === "requestProvider" ?
+				Server.ERROR_AT_PROVISION :
+			providerType === "failureProvider" ?
+				Server.ERROR_AT_VALIDATION_FAILURE_PROVISION :
+			Server.ERROR_AT_ERROR_PROVISION
+		;
+		
+		thisServer._handleError(
+			currProvider, request, errorCode, e, errOpts
+		);
+	}
+});
 
 Server.prototype._logErrorOfErrorLogging =
 sys.getFunc(
@@ -441,17 +532,9 @@ new FuncVer( [
 		extraProps:false
 	}
 ] ),
-function(
-	currProvider,
-	request,
-	errorCode,
-	err,
-	opts
-)
+function( currProvider, request, errorCode, err, opts )
 {
 	var thisServer = this;
-	
-	opts = opts === undefined ? {} : opts;
 	
 	thisServer._logError(
 		currProvider, request, errorCode, err, opts
@@ -475,16 +558,6 @@ function(
 		return;
 	}
 	
-// requestObj isnt reset a second time if error was caused by
-// error provision since this was done the last time
-	
-	request.resetRequestObject();
-	
-	var providerCache = request.getProviderCache();
-	
-	try
-	{
-	
 // currProvider's ErrorProvider is used even if the error
 // occurred during provision for a validation failure
 	
@@ -496,74 +569,12 @@ function(
 		thisServer.errorProvider
 	;
 	
-	var currErrorProviderName = currErrorProvider.getName();
-	var failureProviderName =
-		opts.failureProvider !== undefined ?
-			opts.failureProvider.getName() :
-			undefined
-	;
+	request.resetRequestObject();
+	request.getProviderCache().setProvider( currErrorProvider );
 	
-	providerCache.setProvider( currErrorProvider );
-	
-	currErrorProvider.provide(
-		request,
-		sys.getFunc(
-			new FuncVer( [ [ Error, "undef" ] ] ),
-			function( err )
-			{
-				if( err === undefined )
-				{
-					var hasEnded = request.hasEnded();
-					
-					if( hasEnded === false )
-					{
-						err = new ServerRuntimeError(
-							"The request's ServerResponse object is "+
-							"still writable even if the final "+
-							"RequestProvider reports having "+
-							"successfully provided for the request",
-							{
-								code: "ServerResponseObjIsStillWritable"
-							}
-						);
-					}
-				}
-				
-				if( err !== undefined )
-				{
-// Arg opts isnt passed on since its information isnt relevant
-// for the logging of the error that occurred when provide()
-// of the errorProvider was called
-					
-					thisServer._handleError(
-						currProvider,
-						request,
-						Server.ERROR_AT_ERROR_PROVISION_CB,
-						err
-					);
-					
-					return;
-				}
-			}
-		)
+	thisServer._callProvide(
+		currErrorProvider, "errorProvider", request, currProvider
 	);
-	
-	}
-	catch( e )
-	{
-// Arg opts isnt passed on since its information isnt relevant
-// for the logging of the error that occurred when provide()
-// of the errorProvider was called
-		
-		thisServer._handleError(
-			currProvider,
-			request,
-			Server.ERROR_AT_ERROR_PROVISION,
-			e
-		);
-		
-		return;
-	}
 });
 
 Server.prototype._handleFailure =
@@ -580,10 +591,6 @@ function(
 {
 	var thisServer = this;
 	
-	var providerCache = request.getProviderCache();
-	
-	request.resetRequestObject();
-	
 	var currFailureProvider =
 		currProvider.getValidationFailureProvider()
 	;
@@ -597,80 +604,23 @@ function(
 	;
 	
 	thisServer._logValidationFailure(
-		currProvider,
-		request,
-		failureProviderToUse,
-		failureCode
+		currProvider, request, failureProviderToUse, failureCode
 	);
 	
 // An attempt to send response to client is done even if
 // validation failure logging has failed
 	
-	try
-	{
+	request.resetRequestObject();
+	request.getProviderCache().setProvider( failureProviderToUse );
 	
-	providerCache.setProvider( failureProviderToUse );
-	
-	failureProviderToUse.provide(
+	thisServer._callProvide(
+		failureProviderToUse,
+		"failureProvider",
 		request,
-		sys.getFunc(
-		new FuncVer( [ [ Error, "undef" ] ] ),
-		function( err )
-		{
-			if( err === undefined )
-			{
-				var hasEnded = request.hasEnded();
-				
-				if( hasEnded === false )
-				{
-					err = new ServerRuntimeError(
-						"The request's ServerResponse object is "+
-						"still writable even if the final "+
-						"RequestProvider reports having "+
-						"successfully provided for the request",
-						{
-							code: "ServerResponseObjIsStillWritable"
-						}
-					);
-				}
-			}
-			
-			if( err !== undefined )
-			{
-				thisServer._handleError(
-					currProvider,
-					request,
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB,
-					err,
-					{
-						failureProvider: failureProviderToUse,
-						failureCode: failureCode
-					}
-				);
-				
-				return;
-			}
-		})
+		currProvider,
+		{ failureCode: failureCode }
 	);
-	
-	}
-	catch( e )
-	{
-		thisServer._handleError(
-			currProvider,
-			request,
-			Server.ERROR_AT_VALIDATION_FAILURE_PROVISION,
-			e,
-			{
-				"failureProvider": failureProviderToUse,
-				"failureCode": failureCode
-			}
-		);
-	}
-	
-	return;
-}
-);
+});
 
 Server.prototype._useProvider =
 sys.getFunc(
@@ -823,59 +773,14 @@ function( currProvider, request )
 							return;
 						}
 						
-						try
-						{
-						
-						currProvider.provide(
+						thisServer._callProvide(
+							currProvider,
+							"requestProvider",
 							request,
-							sys.getFunc(
-							new FuncVer( [ [ Error, "undef" ] ] ),
-							function( err )
-							{
-								if( err === undefined )
-								{
-									var hasEnded = request.hasEnded();
-									
-									if( hasEnded === false )
-									{
-										err = new ServerRuntimeError(
-											"The request's ServerResponse object is "+
-											"still writable even if the final "+
-											"RequestProvider reports having "+
-											"successfully provided for the request",
-											{
-												code: "ServerResponseObjIsStillWritable"
-											}
-										);
-									}
-								}
-								
-								if( err !== undefined )
-								{
-									thisServer._handleError(
-										currProvider,
-										request,
-										Server.ERROR_AT_PROVISION_CB,
-										err
-									);
-									
-									return;
-								}
-							})
+							currProvider
 						);
 						
-						}
-						catch( e )
-						{
-							thisServer._handleError(
-								currProvider,
-								request,
-								Server.ERROR_AT_PROVISION,
-								e
-							);
-							
-							return;
-						}
+						return;
 					})
 				);
 				
