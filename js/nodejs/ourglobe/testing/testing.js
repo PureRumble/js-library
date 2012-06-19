@@ -26,8 +26,8 @@ Testing.getTests = function()
 		if( testName in testObj === true )
 		{
 			throw new Error(
-				"Tests object '"+this.testsName+"' already has a test "+
-				"named '"+testName+"'"
+				"A test  named '"+testName+"' has already been added "+
+				"to the tests"
 			);
 		}
 		

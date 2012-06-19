@@ -6,6 +6,14 @@ var FuncVer = require("ourglobe").FuncVer;
 
 var MoreHttp = {};
 
+MoreHttp.REQUEST_CB_FV =
+new FuncVer()
+	.addArgs( [ Error ] )
+	.addArgs( [
+		"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
+	] )
+;
+
 MoreHttp.request = function( hostname, opts, cb )
 {
 	if( conf.doVer() === true )

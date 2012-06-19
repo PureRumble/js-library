@@ -24,7 +24,7 @@ function( providerName, failureProvider, errorProvider )
 });
 
 RequestProvider.PROVIDER_NAME_S =
-	{ minStrLen:1, chars:"letters" }
+	{ minStrLen:1, chars:"letters/digits/underscores" }
 ;
 
 RequestProvider.FAILURE_CODE_S =
@@ -33,7 +33,6 @@ RequestProvider.FAILURE_CODE_S =
 
 exports.RequestProvider = RequestProvider;
 
-var ProviderCache = require("./providercache").ProviderCache;
 var Request = require("./request").Request;
 
 RequestProvider.VALIDATE_FV =
@@ -44,7 +43,9 @@ RequestProvider.PREPARE_FV =
 	new FuncVer( [ Request, "func" ] )
 ;
 
-RequestProvider.HAND_OVER_FV = new FuncVer( [ Request ] );
+RequestProvider.HAND_OVER_FV =
+	new FuncVer( [ Request ], [ RequestProvider, "undef" ] )
+;
 
 RequestProvider.PROVIDE_FV =
 	new FuncVer( [ Request, "func" ] )

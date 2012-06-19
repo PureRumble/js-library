@@ -61,7 +61,7 @@ function()
 
 Request.prototype.getCache =
 sys.getFunc(
-ProviderCache.GET_CACHE_S,
+ProviderCache.GET_CACHE_FV,
 function( requestProvider )
 {
 	return this.providerCache.getCache( requestProvider );
@@ -69,8 +69,31 @@ function( requestProvider )
 
 Request.prototype.setCache =
 sys.getFunc(
-ProviderCache.SET_CACHE_S,
+ProviderCache.SET_CACHE_FV,
 function( cacheObj )
 {
 	return this.providerCache.setCache( cacheObj );
+});
+
+Request.prototype.hasEnded =
+sys.getFunc(
+new FuncVer( undefined, "bool" ),
+function( cacheObj )
+{
+	return this.serverResponse.ourGlobe.hasEnded;
+});
+
+Request.prototype.forcefullyEnd =
+sys.getFunc(
+new FuncVer(),
+function()
+{
+	try
+	{
+		this.serverResponse.end();
+	}
+	catch( e )
+	{
+		
+	}
 });

@@ -1,6 +1,7 @@
 var DataHandlerRuntimeError =
 	require("./errors").DataHandlerRuntimeError
 ;
+var ServerRuntimeError = require("./errors").ServerRuntimeError;
 
 var DataHandler = require("./datahandler").DataHandler;
 var Server = require("./server").Server;
@@ -16,6 +17,7 @@ var Link = require("ourglobe/clusterconhandler").Link;
 var Cache = require("ourglobe/clusterconhandler").Cache;
 
 exports.DataHandlerRuntimeError = DataHandlerRuntimeError;
+exports.ServerRuntimeError = ServerRuntimeError;
 
 exports.DataHandler = DataHandler;
 

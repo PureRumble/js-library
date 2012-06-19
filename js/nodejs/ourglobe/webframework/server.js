@@ -17,35 +17,113 @@ function()
 		"func",
 		RequestProvider,
 		"func",
-		{ extraItems:RequestProvider }
+		"func",
+		FuncVer.NON_NEG_INT
 	] );
 },
-function (
+function(
 	topRequestProvider,
 	failureProvider,
 	logValidationFailure,
 	errorProvider,
 	logError,
-	providers
+	cbOnErr,
+	port
 )
 {
-	this.providers = [];
+	var thisServer = this;
 	
-	this.topRequestProvider = topRequestProvider;
-	this.failureProvider = failureProvider;
-	this.logFailure = logValidationFailure;
-	this.errorProvider = errorProvider;
-	this.logError = logError;
+	thisServer.topRequestProvider = topRequestProvider;
+	thisServer.failureProvider = failureProvider;
+	thisServer.logFailure = logValidationFailure;
+	thisServer.errorProvider = errorProvider;
+	thisServer.logError = logError;
+	thisServer.port = port;
 	
-	this._addProvider( topRequestProvider );
-	this._addProvider( failureProvider );
-	this._addProvider( errorProvider );
+	thisServer.isRunning = false;
 	
-	for( var pos in providers )
-	{
-		this._addProvider( providers[ pos ] );
-	}
+	var server =
+	http.createServer(
+		function( serverRequest, serverResponse )
+		{
+			serverResponse.ourGlobe = {};
+			serverResponse.ourGlobe.hasEnded = false;
+			serverResponse.once( "finish", Server._handleFinishEvent );
+			
+			var request = new Request( serverRequest, serverResponse );
+			
+			thisServer._useProvider(
+				thisServer.topRequestProvider, request
+			);
+		}
+	);
+	
+	thisServer.server = server;
+	
+// An error event causes the close event to occur directly after,
+// therefore the logging of the error and call of cbOnErr is
+// done once the server has been closed. cbOnErr isnt to be
+// called before the logging has been done
+	
+	server.on(
+		"error",
+		sys.getFunc(
+			new FuncVer( [ Error ] ),
+			function( err )
+			{
+				server.once(
+					"close",
+					sys.getFunc(
+						new FuncVer(),
+						function()
+						{
+							thisServer._logError(
+								undefined,
+								undefined,
+								Server.ERROR_IN_SERVER,
+								err,
+								{
+									cb:
+									sys.getFunc(
+										new FuncVer(),
+										function()
+										{
+											cbOnErr( err );
+										}
+									)
+								}
+							);
+						}
+					)
+				);
+			}
+		)
+	);
+	
+	server.on(
+		"listening",
+		sys.getFunc(
+			new FuncVer(),
+			function()
+			{
+				thisServer.isRunning = true;
+			}
+		)
+	);
+	
+	server.on(
+		"close",
+		sys.getFunc(
+			new FuncVer(),
+			function()
+			{
+				thisServer.isRunning = false;
+			}
+		)
+	);
 });
+
+Server.ERROR_IN_SERVER = "ErrorInServer";
 
 Server.ERROR_AT_VALIDATION = "ErrorAtValidation";
 Server.ERROR_AT_VALIDATION_CB = "ErrorAtValidationCb";
@@ -73,8 +151,17 @@ Server.ERROR_AT_ERROR_LOGGING_CB = "ErrorAtErrorLoggingCb";
 
 Server.ERROR_CODE_S = { minStrLen:1, chars:"letters" };
 
+Server.CB_ON_ERR_FV = new FuncVer( [ Error ] );
+
+Server.START_CB_FV = new FuncVer();
+
+Server.STOP_CB_FV = new FuncVer();
+
 exports.Server = Server;
 
+var ServerRuntimeError =
+	require("./errors").ServerRuntimeError
+;
 var RequestProvider =
 	require("./requestprovider").RequestProvider
 ;
@@ -113,11 +200,111 @@ new FuncVer( [
 	"func"
 ]);
 
+Server._handleFinishEvent =
+sys.getFunc(
+	new FuncVer(),
+	function()
+	{
+		this.ourGlobe.hasEnded = true;
+	}
+);
+
+Server.prototype._callProvide =
+sys.getFunc(
+new FuncVer()
+	.addArgs( [
+		RequestProvider,
+		{ values:[ "requestProvider", "errorProvider" ] },
+		Request,
+		RequestProvider
+	])
+	.addArgs( [
+		RequestProvider,
+		{ values:[ "failureProvider" ] },
+		Request,
+		RequestProvider,
+		{
+			extraProps: false,
+			props:{ failureCode: RequestProvider.FAILURE_CODE_S }
+		}
+	])
+,
+function(
+	providerToUse, providerType, request, currProvider, opts
+)
+{
+	var thisServer = this;
+	
+	var errOpts = {};
+	if( providerType === "failureProvider" )
+	{
+		errOpts.failureProvider = providerToUse;
+		errOpts.failureCode = opts.failureCode;
+	}
+	
+	try
+	{
+	
+	providerToUse.provide(
+		request,
+		sys.getFunc(
+		new FuncVer( [ [ Error, "undef" ] ] ),
+		function( err )
+		{
+			if( err === undefined )
+			{
+				var hasEnded = request.hasEnded();
+				
+				if( hasEnded === false )
+				{
+					err = new ServerRuntimeError(
+						"The request's ServerResponse object has not been "+
+						"ended even if the final RequestProvider reports "+
+						"having successfully provided for the request",
+						{ code: "ServerResponseObjHasNotEnded" }
+					);
+				}
+			}
+			
+			if( err !== undefined )
+			{
+				var errorCode =
+					providerType === "requestProvider" ?
+						Server.ERROR_AT_PROVISION_CB :
+					providerType === "failureProvider" ?
+						Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB :
+					Server.ERROR_AT_ERROR_PROVISION_CB
+				;
+				
+				thisServer._handleError(
+					currProvider, request, errorCode, err, errOpts
+				);
+			}
+		})
+	);
+
+	}
+	catch( e )
+	{
+		var errorCode =
+			providerType === "requestProvider" ?
+				Server.ERROR_AT_PROVISION :
+			providerType === "failureProvider" ?
+				Server.ERROR_AT_VALIDATION_FAILURE_PROVISION :
+			Server.ERROR_AT_ERROR_PROVISION
+		;
+		
+		thisServer._handleError(
+			currProvider, request, errorCode, e, errOpts
+		);
+	}
+});
+
 Server.prototype._logErrorOfErrorLogging =
 sys.getFunc(
 new FuncVer( [
-	RequestProvider.PROVIDER_NAME_S,
-	Request,
+	[ RequestProvider.PROVIDER_NAME_S, "undef" ],
+	[ Request, "undef" ],
 	Server.ERROR_CODE_S,
 	Error,
 	Server.ERROR_CODE_S,
@@ -130,7 +317,8 @@ new FuncVer( [
 			failureProviderName:[
 				RequestProvider.PROVIDER_NAME_S, "undef"
 			],
-			failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ]
+			failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ],
+			cb:"func/undef"
 		},
 		extraProps:false
 	}
@@ -146,26 +334,13 @@ function(
 	opts
 )
 {
-	try
+	// TODO: Decide how to log
+	
+	opts = opts !== undefined ? opts : {};
+	
+	if( opts.cb !== undefined )
 	{
-		// TODO: Decide what to log and how
-		
-		console.log(
-			{
-				time: time,
-				request: request,
-				currProviderName: currProviderName,
-				firstErrorCode: firstErrorCode,
-				firstError: firstError,
-				secondErrorCode: secondErrorCode,
-				secondError: secondError,
-				additionalFields: opts
-			}
-		);
-	}
-	catch( e )
-	{
-		
+		cb();
 	}
 });
 
@@ -175,13 +350,16 @@ new FuncVer( [
 	RequestProvider,
 	Request,
 	RequestProvider,
-	RequestProvider.FAILURE_CODE_S,
-	Date
+	RequestProvider.FAILURE_CODE_S
 ]),
 function(
-	currProvider, request, failureProvider, failureCode, time
+	currProvider, request, failureProvider, failureCode
 )
 {
+	var thisServer = this;
+	
+	var time = new Date();
+	
 	var currProviderName =
 		currProvider !== undefined ?
 		currProvider.getName() :
@@ -197,7 +375,7 @@ function(
 	try
 	{
 	
-	this.logFailure(
+	thisServer.logFailure(
 		currProviderName,
 		request,
 		failureProviderName,
@@ -209,16 +387,15 @@ function(
 		{
 			if( err !== undefined )
 			{
-				this._logError(
+				
+// failureProviderName and failureCode arent relevant when
+// logging an error that occurred during validationFailureLogging
+				
+				thisServer._logError(
 					currProvider,
 					request,
 					Server.ERROR_AT_VALIDATION_FAILURE_LOGGING_CB,
-					err,
-					new Date(),
-					{
-						"failureProvider": failureProvider,
-						"failureCode": failureCode
-					}
+					err
 				);
 			}
 		})
@@ -227,16 +404,15 @@ function(
 	}
 	catch( e )
 	{
-		this._logError(
+		
+// failureProviderName and failureCode arent relevant when
+// logging an error that occurred during validationFailureLogging
+		
+		thisServer._logError(
 			currProvider,
 			request,
 			Server.ERROR_AT_VALIDATION_FAILURE_LOGGING,
-			e,
-			new Date(),
-			{
-				"failureProvider": failureProvider,
-				"failureCode": failureCode
-			}
+			e
 		);
 	}
 });
@@ -245,27 +421,28 @@ Server.prototype._logError =
 sys.getFunc(
 new FuncVer(
 	[
-		RequestProvider,
-		Request,
+		[ RequestProvider, "undef" ],
+		[ Request, "undef" ],
 		Server.ERROR_CODE_S,
 		Error,
-		Date,
 		{
 			types:"obj/undef",
 			props:
 			{
 				failureProvider:[ RequestProvider, "undef" ],
-				failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ]
+				failureCode:[ RequestProvider.FAILURE_CODE_S, "undef" ],
+				cb:"func/undef"
 			},
 			extraProps:false
 		}
-	],
-	"bool"
+	]
 ),
-function(
-	currProvider, request, errorCode, err, time, opts
-)
+function( currProvider, request, errorCode, err, opts )
 {
+	var thisServer = this;
+	
+	var time = new Date();
+	
 	opts = opts !== undefined ? opts : {};
 	var newOpts = {};
 	
@@ -276,6 +453,7 @@ function(
 	;
 	
 	newOpts.failureCode = opts.failureCode;
+	newOpts.cb = opts.cb;
 	
 	var currProviderName =
 		currProvider !== undefined ?
@@ -288,7 +466,7 @@ function(
 	
 // Arg newOpts is always set to an obj, even if it may be empty
 	
-	this.logError(
+	thisServer.logError(
 		currProviderName,
 		request,
 		err,
@@ -301,16 +479,22 @@ function(
 		{
 			if( cbErr !== undefined )
 			{
-				this._logErrorOfErrorLogging(
+				thisServer._logErrorOfErrorLogging(
 					currProviderName,
 					request,
 					errorCode,
 					err,
 					Server.ERROR_AT_ERROR_LOGGING_CB,
 					cbErr,
-					new Date(),
+					time,
 					newOpts
-				)
+				);
+			}
+			else if( opts.cb !== undefined )
+			{
+				opts.cb();
+				
+				return;
 			}
 		})
 	);
@@ -318,21 +502,17 @@ function(
 	}
 	catch( e )
 	{
-		this._logErrorOfErrorLogging(
+		thisServer._logErrorOfErrorLogging(
 			currProviderName,
 			request,
 			errorCode,
 			err,
 			Server.ERROR_AT_ERROR_LOGGING,
 			e,
-			new Date(),
+			time,
 			newOpts
 		);
-		
-		return false;
 	}
-	
-	return true;
 });
 
 Server.prototype._handleError =
@@ -352,35 +532,31 @@ new FuncVer( [
 		extraProps:false
 	}
 ] ),
-function(
-	currProvider,
-	request,
-	errorCode,
-	err,
-	opts
-)
+function( currProvider, request, errorCode, err, opts )
 {
-	throw err;
-	
-	var time = new Date();
-	
 	var thisServer = this;
 	
-	request.resetRequestObject();
-	
-	var providerCache = request.getProviderCache();
-	
-	opts = opts === undefined ? {} : opts;
-	
 	thisServer._logError(
-		currProvider, request, errorCode, err, time, opts
+		currProvider, request, errorCode, err, opts
 	);
 	
-// An attempt to send response to client is done even if
-// error logging has failed
-	
-	try
+	if(
+		errorCode === Server.ERROR_AT_ERROR_PROVISION ||
+		errorCode === Server.ERROR_AT_ERROR_PROVISION_CB
+	)
 	{
+		var hasEnded = request.hasEnded();
+		
+// The errorProvider was the last chance to server the request.
+// At this stage it must be closed no matter what
+		
+		if( hasEnded === false )
+		{
+			request.forcefullyEnd();
+		}
+		
+		return;
+	}
 	
 // currProvider's ErrorProvider is used even if the error
 // occurred during provision for a validation failure
@@ -390,97 +566,15 @@ function(
 	currErrorProvider =
 		currErrorProvider !== undefined ?
 		currErrorProvider :
-		this.errorProvider
+		thisServer.errorProvider
 	;
 	
-	thisServer.verifyProvider( currErrorProvider );
+	request.resetRequestObject();
+	request.getProviderCache().setProvider( currErrorProvider );
 	
-	var currErrorProviderName = currErrorProvider.getName();
-	var failureProviderName =
-		opts.failureProvider !== undefined ?
-			opts.failureProvider.getName() :
-			undefined
-	;
-	
-// If the errorProvider is the same RequestProvider that caused
-// the error during provision, then an attempt to provide for
-// the error using the same RequestProvider again isnt made
-	
-	if(
-		(
-			(
-				errorCode ===
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION
-				||
-				errorCode ===
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB
-			) &&
-			currErrorProviderName === failureProviderName
-		)
-		||
-		(
-			(
-				errorCode === Server.ERROR_AT_PROVISION ||
-				errorCode === Server.ERROR_AT_PROVISION_CB 
-			) &&
-			currErrorProviderName === currProvider.getName()
-		)
-	)
-	{
-		return;
-	}
-	
-	providerCache.setProvider( currErrorProvider );
-	
-	currErrorProvider.provide(
-		request,
-		function( err )
-		{
-			if( conf.doVer() === true )
-			{
-				new FuncVer( [ [ Error, "undef" ] ] )
-					.verArgs( arguments )
-				;
-			}
-			
-			if( err !== undefined )
-			{
-				
-// Arg opts isnt passed on since its information isnt relevant
-// for the logging of the error that occurred when provide()
-// of the errorProvider was called
-				
-				thisServer._logError(
-					currProvider,
-					request,
-					Server.ERROR_AT_ERROR_PROVISION_CB,
-					err,
-					new Date()
-				);
-				
-				return;
-			}
-		}
+	thisServer._callProvide(
+		currErrorProvider, "errorProvider", request, currProvider
 	);
-	
-	}
-	catch( e )
-	{
-		
-// Arg opts isnt passed on since its information isnt relevant
-// for the logging of the error that occurred when provide()
-// of the errorProvider was called
-		
-		thisServer._logError(
-			currProvider,
-			request,
-			Server.ERROR_AT_ERROR_PROVISION,
-			e,
-			new Date()
-		);
-		
-		return;
-	}
 });
 
 Server.prototype._handleFailure =
@@ -495,13 +589,7 @@ function(
 	currProvider, request, failureCode, overridingFailureProvider
 )
 {
-	var time = new Date();
-	
-	var providerCache = request.getProviderCache();
-	
 	var thisServer = this;
-	
-	request.resetRequestObject();
 	
 	var currFailureProvider =
 		currProvider.getValidationFailureProvider()
@@ -516,79 +604,35 @@ function(
 	;
 	
 	thisServer._logValidationFailure(
-		currProvider,
-		request,
-		failureProviderToUse,
-		failureCode,
-		time
+		currProvider, request, failureProviderToUse, failureCode
 	);
 	
 // An attempt to send response to client is done even if
 // validation failure logging has failed
 	
-	try
-	{
+	request.resetRequestObject();
+	request.getProviderCache().setProvider( failureProviderToUse );
 	
-	thisServer.verifyProvider( failureProviderToUse );
-	
-	providerCache.setProvider( failureProviderToUse );
-	
-	failureProviderToUse.provide(
+	thisServer._callProvide(
+		failureProviderToUse,
+		"failureProvider",
 		request,
-		sys.getFunc(
-		new FuncVer( [ [ Error, "undef" ] ] ),
-		function( err )
-		{
-			if( err !== undefined )
-			{
-				thisServer._handleError(
-					currProvider,
-					request,
-					Server.ERROR_AT_VALIDATION_FAILURE_PROVISION_CB,
-					err,
-					{
-						failureProvider: failureProviderToUse,
-						failureCode: failureCode
-					}
-				);
-				
-				return;
-			}
-		})
+		currProvider,
+		{ failureCode: failureCode }
 	);
-	
-	}
-	catch( e )
-	{
-		thisServer._handleError(
-			currProvider,
-			request,
-			Server.ERROR_AT_VALIDATION_FAILURE_PROVISION,
-			e,
-			{
-				"failureProvider": failureProviderToUse,
-				"failureCode": failureCode
-			}
-		);
-	}
-	
-	return;
-}
-);
+});
 
 Server.prototype._useProvider =
 sys.getFunc(
 new FuncVer( [ RequestProvider, Request ] ),
 function( currProvider, request )
 {
-	var providerCache = request.getProviderCache();
-	
 	var thisServer = this;
+	
+	var providerCache = request.getProviderCache();
 	
 	try
 	{
-	
-	thisServer.verifyProvider( currProvider );
 	
 	providerCache.setProvider( currProvider );
 	
@@ -715,7 +759,7 @@ function( currProvider, request )
 							thisServer._handleError(
 								currProvider,
 								request,
-								Server.ERROR_AT_HAND_OVER,
+								Server.ERROR_AT_HANDOVER,
 								e
 							);
 							
@@ -729,41 +773,14 @@ function( currProvider, request )
 							return;
 						}
 						
-						try
-						{
-						
-						currProvider.provide(
+						thisServer._callProvide(
+							currProvider,
+							"requestProvider",
 							request,
-							sys.getFunc(
-							new FuncVer( [ [ Error, "undef" ] ] ),
-							function( err )
-							{
-								if( err !== undefined )
-								{
-									thisServer._handleError(
-										currProvider,
-										request,
-										Server.ERROR_AT_PROVISION_CB,
-										err
-									);
-									
-									return;
-								}
-							})
+							currProvider
 						);
 						
-						}
-						catch( e )
-						{
-							thisServer._handleError(
-								currProvider,
-								request,
-								Server.ERROR_AT_PROVISION,
-								e
-							);
-							
-							return;
-						}
+						return;
 					})
 				);
 				
@@ -794,110 +811,74 @@ function( currProvider, request )
 	}
 });
 
-Server.prototype._addProvider =
-sys.getFunc(
-new FuncVer( [ RequestProvider ] ),
-function( requestProvider )
-{
-	var providerName = requestProvider.getName();
-	var providers = this.providers;
-	
-	if( providers[ providerName ] !== undefined )
-	{
-		throw new RuntimeError(
-			"RequestProvider '"+providerName+"' has already been "+
-			"added to this Server",
-			Server.prototype._addProvider
-		);
-	}
-	
-	providers[ providerName ] = requestProvider;
-}
-);
-
-Server.prototype.verifyProvider =
-sys.getFunc(
-new FuncVer( [ RequestProvider ] ),
-function( requestProvider )
-{
-	var providers = this.providers;
-	
-	var requestProviderName = requestProvider.getName();
-	
-	if(
-		providers[ requestProviderName ] === undefined ||
-		providers[ requestProviderName ] !== requestProvider
-	)
-	{
-		throw new RuntimeError(
-			"The given RequestProvider isnt part of this Server",
-			Server.prototype.verifyProvider
-		);
-	}
-	
-	var failureProvider =
-		requestProvider.getValidationFailureProvider()
-	;
-	
-	if( failureProvider !== undefined )
-	{
-		var failureProviderName = failureProvider.getName();
-		
-		if(
-			providers[ failureProviderName ] === undefined ||
-			providers[ failureProviderName ] !== failureProvider
-		)
-		{
-			throw new RuntimeError(
-				"The given RequestProvider's ValidationFailureProvider "+
-				" isnt part of this Server",
-				Server.prototype.verifyProvider
-			);
-		}
-	}
-	
-	var errorProvider = requestProvider.getErrorProvider();
-	
-	if( errorProvider !== undefined )
-	{
-		var errorProviderName = errorProvider.getName();
-		
-		if(
-			providers[ errorProviderName ] === undefined ||
-			providers[ errorProviderName ] !== errorProvider
-		)
-		{
-			throw new RuntimeError(
-				"The given RequestProvider's ErrorProvider isnt part "+
-				"of this Server",
-				Server.prototype.verifyProvider
-			);
-		}
-	}
-});
-
 Server.prototype.start =
 sys.getFunc(
-new FuncVer(),
-function()
+new FuncVer( [ "func/undef" ] ),
+function( cb )
 {
-	if( conf.doVer() === true )
-	{
-		new FuncVer().verArgs( arguments );
-	}
-	
 	var thisServer = this;
 	
-	http.createServer(
-		function( serverRequest, serverResponse )
+	if( thisServer.isRunning === true )
+	{
+		throw new ServerRuntimeError(
+			"The Server is already running",
+			{
+				code: "ServerIsAlreadyRunning"
+			}
+		);
+	}
+	
+	var server = thisServer.server;
+	
+	server.listen( this.port, "127.0.0.1" );
+	
+	server.once(
+		"listening",
+		sys.getFunc(
+		new FuncVer(),
+		function()
 		{
-			var request = new Request( serverRequest, serverResponse );
-			
-			thisServer._useProvider(
-				thisServer.topRequestProvider, request
-			);
-		}
-	)
-		.listen( 1337, "127.0.0.1" )
-	;
+			if( cb !== undefined )
+			{
+				cb();
+			}
+		})
+	);
+	
+});
+
+Server.prototype.stop =
+sys.getFunc(
+new FuncVer( [ "func/undef" ] ),
+function( cb )
+{
+	var thisServer = this;
+	
+	if( thisServer.isRunning === false )
+	{
+		throw new ServerRuntimeError(
+			"The Server isnt running",
+			{
+				code: "ServerIsNotRunning"
+			}
+		);
+	}
+	
+	var server = thisServer.server;
+	
+	server.close();
+	
+	server.once(
+		"close",
+		sys.getFunc(
+			new FuncVer(),
+			function()
+			{
+				if( cb !== undefined )
+				{
+					cb();
+				}
+			}
+		)
+	);
 });
