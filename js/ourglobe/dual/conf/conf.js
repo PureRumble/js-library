@@ -1,23 +1,26 @@
+og.define(
+function()
+{
+
 var conf = {};
 
-var _doVer = true;
+conf._doVer = true;
 
-/*
-This func may not depend on any other functions
-*/
 conf.doVer = function()
 {
-	return _doVer;
+	return conf._doVer;
 }
 
 conf.turnOffVer = function()
 {
-	_doVer = false;
+	conf._doVer = false;
 }
 
 conf.turnOnVer = function()
 {
-	_doVer = true;
+	conf._doVer = true;
 }
 
-exports.conf = conf;
+return conf;
+
+});

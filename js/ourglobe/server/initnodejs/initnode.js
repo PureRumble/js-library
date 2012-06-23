@@ -6,7 +6,10 @@ dojoConfig =
 		"/home/work-purerumble/files/projects/ourglobe/js/ourglobe",
 	packages:
 	[
-		{ name: "dojo", location: "../og/l/c/dtk/dojo" }
+		{ name: "dojo", location: "../og/l/c/dtk/dojo" },
+		{
+			name: "og/d/conf", location: "../og/d/conf", main: "conf"
+		}
 	]
 };
 
