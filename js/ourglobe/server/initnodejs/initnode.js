@@ -50,7 +50,21 @@ function( declare )
 				
 				var returnVar = cb.apply( cb, arguments );
 				
-				if( returnCbVar === true ) { return returnVar; }
+				if( returnCbVar === true )
+				{
+					if(
+						typeof( returnVar ) !== "object" &&
+						typeof( returnVar ) !== "function"
+					)
+					{
+						throw new Error(
+							"The cb passed to ourglobe.define didnt return "+
+							"a valid module"
+						);
+					}
+					
+					return returnVar;
+				}
 			}
 		;
 		
