@@ -7,9 +7,7 @@ dojoConfig =
 	packages:
 	[
 		{ name: "dojo", location: "../og/l/c/dtk/dojo" },
-		{
-			name: "og/d/conf", location: "../og/d/conf", main: "conf"
-		}
+		{ name: "og/d/conf", location: "../og/d/conf" }
 	]
 };
 
@@ -58,7 +56,7 @@ function( declare )
 					)
 					{
 						throw new Error(
-							"The cb passed to ourglobe.define didnt return "+
+							"The cb passed to ourglobe.define() didnt return "+
 							"a valid module"
 						);
 					}
