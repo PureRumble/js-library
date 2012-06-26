@@ -1,5 +1,8 @@
 og.define(
-function()
+[ "exports" ],
+function(
+	exports
+)
 {
 
 var conf = {};
@@ -21,6 +24,6 @@ conf.turnOnVer = function()
 	conf._doVer = true;
 }
 
-return conf;
+exports.conf = conf;
 
 });
