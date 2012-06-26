@@ -7,7 +7,7 @@ This func may only depend on the following funcs:
  /conf/conf.doVer()
  /verification/assert()
 */
-sys.inherits = function( subClass, superClass )
+sys.extend = function( subClass, superClass )
 {
 	if( conf.doVer() === true )
 	{
@@ -17,13 +17,12 @@ sys.inherits = function( subClass, superClass )
 		assert.argType( "superClass", superClass, "func" );
 	}
 	
-	subClass.super_ = superClass;
 	subClass.prototype.__proto__ = superClass.prototype;
 	
 	Object.defineProperty(
 		subClass.prototype,
-		"super_",
-		{ value:superClass.prototype, enumerable:false }
+		"ourGlobeSuper",
+		{ value: superClass, enumerable:false }
 	);
 }
 
