@@ -1,3 +1,8 @@
+og.define(
+[ "exports" ],
+function( exports )
+{
+
 function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 {
 	if( conf.doVer() === true )
@@ -96,8 +101,8 @@ FuncVer.prototype.verArgs = function( args )
 	catch( err )
 	{
 		throw new RuntimeError(
-			"Arg args must be an arguments object but is:\n"+
-			MoreObject.getPrettyStr( args )
+			"Arg args must be an arguments object",
+			{ var: args }
 		);
 	}
 	
@@ -140,12 +145,11 @@ FuncVer.prototype.verArgs = function( args )
 	}
 	
 	throw new FuncVerError(
-		"This FuncVer doesnt approve the provided args. The "+
-		"FuncVer and args are:\n"+
-		MoreObject.getPrettyStr(
-			{ "FuncVer": this, "args":args  }
-		),
-		FuncVer.prototype.verArgs
+		"This FuncVer doesnt approve the provided args",
+		{
+			var: { funcVer: this, providedArgs: args  },
+			caller: FuncVer.prototype.verArgs
+		}
 	);
 }
 
@@ -168,24 +172,29 @@ FuncVer.prototype.verReturn = function( returnVar )
 	}
 	
 	throw new FuncVerError(
-		"This FuncVer doesnt approve the provided return "+
-		"variable. The FuncVer and return variable are:"+
-		MoreObject.getPrettyStr( {
-			"FuncVer":this, "returnVar":returnVar
-		} ),
-		FuncVer.prototype.verReturn
+		"This FuncVer doesnt approve the provided return variable",
+		{
+			var:
+			{
+				returnSchema: this.returnSchema,
+				providedReturnVar: returnVar
+			},
+			caller: FuncVer.prototype.verReturn
+		}
 	);
 }
 
 exports.FuncVer = FuncVer;
 
-var RuntimeError = require("ourglobe/sys/errors").RuntimeError;
-var FuncVerError = require("./errors").FuncVerError;
+var mods = og.loadMods();
 
-var conf = require("ourglobe/conf/conf").conf;
-var assert = require("./assert").assert;
-var MoreObject = require("ourglobe/utils/moreobject").MoreObject;
-var Schema = require("ourglobe/verification/schema").Schema;
+var RuntimeError = mods.RuntimeError;
+
+var conf = mods.conf;
+var assert = mods.assert;
+var Schema = mods.Schema;
+
+var FuncVerError = og.require( "./funcvererror" ).FuncVerError;
 
 FuncVer.PROPER_STR = Schema.PROPER_STR;
 FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;
@@ -199,3 +208,5 @@ FuncVer.NON_NEG_INT = Schema.NON_NEG_INT;
 FuncVer.R_NON_NEG_INT = Schema.R_NON_NEG_INT;
 FuncVer.POS_INT = Schema.POS_INT;
 FuncVer.R_POS_INT = Schema.R_POS_INT;
+
+});
