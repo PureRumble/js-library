@@ -1,3 +1,8 @@
+og.define(
+[ "exports" ],
+function( exports )
+{
+
 function Schema( schema )
 {
 	if( conf.doVer() === true )
@@ -12,29 +17,6 @@ function Schema( schema )
 	this.schema = schema;
 }
 
-Schema.NON_EMPTY_STR = { minStrLen:1 };
-Schema.R_NON_EMPTY_STR = { req:true, minStrLen:1 };
-Schema.NON_EMPTY_STR_L = { minStrLen:1, chars:"letters" };
-Schema.R_NON_EMPTY_STR_L = {
-	req:true, minStrLen:1, chars:"letters"
-};
-
-Schema.PROPER_STR = Schema.NON_EMPTY_STR;
-Schema.R_PROPER_STR = Schema.R_NON_EMPTY_STR;
-Schema.PROPER_STR_L = Schema.NON_EMPTY_STR_L;
-Schema.R_PROPER_STR_L = Schema.R_NON_EMPTY_STR_L;
-
-Schema.NON_EMPTY_OBJ = { minProps:1 };
-Schema.R_NON_EMPTY_OBJ = { req:true, minProps:1 };
-
-Schema.PROPER_OBJ = Schema.NON_EMPTY_OBJ;
-Schema.R_PROPER_OBJ = Schema.R_NON_EMPTY_OBJ;
-
-Schema.NON_NEG_INT = { gte:0 };
-Schema.R_NON_NEG_INT = { req:true, gte:0 };
-Schema.POS_INT = { gt:0 };
-Schema.R_POS_INT = { req:true, gt:0 };
-
 Schema.prototype.test = function( variable, varExists )
 {
 	if( conf.doVer() === true )
@@ -46,81 +28,6 @@ Schema.prototype.test = function( variable, varExists )
 	
 	return Schema.test( this.schema, variable, varExists );
 }
-
-Schema.META_SCHEMA_STR = "str/arr/obj/undef";
-
-Schema.META_SCHEMA =
-{
-	goodTypes: [ "arr", "str", "obj" ],
-	
-	extraItems: { required: true },
-	
-	properties:
-	{
-		req: "bool/undef",
-		required: "bool/undef",
-		
-		types: Schema.META_SCHEMA_STR,
-		goodTypes: Schema.META_SCHEMA_STR,
-		badTypes: Schema.META_SCHEMA_STR,
-		
-		values: "arr/undef",
-		goodValues: "arr/undef",
-		
-		props: "obj/arr/undef",
-		properties: "obj/arr/undef",
-		items: "obj/arr/undef",
-		keys: "obj/arr/undef",
-		
-		extraProps: Schema.META_SCHEMA_STR+"/bool",
-		extraProperties: Schema.META_SCHEMA_STR+"/bool",
-		extraItems: Schema.META_SCHEMA_STR+"/bool",
-		extraKeys: Schema.META_SCHEMA_STR+"/bool",
-		
-		minProps: "int/undef",
-		minProperties: "int/undef",
-		minItems: "int/undef",
-		minKeys: "int/undef",
-		
-		maxProps: "int/undef",
-		maxProperties: "int/undef",
-		maxItems: "int/undef",
-		maxKeys: "int/undef",
-		
-		nrProps: "int/undef",
-		nrProperties: "int/undef",
-		nrItems: "int/undef",
-		nrKeys: "int/undef",
-		
-		denseItems: "bool/undef",
-		
-		inherits: "func/arr/undef",
-		
-		minStrLen: "int/undef",
-		minStrLength: "int/undef",
-		minStringLength: "int/undef",
-		
-		maxStrLen: "int/undef",
-		maxStrLength: "int/undef",
-		maxStringLength: "int/undef",
-		
-		strPattern: "str/obj/undef",
-		stringPattern: "str/obj/undef",
-		
-		chars: "str/undef",
-		goodChars: "str/undef",
-		badChars: "str/undef",
-		
-		gte: "number/undef",
-		gt: "number/undef",
-		ste: "number/undef",
-		st: "number/undef"
-	},
-	
-	extraProperties: false
-}
-
-Schema.META_SCHEMA.extraItems.goodTypes = Schema.META_SCHEMA;
 
 Schema.isSchema = function( variable )
 {
@@ -181,18 +88,16 @@ Schema.getSchemaProp = function(
 	
 	if( foundMany === true )
 	{
-		throw new SchemaError( 
-			"A schema may have only one of the following "+
-			"attributes: "+
-			MoreObject.getPrettyStr( props )+"\n"+
-			"But this isnt uphold by this schema:\n"+
-			MoreObject.getPrettyStr( schema )
+		throw new SchemaError(
+			"There are certain groups of props that are restricted "+
+			"in such way that only one of them may occur in a schema",
+			{ propGroup: props, schema: schema }
 		);
 	}
 	
 	if( propFound !== undefined )
 	{
-		var propVar = schema[propFound];
+		var propVar = schema[ propFound ];
 		
 		var hasTypeArgs = [ propVar ].concat( types );
 		
@@ -201,11 +106,13 @@ Schema.getSchemaProp = function(
 		if( hasType === false )
 		{
 			throw new SchemaError(
-				"Attribute "+propFound+" of a schema must "+
-				"have one of the following types: "+
-				MoreObject.getPrettyStr( types )+
-				"\nBut the attribute is:\n"+
-				MoreObject.getPrettyStr( propVar )
+				"Prop '"+propFound+"' may have only one of certain "+
+				"types",
+				{
+					propValue: propVar,
+					allowedTypes: types,
+					schema: schema
+				}
 			);
 		}
 		
@@ -216,9 +123,9 @@ Schema.getSchemaProp = function(
 		)
 		{
 			throw new SchemaError(
-				"Attribute "+propFound+" of a schema may not be an "+
-				"empty arr but this isnt uphold by the following "+
-				"schema:\n"+MoreObject.getPrettyStr( schema )
+				"Prop '"+propFound+"' of a schema may not be an "+
+				"empty arr",
+				{ propValue: propVar, schema: schema }
 			);
 		}
 	}
@@ -239,16 +146,16 @@ Schema.assertSingleSchemaProp = function( schema )
 	
 	for( var pos = 1; pos < arguments.length; pos++ )
 	{
-		var currProp = arguments[pos];
+		var currProp = arguments[ pos ];
 		
 		if( currProp !== undefined )
 		{
 			if( foundProp !== undefined )
 			{
 				throw new SchemaError(
-					"A schema may have only one of the attributes "+
-					foundProp+" and "+currProp+" but the following "+
-					"schema has both:\n"+MoreObject.getPrettyStr( schema )
+					"A schema may have only one of the props '"+
+					foundProp+"'' and '"+currProp+"'",
+					{ schema: schema }
 				);
 			}
 			
@@ -305,10 +212,13 @@ Schema.fineResolve = function( schemas )
 		
 	}
 	
-	return req === false ?
+	var returnVar =
+		req === false ?
 		strParts :
 		{ required:true, types:strParts }
 	;
+	
+	return returnVar;
 }
 
 Schema.testChars = function( chars, areGood, str, charsProp )
@@ -388,8 +298,7 @@ Schema.testChars = function( chars, areGood, str, charsProp )
 		{
 			throw new SchemaError(
 				"'"+testChar+"' isnt a valid value to list "+
-				"for attribute "+charsProp+" in a "+
-				"schema"
+				"for prop '"+charsProp+"' in a schema"
 			);
 		}
 		
@@ -509,11 +418,9 @@ Schema.test = function( schema, variable, varExists )
 		if( varExists === false && variable !== undefined )
 		{
 			throw new RuntimeError(
-				"Arg variable must be undefined if arg varExists is "+
-				"set to true but the args are: "+
-				MoreObject.getPrettyStr({
-					varExists: varExists, variable: variable
-				})
+				"Arg variable must be undef if arg varExists is set to "+
+				"true",
+				{ providedArg: variable }
 			);
 		}
 		
@@ -569,7 +476,7 @@ Schema.test = function( schema, variable, varExists )
 				) )
 				{
 					throw new SchemaError(
-						"Property '"+prop+"' isnt a schema attribute"
+						"'"+prop+"' isnt a schema prop", { schema: schema }
 					);
 				}
 			}
@@ -649,9 +556,9 @@ Schema.test = function( schema, variable, varExists )
 			if( sys.hasType( value, "func", "obj", "arr" ) === true )
 			{
 				throw new SchemaError(
-					"Attribute "+valuesProp+" of a schema may not "+
-					"contain funcs, objs or arrs but the following "+
-					"schema does this:\n"+MoreObject.getPrettyStr( schema )
+					"Prop '"+valuesProp+"' of a schema may not contain "+
+					"funcs, objs or arrs",
+					{ propValue: values, schema: schema }
 				);
 			}
 			
@@ -816,8 +723,9 @@ Schema.test = function( schema, variable, varExists )
 			if( minKeys < 0 )
 			{
 				throw new SchemaError(
-					"Attribute "+minKeysProp+" of a schema must "+
-					"be a non-negative int but is: "+minKeys
+					"Prop '"+minKeysProp+"' of a schema must be a "+
+					"non-neg",
+					{ propValue: minKeys, schema: schema }
 				);
 			}
 			
@@ -836,14 +744,14 @@ Schema.test = function( schema, variable, varExists )
 			)
 			{
 				throw new SchemaError(
-					"Attribute "+maxKeysProp+" of "+
-					"a schema must be a non-negative int "+
-					"greater than attribute "+minKeysProp+
-					" (if the latter is set) but the two "+
-					"attributes are: "+
-					MoreObject.getPrettyStr({
-						minKeys: minKeys, maxKeys: maxKeys
-					})
+					"Prop '"+maxKeysProp+"' of a schema must be a non-neg"+
+					"int greater than prop '"+minKeysProp+"' (if the "+
+					"latter is set)",
+					{
+						maxKeysPropValue: maxKeys,
+						minKeysPropValue: minKeys,
+						schema: schema
+					}
 				);
 			}
 			
@@ -859,8 +767,9 @@ Schema.test = function( schema, variable, varExists )
 			if( nrKeys < 0 )
 			{
 				throw new SchemaError(
-					"Attribute "+nrKeysProp+" of a schema must be a "+
-					"non-negative int but it is: "+nrKeys
+					"Prop '"+nrKeysProp+"' of a schema must be a non-neg "+
+					"int",
+					{ propValue: nrKeys, schema: schema }
 				);
 			}
 			
@@ -920,10 +829,9 @@ Schema.test = function( schema, variable, varExists )
 					if( sys.hasType( inheritsFunc, "func" ) === false )
 					{
 						throw new SchemaError(
-							"Attribute "+inheritsProp+" of a schema must "+
-							"specify funcs but this isnt uphold by the "+
-							"following schema:\n"+
-							MoreObject.getPrettyStr( schema )
+							"Prop '"+inheritsProp+"' of a schema must "+
+							"specify funcs",
+							{ propValue: inherits, schema: schema }
 						);
 					}
 					
@@ -972,9 +880,9 @@ Schema.test = function( schema, variable, varExists )
 		)
 		{
 			throw new SchemaError(
-				"Attribute "+strPatternProp+" of a schema "+
-				"must be a str or a RegExp object but is:\n"+
-				MoreObject.getPrettyStr( schema[strPatternProp] )
+				"Prop '"+strPatternProp+"' of a schema must be a str "+
+				"or a RegExp obj",
+				{ propValue: schema[ strPatternProp ], schema: schema }
 			);
 		}
 		
@@ -1003,8 +911,9 @@ Schema.test = function( schema, variable, varExists )
 			if( minStrLen < 0 )
 			{
 				throw new SchemaError(
-					"Attribute "+minStrLenProp+" of a schema "+
-					"must be non-negative but is: "+minStrLen
+					"Prop '"+minStrLenProp+"' of a schema must be a "+
+					"non-neg int",
+					{ minStrLenPropValue: minStrLen, schema: schema }
 				);
 			}
 			
@@ -1023,13 +932,15 @@ Schema.test = function( schema, variable, varExists )
 			)
 			{
 				throw new SchemaError(
-					"Attribute "+maxStrLenProp+" of a schema "+
-					"must be non-negative and greater than attribute "+
-					minStrLenProp+" (if the latter is set) but the "+
-					"two attributes are:\n"+
-					MoreObject.getPrettyStr(
-						{ minStrLen: minStrLen, maxStrLen: maxStrLen }
-					)
+					"Prop '"+maxStrLenProp+"' of a schema "+
+					"must be non-neg int and greater than prop '"+
+					minStrLenProp+"' (if the latter is set)",
+					{
+						minStrLenPropValue: minStrLen,
+						maxStrLenPropValue: maxStrLen,
+						schema: schema
+					}
+					
 				);
 			}
 			
@@ -1116,10 +1027,15 @@ Schema.test = function( schema, variable, varExists )
 		if( gte > ste || gte >= st || gt >= ste || gt >= st )
 		{
 			throw new SchemaError(
-				"The attributes gte, gt, ste and st may not be set to "+
-				"values that are impossible to uphold but this is "+
-				"done by the following schema:\n"+
-				MoreObject.getPrettyStr( schema )
+				"The props gte, gt, ste and st of a schema may not be "+
+				"set to values that are impossible to uphold",
+				{
+					propGtValue: gt,
+					propGteValue: gte,
+					propStValue: st,
+					propSteValue: ste,
+					schema: schema
+				}
 			);
 		}
 		
@@ -1223,11 +1139,113 @@ Schema.test = function( schema, variable, varExists )
 	return true;
 }
 
+Schema.NON_EMPTY_STR = { minStrLen:1 };
+Schema.R_NON_EMPTY_STR = { req:true, minStrLen:1 };
+Schema.NON_EMPTY_STR_L = { minStrLen:1, chars:"letters" };
+Schema.R_NON_EMPTY_STR_L = {
+	req:true, minStrLen:1, chars:"letters"
+};
+
+Schema.PROPER_STR = Schema.NON_EMPTY_STR;
+Schema.R_PROPER_STR = Schema.R_NON_EMPTY_STR;
+Schema.PROPER_STR_L = Schema.NON_EMPTY_STR_L;
+Schema.R_PROPER_STR_L = Schema.R_NON_EMPTY_STR_L;
+
+Schema.NON_EMPTY_OBJ = { minProps:1 };
+Schema.R_NON_EMPTY_OBJ = { req:true, minProps:1 };
+
+Schema.PROPER_OBJ = Schema.NON_EMPTY_OBJ;
+Schema.R_PROPER_OBJ = Schema.R_NON_EMPTY_OBJ;
+
+Schema.NON_NEG_INT = { gte:0 };
+Schema.R_NON_NEG_INT = { req:true, gte:0 };
+Schema.POS_INT = { gt:0 };
+Schema.R_POS_INT = { req:true, gt:0 };
+
+Schema.META_SCHEMA_STR = "str/arr/obj/undef";
+
+Schema.META_SCHEMA =
+{
+	goodTypes: [ "arr", "str", "obj" ],
+	
+	extraItems: { required: true },
+	
+	properties:
+	{
+		req: "bool/undef",
+		required: "bool/undef",
+		
+		types: Schema.META_SCHEMA_STR,
+		goodTypes: Schema.META_SCHEMA_STR,
+		badTypes: Schema.META_SCHEMA_STR,
+		
+		values: "arr/undef",
+		goodValues: "arr/undef",
+		
+		props: "obj/arr/undef",
+		properties: "obj/arr/undef",
+		items: "obj/arr/undef",
+		keys: "obj/arr/undef",
+		
+		extraProps: Schema.META_SCHEMA_STR+"/bool",
+		extraProperties: Schema.META_SCHEMA_STR+"/bool",
+		extraItems: Schema.META_SCHEMA_STR+"/bool",
+		extraKeys: Schema.META_SCHEMA_STR+"/bool",
+		
+		minProps: "int/undef",
+		minProperties: "int/undef",
+		minItems: "int/undef",
+		minKeys: "int/undef",
+		
+		maxProps: "int/undef",
+		maxProperties: "int/undef",
+		maxItems: "int/undef",
+		maxKeys: "int/undef",
+		
+		nrProps: "int/undef",
+		nrProperties: "int/undef",
+		nrItems: "int/undef",
+		nrKeys: "int/undef",
+		
+		denseItems: "bool/undef",
+		
+		inherits: "func/arr/undef",
+		
+		minStrLen: "int/undef",
+		minStrLength: "int/undef",
+		minStringLength: "int/undef",
+		
+		maxStrLen: "int/undef",
+		maxStrLength: "int/undef",
+		maxStringLength: "int/undef",
+		
+		strPattern: "str/obj/undef",
+		stringPattern: "str/obj/undef",
+		
+		chars: "str/undef",
+		goodChars: "str/undef",
+		badChars: "str/undef",
+		
+		gte: "number/undef",
+		gt: "number/undef",
+		ste: "number/undef",
+		st: "number/undef"
+	},
+	
+	extraProperties: false
+}
+
+Schema.META_SCHEMA.extraItems.goodTypes = Schema.META_SCHEMA;
+
 exports.Schema = Schema;
 
-var SchemaError = require("./errors").SchemaError;
+var mods = og.loadMods();
 
-var conf = require("ourglobe/conf/conf").conf;
-var assert = require("ourglobe/verification/assert").assert;
-var sys = require("ourglobe/sys/sys").sys;
-var MoreObject = require("ourglobe/utils/moreobject").MoreObject;
+var RuntimeError = mods.RuntimeError;
+var SchemaError = og.require( "./schemaerror" ).SchemaError;
+
+var conf = mods.conf;
+var assert = mods.assert;
+var sys = mods.sys;
+
+});
