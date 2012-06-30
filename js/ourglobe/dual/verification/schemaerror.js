@@ -3,36 +3,21 @@ og.define(
 function( exports )
 {
 
-function SchemaError( msg, opts )
+function SchemaError( msg, errorVar, errorCode, caller )
 {
 	if( conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1, 2 );
-		
-		assert.argType( "msg", msg, "str" );
-		
-		assert.argType( "opts", opts, "undef", "obj" );
-		
-		var optsVar = opts !== undefined ? opts : {};
-		
-		assert.argType( "opts.code", optsVar.code, "undef", "str" );
-		
-		assert.argType(
-			"opts.caller", optsVar.caller, "undef", "func"
-		);
+		assert.nrArgs( arguments, 1, 4 );
 	}
 	
-	if( opts === undefined )
+	if( caller === undefined )
 	{
-		opts = {};
+		caller = SchemaError;
 	}
 	
-	if( opts.caller === undefined )
-	{
-		opts.caller = SchemaError;
-	}
-	
-	SchemaError.ourGlobeSuper.call( this, msg, caller );
+	SchemaError.ourglobeSuper.call(
+		this, msg, errorVar, errorCode, caller
+	);
 }
 
 exports.SchemaError = SchemaError;

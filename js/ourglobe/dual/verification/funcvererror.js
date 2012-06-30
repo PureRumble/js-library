@@ -3,28 +3,21 @@ og.define(
 function( exports )
 {
 
-function FuncVerError( msg, opts )
+function FuncVerError( msg, errorVar, errorCode, caller )
 {
 	if( conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1, 2 );
-		
-		assert.arg( "msg", msg, OurGlobeError.MSG_S );
-		
-		assert.arg( "opts", opts, OurGlobeError.OPTS_S );
+		assert.nrArgs( arguments, 1, 4 );
 	}
 	
-	if( opts === undefined )
+	if( caller === undefined )
 	{
-		opts = {};
+		caller = FuncVerError;
 	}
 	
-	if( opts.caller === undefined )
-	{
-		opts.caller = FuncVerError;
-	}
-	
-	FuncVerError.ourglobeSuper.call( this, msg, caller );
+	FuncVerError.ourglobeSuper.call(
+		this, msg, errorVar, errorCode, caller
+	);
 }
 
 exports.FuncVerError = FuncVerError;

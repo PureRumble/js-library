@@ -102,7 +102,7 @@ FuncVer.prototype.verArgs = function( args )
 	{
 		throw new RuntimeError(
 			"Arg args must be an arguments object",
-			{ var: args }
+			{ providedArg: args }
 		);
 	}
 	
@@ -146,10 +146,9 @@ FuncVer.prototype.verArgs = function( args )
 	
 	throw new FuncVerError(
 		"This FuncVer doesnt approve the provided args",
-		{
-			var: { funcVer: this, providedArgs: args  },
-			caller: FuncVer.prototype.verArgs
-		}
+		{ argSchemas: this.argSchemas, providedArgs: args  },
+		undefined,
+		FuncVer.prototype.verArgs
 	);
 }
 
@@ -174,13 +173,11 @@ FuncVer.prototype.verReturn = function( returnVar )
 	throw new FuncVerError(
 		"This FuncVer doesnt approve the provided return variable",
 		{
-			var:
-			{
-				returnSchema: this.returnSchema,
-				providedReturnVar: returnVar
-			},
-			caller: FuncVer.prototype.verReturn
-		}
+			returnSchema: this.returnSchema,
+			providedReturnVar: returnVar
+		},
+		undefined,
+		FuncVer.prototype.verReturn
 	);
 }
 
@@ -189,12 +186,11 @@ exports.FuncVer = FuncVer;
 var mods = og.loadMods();
 
 var RuntimeError = mods.RuntimeError;
+var FuncVerError = og.require( "./funcvererror" ).FuncVerError;
 
 var conf = mods.conf;
 var assert = mods.assert;
 var Schema = mods.Schema;
-
-var FuncVerError = og.require( "./funcvererror" ).FuncVerError;
 
 FuncVer.PROPER_STR = Schema.PROPER_STR;
 FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;
