@@ -1,8 +1,6 @@
 og.define(
 [ "exports" ],
-function(
-	exports
-)
+function( exports )
 {
 
 var conf = {};
