@@ -1,12 +1,10 @@
-var util = require("util");
+og.define(
+[ "exports" ],
+function( exports )
+{
 
 var sys = {};
-/*
-This func may only depend on the following funcs:
- sys.hasType()
- /conf/conf.doVer()
- /verification/assert()
-*/
+
 sys.extend = function( subClass, superClass )
 {
 	if( conf.doVer() === true )
@@ -26,11 +24,6 @@ sys.extend = function( subClass, superClass )
 	);
 }
 
-/*
-This func may only depend on the following funcs:
- /conf/conf.doVer()
- /verification/assert()
-*/
 sys.isOurType = function( str )
 {
 	if( conf.doVer() === true )
@@ -52,10 +45,6 @@ sys.isOurType = function( str )
 	);
 }
 
-/*
-This func may NOT directly nor indirectly be dependent on
-assert.argType()!
-*/
 sys.typeOf = function( variable )
 {
 	if( conf.doVer() === true )
@@ -70,10 +59,6 @@ sys.typeOf = function( variable )
 	);
 }
 
-/*
-This func may NOT directly nor indirectly be dependent on
-assert.argType()!
-*/
 sys.hasType = function( variable )
 {
 	if( conf.doVer() === true )
@@ -85,7 +70,7 @@ sys.hasType = function( variable )
 	
 	for( var pos = 1; pos < arguments.length; pos++ )
 	{
-		var reqType = arguments[pos];
+		var reqType = arguments[ pos ];
 		
 		var hasType =
 			reqType === "any" ? true :
@@ -125,7 +110,8 @@ sys.hasType = function( variable )
 		else if( hasType === undefined )
 		{
 			throw new RuntimeError(
-				"Arg value '" + reqType + "' isnt a valid type"
+				"One of the provided args isnt a valid type",
+				{ var: { providedArg: reqType, argPos: pos } }
 			);
 		}
 	}
@@ -178,7 +164,8 @@ sys.getFunc = function( funcVer, func )
 					throw new RuntimeError(
 						"The arg funcVer that sys.getFunc() was provided "+
 						"with for constructing this func is a func but it "+
-						"didnt return a FuncVer"
+						"didnt return a FuncVer",
+						{ var: funcVer }
 					);
 				}
 				
@@ -202,8 +189,12 @@ sys.getFunc = function( funcVer, func )
 
 exports.sys = sys;
 
-var RuntimeError = require("ourglobe/sys/errors").RuntimeError;
+var mods = og.loadMods();
 
-var conf = require("ourglobe/conf/conf").conf;
-var assert = require("ourglobe/verification/assert").assert;
-var FuncVer = require("ourglobe/verification/funcver").FuncVer;
+var conf = mods.conf;
+var OurGlobeError = mods.OurGlobeError;
+var RuntimeError = mods.RuntimeError;
+var assert = mods.assert;
+var FuncVer = mods.FuncVer;
+
+});
