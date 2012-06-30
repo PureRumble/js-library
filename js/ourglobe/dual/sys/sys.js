@@ -111,7 +111,7 @@ sys.hasType = function( variable )
 		{
 			throw new RuntimeError(
 				"One of the provided args isnt a valid type",
-				{ var: { providedArg: reqType, argPos: pos } }
+				{ providedArg: reqType, argPos: pos }
 			);
 		}
 	}
@@ -163,9 +163,8 @@ sys.getFunc = function( funcVer, func )
 				{
 					throw new RuntimeError(
 						"The arg funcVer that sys.getFunc() was provided "+
-						"with for constructing this func is a func but it "+
-						"didnt return a FuncVer",
-						{ var: funcVer }
+						"with is a func but it didnt return a FuncVer",
+						{ returnedVar: funcVer }
 					);
 				}
 				

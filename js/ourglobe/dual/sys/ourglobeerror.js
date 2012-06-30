@@ -3,98 +3,90 @@ og.define(
 function( exports )
 {
 
-function OurGlobeError( msg, opts )
+function OurGlobeError( msg, errorVar, errorCode, caller )
 {
 	if( conf.doVer() === true )
 	{
-		if( !( arguments.length >= 1 || arguments.length <= 2 ) )
+		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{
-			throw new Error(
-				"Between one and two args must be provided but "+
-				"the following args were provided:\n" + arguments
+			throw new RuntimeError(
+				"Between one and four args must be provided",
+				{ providedArgs: arguments }
 			);
 		}
 		
 		if( typeof( msg ) !== "string" )
 		{
-			throw new Error(
-				"Arg msg must be a string but is:\n" + msg
-			);
-		}
-		
-		if( opts !== undefined && typeof( opts ) !== "object" )
-		{
-			throw new Error(
-				"Arg opts must be an obj or undef but is:\n" + opts
+			throw new RuntimeError(
+				"Arg msg must be a string", { providedArg: msg }
 			);
 		}
 		
 		if(
-			opts !== undefined && opts.code !== undefined &&
+			errorVar !== undefined &&
 			(
-				typeof( opts.code ) !== "string" ||
-				opts.code.length === 0
+				typeof( errorVar ) !== "object" ||
+				Object.keys.length( errorVar ) === 0
 			)
 		)
 		{
-			throw new Error(
-				"Arg opts.code must be undef or a non-empty str "+
-				"but is:\n"+opts.code
+			throw new RuntimeError(
+				"Arg errorVar must be undef or a non-empty obj",
+				{ providedArg: errorVar }
 			);
 		}
 		
 		if(
-			opts !== undefined &&
-			opts.caller !== undefined &&
-			typeof( opts.caller ) !== "function"
+			errorCode !== undefined &&
+			(
+				typeof( errorCode ) !== "string" ||
+				errorCode.length === 0
+			)
 		)
 		{
-			throw new Error(
-				"Arg opts.caller must be under or a func but is:\n"+
-				opts.caller
+			throw new RuntimeError(
+				"Arg errorCode must be undef or a non-empty str",
+				{ providedArg: errorCode }
+			);
+		}
+		
+		if(
+			caller !== undefined && typeof( caller ) !== "function"
+		)
+		{
+			throw new RuntimeError(
+				"Arg caller must be undef or a func",
+				{ providedArg: caller }
 			);
 		}
 	}
 	
-	if( opts === undefined )
+	if( caller === undefined )
 	{
-		opts = {};
+		caller = OurGlobeError;
 	}
-	
-	if( opts.caller === undefined )
-	{
-		opts.caller = OurGlobeError;
-	}
-	
-	var caller = opts.caller;
 	
 	OurGlobeError.ourGlobeSuper.call( this, msg );
 	
 	this.message = msg;
 	this.name = "OurGlobeError";
-	this.ourGlobeCode = opts.code;
-	this.ourGlobeVar = opts.var;
+	this.ourGlobeVar = errorVar;
+	this.ourGlobeCode = errorCode;
 	this.ourGlobeCaller = caller;
 	
 	Error.captureStackTrace( this, caller );
 }
 
 OurGlobeError.MSG_S = { minStrLen: 1 };
-OurGlobeError.OPTS_S =
-{
-	types: "obj/undef",
-	extraProps: false,
-	props:
-	{
-		caller: "func/undef",
-		code: { types:"str/undef", minStrLen: 1 },
-		var: "any"
-	}
-}
+OurGlobeError.CALLER_S = "func/undef";
+OurGlobeError.CODE_S = { types:"str/undef", minStrLen: 1 };
+OurGlobeError.VAR_S = { types:"obj/undef", minKeys: 1 };
 
 exports.OurGlobeError = OurGlobeError;
 
 var mods = og.loadMods();
+
+var RuntimeError = mods.RuntimeError;
 
 var conf = mods.conf;
 var sys = mods.sys;

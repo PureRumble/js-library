@@ -3,53 +3,36 @@ og.define(
 function( exports )
 {
 
-function RuntimeError( msg, opts )
+function RuntimeError( msg, errorVar, errorCode, caller )
 {
 	if( conf.doVer() === true )
 	{
-		if( !( arguments.length >= 1 || arguments.length <= 2 ) )
+		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{
-			throw new Error(
-				"Between one and two args must be provided but "+
-				"the following args were provided:\n" + arguments
-			);
-		}
-		
-		if( typeof( msg ) !== "string" )
-		{
-			throw new Error(
-				"Arg msg must be a string but is:\n" + msg
-			);
-		}
-		
-		if( opts !== undefined && typeof( opts ) !== "object" )
-		{
-			throw new Error(
-				"Arg opts must be an obj or undef but is:\n"+
-				opts
+			throw new RuntimeError(
+				"Between one and four args must be provided",
+				{ providedArgs: arguments }
 			);
 		}
 	}
 	
-	if( opts === undefined )
+	if( caller === undefined )
 	{
-		opts = {};
+		caller = RuntimeError;
 	}
 	
-	if( opts.caller === undefined )
-	{
-		opts.caller = RuntimeError;
-	}
-	
-	RuntimeError.ourGlobeSuper.call( this, msg, opts );
+	RuntimeError.ourGlobeSuper.call(
+		this, msg, errorVar, errorCode, caller
+	);
 }
 
 exports.RuntimeError = RuntimeError;
 
 var mods = og.loadMods();
 
-var conf = mods.conf;
 var OurGlobeError = mods.OurGlobeError;
+
+var conf = mods.conf;
 var sys = mods.sys;
 
 sys.extend( RuntimeError, OurGlobeError );
