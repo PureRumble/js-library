@@ -1,15 +1,11 @@
 og.define(
-[
-	"exports"
-],
-function(
-	exports
-)
+[ "exports" ],
+function( exports )
 {
 
 function OurGlobeError( msg, opts )
 {
-	if( og.conf.doVer() === true )
+	if( conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 || arguments.length <= 2 ) )
 		{
@@ -78,13 +74,30 @@ function OurGlobeError( msg, opts )
 	this.name = "OurGlobeError";
 	this.ourGlobeCode = opts.code;
 	this.ourGlobeVar = opts.var;
+	this.ourGlobeCaller = caller;
 	
 	Error.captureStackTrace( this, caller );
 }
 
+OurGlobeError.MSG_S = { minStrLen: 1 };
+OurGlobeError.OPTS_S =
+{
+	types: "obj/undef",
+	extraProps: false,
+	props:
+	{
+		caller: "func/undef",
+		code: { types:"str/undef", minStrLen: 1 },
+		var: "any"
+	}
+}
+
 exports.OurGlobeError = OurGlobeError;
 
-var sys = og.require( "og/d/sys" ).sys;
+var mods = og.loadMods();
+
+var conf = mods.conf;
+var sys = mods.sys;
 
 sys.extend( OurGlobeError, Error );
 
