@@ -1,65 +1,87 @@
-/*
-This func may only depend on the following funcs in
-ourglobe:
- /ourglobe/conf/conf
- /ourglobe/sys/RuntimeError
-*/
-function assert( boolVal, msg, caller )
+og.define(
+[ "exports" ],
+function( exports )
+{
+
+function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 {
 	if( conf.doVer() === true )
 	{
-		if( !( arguments.length >= 2 && arguments.length <= 3 ) )
+		if( !( arguments.length >= 2 || arguments.length <= 5 ) )
 		{
 			throw new RuntimeError(
-				"Between two and three args must be provided "+
-				"but the following args were provided: "+
-				MoreObject.getPrettyStr( arguments )
+				"Between two and five args must be provided",
+				{ providedArgs: arguments }
 			);
 		}
 		
 		if( typeof( boolVal ) !== "boolean" )
 		{
 			throw new RuntimeError(
-				"Arg boolVal must be a bool but is: "+
-				MoreObject.getPrettyStr( boolVal )
-			);
-		}
-		
-		if( caller !== undefined && typeof( caller ) !== "function" )
-		{
-			throw new RuntimeError(
-				"Arg caller must be undef or a func but is: "+
-				MoreObject.getPrettyStr( caller )
+				"Arg boolVal must be a bool", { providedArg: boolVal }
 			);
 		}
 		
 		if(
-			boolVal === false &&
 			typeof( msg ) !== "string" &&
-			msg instanceof Error !== true
+			msg instanceof OurGlobeError === false
 		)
 		{
 			throw new RuntimeError(
-				"The assertion failed and in such case arg msg "+
-				"must be a string or error but is: "+
-				MoreObject.getPrettyStr( msg )
+				"Arg msg must be a str or an instance of OurGlobeError",
+				{ providedArg: msg }
+			);
+		}
+		
+		if(
+			msg instanceof OurGlobeError === true &&
+			(
+				errorVar !== undefined ||
+				errorCode !== undefined ||
+				errorPlace !== undefined
+			)
+		)
+		{
+			throw new RuntimeError(
+				"If arg msg is an instance of OurGlobeError then the "+
+				"args errorVar, errorCode and errorPlace must be "+
+				"undefined",
+				{
+					msg: msg,
+					errorVar: errorVar,
+					errorCode: errorCode,
+					errorPlace: errorPlace
+				}
+			);
+		}
+		else if( msg instanceof OurGlobeError === false )
+		{
+			OurGlobeError.verArgs(
+				msg, errorVar, errorCode, errorPlace
 			);
 		}
 	}
 	
-	if( caller === undefined ) { caller = assert; }
+	if( errorPlace === undefined ) { errorPlace = assert; }
 	
 	if( boolVal === false )
 	{
 		var err = undefined;
 		
-		if( msg instanceof Error === true )
+		if( msg instanceof OurGlobeError === true )
 		{
 			err = msg;
 		}
 		else
 		{
-			err = new RuntimeError( msg, caller );
+			err =
+				new RuntimeError(
+					msg,
+					errorVar,
+					errorCode,
+					errorPlace
+				)
+			;
 		}
 		
 		throw err;
@@ -76,17 +98,18 @@ assert.argType = function( argName, arg )
 	var hasTypeArgs =
 		Array.prototype.slice.call( arguments, 1 )
 	;
-	var types = hasTypeArgs.slice( 1 );
-	
-	var caller = assert.argType;
 	
 	if( sys.hasType.apply( sys.hasType, hasTypeArgs ) === false )
 	{
+		var types = hasTypeArgs.slice( 1 );
+		
+		var errorPlace = assert.argType;
+		
 		throw new RuntimeError(
-			"Arg "+argName+" must be one of the following "+
-			"types: " + MoreObject.getPrettyStr( types )+
-			"\nBut the arg is: " + MoreObject.getPrettyStr( arg ),
-			caller
+			"Arg "+argName+" is not of required type",
+			{ providedArg: arg, requiredTypes: types },
+			undefined,
+			errorPlace
 		);
 	}
 }
@@ -98,18 +121,16 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 		if( !( arguments.length >= 1 && arguments.length <= 3 ) )
 		{
 			throw new RuntimeError(
-				"assert.nrArgs() expects between one and three args "+
-				"but instead the following args were provided: "+
-				MoreObject.getPrettyStr( arguments )
+				"Between one and three args must be provided",
+				{ providedArgs: arguments }
 			);
 		}
 		
 		if( typeof( minNrArgs ) !== "number" )
 		{
 			throw new RuntimeError(
-				"assert.nrArgs() expects arg minNrArgs to be an "+
-				"integer but is: "+
-				MoreObject.getPrettyStr( minNrArgs )
+				"Arg minNrArgs must be an int",
+				{ providedArg: minNrArgs }
 			);
 		}
 		
@@ -117,34 +138,31 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 			!(
 				typeof( maxNrArgs ) === "undefined" ||
 				(
-					typeof( minNrArgs ) === "number" &&
-					typeof( maxNrArgs ) === "number"
+					typeof( maxNrArgs ) === "number" &&
+					minNrArgs <= maxNrArgs
 				)
 			)
 		)
 		{
 			throw new RuntimeError(
-				"assert.nrArgs() expects arg maxNrArgs to be "+
-				"undefined or it and minNrArgs must be integers but "+
-				"they are: "+
-				MoreObject.getPrettyStr(
-					{ minNrArgs: minNrArgs, maxNrArgs: maxNrArgs }
-				)
+				"Arg maxNrArgs must be undef or an int no smaller than "+
+				"minNrArgs",
+				{ minNrArgs: minNrArgs, maxNrArgs: maxNrArgs }
 			);
 		}
 	}
 	
-	var caller = assert.nrArgs;
+	var errorPlace = assert.nrArgs;
 	
 	if( arguments.length === 2 )
 	{
 		if( args.length !== minNrArgs )
 		{
 			throw new RuntimeError(
-				"Exactly "+minNrArgs+" arg(s) must be provided but "+
-				"the following args were provided: "+
-				MoreObject.getPrettyStr( args ),
-				caller
+				"Exactly "+minNrArgs+" arg(s) must be provided",
+				{ providedArgs: args },
+				undefined,
+				errorPlace
 			);
 		}
 	}
@@ -154,21 +172,25 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 		{
 			throw new RuntimeError(
 				"Between "+minNrArgs+" and "+maxNrArgs+" args must "+
-				"be provided but the following args were provided: "+
-				MoreObject.getPrettyStr( args ),
-				caller
+				"be provided",
+				{ providedArgs: args },
+				undefined,
+				errorPlace
 			);
 		}
 	}
+// Args minNrArgs and maxNrArgs were provided but maxNrArgs is
+// undef (arguments.length == 3). In this case it is required
+// that nr args is no smaller than minNrArgs
 	else
 	{
 		if( args.length < minNrArgs )
 		{
 			throw new RuntimeError(
-				"Atleast "+minNrArgs+" arg(s) must be provided but "+
-				"the following args were provided: "+
-				MoreObject.getPrettyStr( args ),
-				caller
+				"Atleast "+minNrArgs+" arg(s) must be provided",
+				{ providedArgs: args },
+				undefined,
+				errorPlace
 			);
 		}
 	}
@@ -183,34 +205,29 @@ assert.arg = function( argName, arg, schema )
 		assert.argType( "argName", argName, "str" );
 		
 		assert.argType( "schema", schema, "obj", "arr", "str" );
-		
-		if( Schema.isSchema( schema ) === false )
-		{
-			throw new RuntimeError(
-				"Arg schema must be a valid schema but is: "+
-				MoreObject.getPrettyStr( schema )
-			);
-		}
 	}
-	
-	caller = assert.arg;
 	
 	if( Schema.test( schema, arg ) === false )
 	{
+		errorPlace = assert.arg;
+		
 		throw new RuntimeError(
-			"Arg "+argName+" isnt valid. The arg and the schema used "+
-			"to validate it are: "+
-			MoreObject.getPrettyStr( { arg: arg, schema: schema } ),
-			caller
+			"Arg "+argName+" doesnt comply to required schema",
+			{ providedArg: arg, schema: schema },
+			undefined,
+			errorPlace
 		);
 	}
 }
 
 exports.assert = assert;
 
-var RuntimeError = require("ourglobe/sys/errors").RuntimeError;
+var mods = og.loadMods();
 
-var conf = require("ourglobe/conf/conf").conf;
-var sys = require("ourglobe/sys/sys").sys;
-var MoreObject = require("ourglobe/utils/moreobject").MoreObject;
-var Schema = require("ourglobe/verification/schema").Schema;
+var RuntimeError = mods.RuntimeError;
+
+var conf = mods.conf;
+var sys = mods.sys;
+var Schema = mods.Schema;
+
+});
