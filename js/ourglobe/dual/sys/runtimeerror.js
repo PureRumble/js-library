@@ -3,7 +3,7 @@ og.define(
 function( exports )
 {
 
-function RuntimeError( msg, errorVar, errorCode, caller )
+function RuntimeError( msg, errorVar, errorCode, errorPlace )
 {
 	if( conf.doVer() === true )
 	{
@@ -14,15 +14,18 @@ function RuntimeError( msg, errorVar, errorCode, caller )
 				{ providedArgs: arguments }
 			);
 		}
+		
+// Args dont need to be further verified as this is already done
+// by OurGlobeError
 	}
 	
-	if( caller === undefined )
+	if( errorPlace === undefined )
 	{
-		caller = RuntimeError;
+		errorPlace = RuntimeError;
 	}
 	
 	RuntimeError.ourGlobeSuper.call(
-		this, msg, errorVar, errorCode, caller
+		this, msg, errorVar, errorCode, errorPlace
 	);
 }
 
@@ -36,5 +39,13 @@ var conf = mods.conf;
 var sys = mods.sys;
 
 sys.extend( RuntimeError, OurGlobeError );
+
+// Do not use these vars in core modules, instead use
+// OurGlobeError.verArgs() where applicable
+RuntimeError.MSG_S = OurGlobeError.MSG_S;
+RuntimeError.VAR_S = OurGlobeError.VAR_S;
+RuntimeError.CODE_S = OurGlobeError.CODE_S;
+RuntimeError.PLACE_S = OurGlobeError.PLACE_S;
+RuntimeError.ARGS_FV = OurGlobeError.ARGS_FV;
 
 });

@@ -3,20 +3,29 @@ og.define(
 function( exports )
 {
 
-function FuncVerError( msg, errorVar, errorCode, caller )
+function FuncVerError( msg, errorVar, errorCode, errorPlace )
 {
 	if( conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1, 4 );
+		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
+		{
+			throw new RuntimeError(
+				"Between one and four args must be provided",
+				{ providedArgs: arguments }
+			);
+		}
+		
+// Args dont need to be further verified as this is already done
+// by OurGlobeError
 	}
 	
-	if( caller === undefined )
+	if( errorPlace === undefined )
 	{
-		caller = FuncVerError;
+		errorPlace = FuncVerError;
 	}
 	
 	FuncVerError.ourglobeSuper.call(
-		this, msg, errorVar, errorCode, caller
+		this, msg, errorVar, errorCode, errorPlace
 	);
 }
 

@@ -3,7 +3,7 @@ og.define(
 function( exports )
 {
 
-function OurGlobeError( msg, errorVar, errorCode, caller )
+function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 {
 	if( conf.doVer() === true )
 	{
@@ -15,55 +15,14 @@ function OurGlobeError( msg, errorVar, errorCode, caller )
 			);
 		}
 		
-		if( typeof( msg ) !== "string" )
-		{
-			throw new RuntimeError(
-				"Arg msg must be a string", { providedArg: msg }
-			);
-		}
-		
-		if(
-			errorVar !== undefined &&
-			(
-				typeof( errorVar ) !== "object" ||
-				Object.keys.length( errorVar ) === 0
-			)
-		)
-		{
-			throw new RuntimeError(
-				"Arg errorVar must be undef or a non-empty obj",
-				{ providedArg: errorVar }
-			);
-		}
-		
-		if(
-			errorCode !== undefined &&
-			(
-				typeof( errorCode ) !== "string" ||
-				errorCode.length === 0
-			)
-		)
-		{
-			throw new RuntimeError(
-				"Arg errorCode must be undef or a non-empty str",
-				{ providedArg: errorCode }
-			);
-		}
-		
-		if(
-			caller !== undefined && typeof( caller ) !== "function"
-		)
-		{
-			throw new RuntimeError(
-				"Arg caller must be undef or a func",
-				{ providedArg: caller }
-			);
-		}
+		OurGlobeError.verArgs(
+			msg, errorVar, errorCode, errorPlace
+		);
 	}
 	
-	if( caller === undefined )
+	if( errorPlace === undefined )
 	{
-		caller = OurGlobeError;
+		errorPlace = OurGlobeError;
 	}
 	
 	OurGlobeError.ourGlobeSuper.call( this, msg );
@@ -72,15 +31,69 @@ function OurGlobeError( msg, errorVar, errorCode, caller )
 	this.name = "OurGlobeError";
 	this.ourGlobeVar = errorVar;
 	this.ourGlobeCode = errorCode;
-	this.ourGlobeCaller = caller;
+	this.ourGlobePlace = errorPlace;
 	
-	Error.captureStackTrace( this, caller );
+	Error.captureStackTrace( this, errorPlace );
 }
 
-OurGlobeError.MSG_S = { minStrLen: 1 };
-OurGlobeError.CALLER_S = "func/undef";
-OurGlobeError.CODE_S = { types:"str/undef", minStrLen: 1 };
-OurGlobeError.VAR_S = { types:"obj/undef", minKeys: 1 };
+OurGlobeError.verArgs =
+function verArgs( msg, errorVar, errorCode, errorPlace )
+{
+	if( typeof( msg ) !== "string" )
+	{
+		throw new RuntimeError(
+			"Arg msg must be a string",
+			{ providedArg: msg },
+			undefined,
+			verArgs
+		);
+	}
+	
+	if(
+		errorVar !== undefined &&
+		(
+			typeof( errorVar ) !== "object" ||
+			Object.keys.length( errorVar ) === 0
+		)
+	)
+	{
+		throw new RuntimeError(
+			"Arg errorVar must be undef or a non-empty obj",
+			{ providedArg: errorVar },
+			undefined,
+			verArgs
+		);
+	}
+	
+	if(
+		errorCode !== undefined &&
+		(
+			typeof( errorCode ) !== "string" ||
+			errorCode.length === 0
+		)
+	)
+	{
+		throw new RuntimeError(
+			"Arg errorCode must be undef or a non-empty str",
+			{ providedArg: errorCode },
+			undefined,
+			verArgs
+		);
+	}
+	
+	if(
+		errorPlace !== undefined &&
+		typeof( errorPlace ) !== "function"
+	)
+	{
+		throw new RuntimeError(
+			"Arg errorPlace must be undef or a func",
+			{ providedArg: errorPlace },
+			undefined,
+			verArgs
+		);
+	}
+}
 
 exports.OurGlobeError = OurGlobeError;
 
@@ -90,7 +103,29 @@ var RuntimeError = mods.RuntimeError;
 
 var conf = mods.conf;
 var sys = mods.sys;
+var FuncVer = mods.FuncVer;
 
 sys.extend( OurGlobeError, Error );
+
+// Do not use these vars in core modules, instead use
+// OurGlobeError.verArgs() where applicable
+OurGlobeError.MSG_S = { minStrLen: 1 };
+OurGlobeError.VAR_S = { types:"obj/undef", minKeys: 1 };
+OurGlobeError.CODE_S =
+{
+	types:"str/undef",
+	minStrLen: 1,
+	chars:"letters/digits/underscore"
+};
+OurGlobeError.PLACE_S = "func/undef";
+OurGlobeError.ARGS_FV =
+new FuncVer(
+	[
+		OurGlobeError.MSG_S,
+		OurGlobeError.VAR_S,
+		OurGlobeError.CODE_S,
+		OurGlobeError.PLACE_S
+	]
+);
 
 });
