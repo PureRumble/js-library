@@ -1,8 +1,14 @@
 og.define(
-[ "./conf", "exports" ],
-function( conf, exports )
+[
+	"./conf",
+	"exports"
+],
+function(
+	confM,
+	exports
+)
 {
 
-exports.conf = conf;
+exports.conf = confM.conf;
 
 });

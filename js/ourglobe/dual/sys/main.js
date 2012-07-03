@@ -1,20 +1,20 @@
 og.define(
 [
-	"./sys",
 	"./ourglobeerror",
 	"./runtimeerror",
+	"./sys",
 	"exports"
 ],
 function(
-	sys,
-	OurGlobeError,
-	RuntimeError,
+	OurGlobeErrorM,
+	RuntimeErrorM,
+	sysM,
 	exports
 )
 {
 
-exports.sys = sys;
-exports.OurGlobeError = OurGlobeError;
-exports.RuntimeError = RuntimeError;
+exports.OurGlobeError = OurGlobeErrorM.OurGlobeError;
+exports.RuntimeError = RuntimeErrorM.RuntimeError;
+exports.sys = sysM.sys;
 
 });
