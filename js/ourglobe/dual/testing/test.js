@@ -1,11 +1,18 @@
-var FuncVer = require("ourglobe").FuncVer;
+og.define(
+[
+	"exports"
+],
+function(
+	exports
+)
+{
 
-var sys = require("ourglobe").sys;
-var MoreObject = require("ourglobe/utils").MoreObject;
+var FuncVer = og.FuncVer;
+var sys = og.sys;
 
-var Testing = {};
+var Test = {};
 
-Testing.getTests = function()
+Test.getTests = function()
 {
 	var tests = Array.prototype.slice.call( arguments );
 	var testObj = {};
@@ -18,8 +25,7 @@ Testing.getTests = function()
 		if( typeof( testName ) !== "string" )
 		{
 			throw new Error(
-				"Argument nr "+pos+" must be a test name but is: "+
-				JSON.stringify( testName, undefined, " " )
+				"Argument nr "+pos+" must be a test name"
 			);
 		}
 		
@@ -37,8 +43,7 @@ Testing.getTests = function()
 		)
 		{
 			throw new Error(
-				"Argument nr "+pos+" must be a func or obj but is: "+
-				JSON.stringify( test, undefined, " " )
+				"Argument nr "+pos+" must be a func or obj"
 			);
 		}
 		
@@ -48,17 +53,7 @@ Testing.getTests = function()
 	return testObj;
 }
 
-Testing.getPrettyStr = function( variable )
-{
-	if( arguments.length !== 1 )
-	{
-		throw new Error( "Exactly one arg must be provided" );
-	}
-	
-	return MoreObject.getPrettyStr( variable );
-}
-
-Testing.errorCheck = function( variable )
+Test.errorCheck = function( variable )
 {
 	if( arguments.length !== 1 )
 	{
@@ -71,7 +66,7 @@ Testing.errorCheck = function( variable )
 	}
 }
 
-Testing.errorCheckArgs = function( args )
+Test.errorCheckArgs = function( args )
 {
 	if( arguments.length !== 1 )
 	{
@@ -96,32 +91,42 @@ Testing.errorCheckArgs = function( args )
 	}
 }
 
-Testing.getVar = function( func )
+Test.getVar = function( func )
 {
-	var fv = new FuncVer(
-		[ "func" ], { badTypes:"undef" }
-	)
-		.verArgs( arguments )
-	;
+	if( arguments.length !== 1 )
+	{
+		throw new Error( "Exactly one arg must be provided" );
+	}
+	
+	if( typeof( func ) !== "function" )
+	{
+		throw new Error( "Arg func must be a func" );
+	}
 	
 	var returnVar = func();
 	
-	fv.verReturn( returnVar );
+	if( returnVar === undefined )
+	{
+		throw new Error(
+			"Arg func may not be without a return statement, nor may "+
+			"it return undef"
+		);
+	}
 	
 	return returnVar;
 }
 
-Testing.areEqual = function( objOne, objTwo )
+Test.areEqual = function( objOne, objTwo )
 {
 	if( arguments.length !== 2 )
 	{
 		throw new Error( "Exactly two args must be provided" );
 	}
 	
-	return Testing.compare( objOne, objTwo ) === undefined;
+	return Test.compare( objOne, objTwo ) === undefined;
 }
 
-Testing.compare = function( objOne, objTwo )
+Test.compare = function( objOne, objTwo )
 {
 	if( arguments.length !== 2 )
 	{
@@ -220,7 +225,7 @@ Testing.compare = function( objOne, objTwo )
 				typeof( objOne[ key ] ) !== "object" ?
 					objOne[ key ] === objTwo[ key ] :
 				
-				Testing.compare(
+				Test.compare(
 					objOne[ key ], objTwo[ key ]
 				)
 			;
@@ -247,7 +252,7 @@ Testing.compare = function( objOne, objTwo )
 	return "< variables not equal >";
 }
 
-Testing.clone = function( source )
+Test.clone = function( source )
 {
 	if( arguments.length !== 1 )
 	{
@@ -296,11 +301,13 @@ Testing.clone = function( source )
 			sourceVar === null ||
 			( source.constructor === Buffer && key === "parent" ) ?
 				sourceVar :
-				Testing.clone( sourceVar )
+				Test.clone( sourceVar )
 		;
 	}
 	
 	return clone;
 }
 
-exports.Testing = Testing;
+exports.Test = Test;
+
+});
