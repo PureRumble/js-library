@@ -252,3 +252,5 @@ ourglobe.RuntimeError = mods.RuntimeError;
 ourglobe.assert = mods.assert;
 ourglobe.Schema = mods.Schema;
 ourglobe.FuncVer = mods.FuncVer;
+
+require( jsFilePath );
