@@ -1,13 +1,19 @@
-var vows = require("vows");
+og.require(
+[
+	"ourglobe/testing"
+],
+function(
+	TestingM
+)
+{
 
-var crypto = require("crypto");
+var vows = require( "vows" );
+var crypto = require( "crypto" );
+var Test = TestingM.Test;
 
-var assert = require("ourglobe").assert;
-var FuncVer = require("ourglobe").FuncVer;
-var sys = require("ourglobe").sys;
-var MoreObject = require("ourglobe").MoreObject;
-
-var Testing = require("ourglobe/testing").Testing;
+var assert = og.assert;
+var FuncVer = og.FuncVer;
+var sys = og.sys;
 
 var suite = vows.describe( "Testing" );
 
@@ -17,18 +23,18 @@ function _areEqualTest( objOne, objTwo, areEqual )
 		.verArgs( arguments )
 	;
 	
-	var returnVar = Testing.getTests(
+	var returnVar = Test.getTests(
 		
 		"topic",
 		function()
 		{
-			return Testing.areEqual( objOne, objTwo );
+			return Test.areEqual( objOne, objTwo );
 		},
 		
 		"yields correctly",
 		function( topic )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			assert(
 				topic === areEqual,
@@ -50,18 +56,18 @@ function _cloneTest( source )
 {
 	new FuncVer( [ "any" ] ).verArgs( arguments );
 	
-	var returnVar = Testing.getTests(
+	var returnVar = Test.getTests(
 		
 		"topic",
 		function()
 		{
-			return Testing.clone( source );
+			return Test.clone( source );
 		},
 		
 		"is precisely equal to source only if obj/arr",
 		function( topic )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			if( sys.hasType( source, "obj", "arr" ) === true )
 			{
@@ -84,10 +90,10 @@ function _cloneTest( source )
 		"is equal to source",
 		function( topic )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			assert(
-				Testing.areEqual( source, topic ) === true,
+				Test.areEqual( source, topic ) === true,
 				"clone doesnt equal source "
 			);
 		}
@@ -107,7 +113,7 @@ arrTwo[ 11 ] = 23;
 var dango = { dingo:function( a ) { this.a = a; this.b = 1; } }
 var dongo = { dingo:function( a ) { this.a = a; this.b = 1; } }
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"two 'dingo'", _areEqualTest( "dingo", "dingo", true ),
 	
@@ -250,10 +256,10 @@ suite.addBatch( Testing.getTests(
 
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"same date obj",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var date = new Date();
 		
@@ -262,7 +268,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"two equal date objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var oneInt = 3847574382343;
 		
@@ -274,7 +280,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"two equal date objs created of eachother",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var oneInt = 3847574382343;
 		
@@ -286,7 +292,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"two not equal date objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var oneInt = 3847574382343;
 		
@@ -297,7 +303,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"arrs and objs of equal dates",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var dateOne = new Date( 0 );
 		var dateTwo = new Date( 100 );
@@ -342,7 +348,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"arrs and objs of equal dates except small difference",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var dateOne = new Date( 0 );
 		var dateTwo = new Date( 100 );
@@ -389,17 +395,17 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"Two equal buffers plain and in objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 1024 ) );
 		var bufTwo = new Buffer( bufOne.length );
 		
 		bufOne.copy( bufTwo );
 		
-		var returnVar = Testing.getTests(
+		var returnVar = Test.getTests(
 			
 			"plain", _areEqualTest( bufOne, bufTwo, true ),
 			
@@ -412,7 +418,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"Two nearly equal buffers plain and in objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var arrOne = crypto.randomBytes( 1024 );
 		
@@ -428,7 +434,7 @@ suite.addBatch( Testing.getTests(
 		
 		bufOne.copy( bufTwo );
 		
-		var returnVar = Testing.getTests(
+		var returnVar = Test.getTests(
 			
 			"plain", _areEqualTest( bufOne, bufTwo, false ),
 			
@@ -453,7 +459,7 @@ function Dango( dongo )
 }
 sys.inherits( Dango, Dingo );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"two equal class objs",
 	_areEqualTest( new Dingo(), new Dingo(), true ),
@@ -474,7 +480,7 @@ suite.addBatch( Testing.getTests(
 	"two equal class objs with instance values",
 	_areEqualTest(
 		new Dingo( "dango" ),
-		Testing.getVar(
+		Test.getVar(
 			function() { return new Dingo( "dango" ); }
 		),
 		true
@@ -483,7 +489,7 @@ suite.addBatch( Testing.getTests(
 	"two nearly equal class objs, one with its own instance value",
 	_areEqualTest(
 		new Dingo(),
-		Testing.getVar(
+		Test.getVar(
 			function()
 			{
 				var dingo = new Dingo();
@@ -497,7 +503,7 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	"cloning 42", _cloneTest( 42 ),
 	"cloning 'dingo'", _cloneTest( "dingo" ),
 	"cloning true", _cloneTest( true ),
@@ -507,7 +513,7 @@ suite.addBatch( Testing.getTests(
 	"cloning [ 42 ]", _cloneTest( [ 42 ] ),
 	"cloning [ 'dingo':42 ]",
 	_cloneTest(
-		Testing.getVar( function()
+		Test.getVar( function()
 		{
 			var arr = [];
 			arr[ "dingo" ] = 42;
@@ -523,7 +529,7 @@ suite.addBatch( Testing.getTests(
 	
 	"cloning [ 'dingo':42, 'dango':43 ]",
 	_cloneTest(
-		Testing.getVar( function()
+		Test.getVar( function()
 		{
 			var arr = [];
 			arr[ "dingo" ] = 42;
@@ -535,7 +541,7 @@ suite.addBatch( Testing.getTests(
 	
 	"cloning objs and arrs nested in one another",
 	_cloneTest(
-		Testing.getVar( function()
+		Test.getVar( function()
 		{
 			var arr = [ true ];
 			arr[ "dongo" ] = "dongo";
@@ -559,7 +565,7 @@ suite.addBatch( Testing.getTests(
 	
 	"cloning class obj",
 	_cloneTest(
-		Testing.getVar( function()
+		Test.getVar( function()
 		{
 			function Dingo()
 			{
@@ -575,7 +581,7 @@ suite.addBatch( Testing.getTests(
 	
 	"cloning inheriting class obj",
 	_cloneTest(
-		Testing.getVar( function()
+		Test.getVar( function()
 		{
 			function Dingo()
 			{
@@ -603,7 +609,7 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"cloning buffer", _cloneTest( new Buffer( 256 ) ),
 	
@@ -612,7 +618,7 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"cloning date", _cloneTest( new Date( 342345 ) ),
 	
@@ -622,3 +628,5 @@ suite.addBatch( Testing.getTests(
 ) );
 
 suite.export( module );
+
+});

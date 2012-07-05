@@ -3,7 +3,7 @@
 NODE=/usr/bin/node
 PWD=$( pwd )
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-INIT_JS=$SCRIPT_DIR/initnode.js
+INIT_JS=$SCRIPT_DIR/initserver.js
 
 if [[ $1 =~ ^/.* ]]; then
 	JS_FILE=$1
