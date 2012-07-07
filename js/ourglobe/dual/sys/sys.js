@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[ "require", "exports" ],
+function( require, exports )
 {
 
 var sys = {};
@@ -188,12 +188,11 @@ sys.getFunc = function( funcVer, func )
 
 exports.sys = sys;
 
-var mods = og.loadMods();
+var OurGlobeError = require( "./ourglobeerror" ).OurGlobeError;
+var RuntimeError = require( "./runtimeerror" ).RuntimeError;
 
-var conf = mods.conf;
-var OurGlobeError = mods.OurGlobeError;
-var RuntimeError = mods.RuntimeError;
-var assert = mods.assert;
-var FuncVer = mods.FuncVer;
+var conf = require( "og/d/conf/conf" ).conf;
+var assert = require( "og/d/verification/assert" ).assert;
+var FuncVer = require( "og/d/verification/funcver" ).FuncVer;
 
 });

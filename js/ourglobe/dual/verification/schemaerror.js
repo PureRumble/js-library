@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[ "require", "exports" ],
+function( require, exports )
 {
 
 function SchemaError( msg, errorVar, errorCode, errorPlace )
@@ -31,11 +31,12 @@ function SchemaError( msg, errorVar, errorCode, errorPlace )
 
 exports.SchemaError = SchemaError;
 
-var mods = og.loadMods();
+var RuntimeError =
+	require( "og/d/sys/runtimeerror" ).RuntimeError
+;
 
-var conf = mods.conf;
-var RuntimeError = mods.RuntimeError;
-var sys = mods.sys;
+var conf = require( "og/d/conf/conf" ).conf;
+var sys = require( "og/d/sys/sys" ).sys;
 
 sys.extend( SchemaError, RuntimeError );
 

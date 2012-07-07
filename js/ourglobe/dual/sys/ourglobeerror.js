@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[ "require", "exports" ],
+function( require, exports )
 {
 
 function OurGlobeError( msg, errorVar, errorCode, errorPlace )
@@ -97,13 +97,11 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 
 exports.OurGlobeError = OurGlobeError;
 
-var mods = og.loadMods();
+var RuntimeError = require( "./runtimeerror" ).RuntimeError;
 
-var RuntimeError = mods.RuntimeError;
-
-var conf = mods.conf;
-var sys = mods.sys;
-var FuncVer = mods.FuncVer;
+var conf = require( "og/d/conf/conf" ).conf;
+var sys = require( "./sys" ).sys;
+var FuncVer = require( "og/d/verification/funcver" ).FuncVer;
 
 sys.extend( OurGlobeError, Error );
 

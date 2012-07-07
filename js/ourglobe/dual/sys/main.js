@@ -1,4 +1,4 @@
-og.define(
+og.core.define(
 [
 	"./ourglobeerror",
 	"./runtimeerror",
@@ -16,5 +16,6 @@ function(
 exports.OurGlobeError = OurGlobeErrorM.OurGlobeError;
 exports.RuntimeError = RuntimeErrorM.RuntimeError;
 exports.sys = sysM.sys;
+exports.getF = sysM.sys.getF;
 
 });

@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[  "require", "exports" ],
+function( require, exports )
 {
 
 function assert( boolVal, msg, errorVar, errorCode, errorPlace )
@@ -222,12 +222,12 @@ assert.arg = function( argName, arg, schema )
 
 exports.assert = assert;
 
-var mods = og.loadMods();
+var RuntimeError =
+	require( "og/d/sys/runtimeerror" ).RuntimeError
+;
 
-var RuntimeError = mods.RuntimeError;
-
-var conf = mods.conf;
-var sys = mods.sys;
-var Schema = mods.Schema;
+var conf = require( "og/d/conf/conf" ).conf;
+var sys = require( "og/d/sys/sys" ).sys;
+var Schema = require( "./schema" ).Schema;
 
 });

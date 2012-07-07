@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[ "require", "exports" ],
+function( require, exports )
 {
 
 function FuncVer( argSchemas, returnSchema, extraArgsSchema )
@@ -183,14 +183,14 @@ FuncVer.prototype.verReturn = function( returnVar )
 
 exports.FuncVer = FuncVer;
 
-var mods = og.loadMods();
+var RuntimeError =
+	require( "og/d/sys/runtimeerror" ).RuntimeError
+;
+var FuncVerError = require( "./funcvererror" ).FuncVerError;
 
-var RuntimeError = mods.RuntimeError;
-var FuncVerError = og.require( "./funcvererror" ).FuncVerError;
-
-var conf = mods.conf;
-var assert = mods.assert;
-var Schema = mods.Schema;
+var conf = require( "og/d/conf/conf" ).conf;
+var assert = require( "og/d/verification/assert" ).assert;
+var Schema = require( "./schema" ).Schema;
 
 FuncVer.PROPER_STR = Schema.PROPER_STR;
 FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;

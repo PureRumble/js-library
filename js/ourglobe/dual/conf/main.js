@@ -1,4 +1,4 @@
-og.define(
+og.core.define(
 [
 	"./conf",
 	"exports"

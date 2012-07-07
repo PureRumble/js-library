@@ -1,6 +1,6 @@
-og.define(
-[ "exports" ],
-function( exports )
+og.core.define(
+[ "require", "exports" ],
+function( require, exports )
 {
 
 function Schema( schema )
@@ -1239,13 +1239,13 @@ Schema.META_SCHEMA.extraItems.goodTypes = Schema.META_SCHEMA;
 
 exports.Schema = Schema;
 
-var mods = og.loadMods();
+var RuntimeError =
+	require( "og/d/sys/runtimeerror" ).RuntimeError
+;
+var SchemaError = require( "./schemaerror" ).SchemaError;
 
-var RuntimeError = mods.RuntimeError;
-var SchemaError = og.require( "./schemaerror" ).SchemaError;
-
-var conf = mods.conf;
-var assert = mods.assert;
-var sys = mods.sys;
+var conf = require( "og/d/conf/conf" ).conf;
+var assert = require( "./assert" ).assert;
+var sys = require( "og/d/sys/sys" ).sys;
 
 });
