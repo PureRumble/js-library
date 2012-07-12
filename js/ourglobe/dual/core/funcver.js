@@ -1,17 +1,16 @@
 og.core.define(
-[ "require", "exports" ],
-function( require, exports )
+function()
 {
 
 function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 0, 3 );
+		og.assert.nrArgs( arguments, 0, 3 );
 		
-		assert.argType( "argSchemas", argSchemas, "arr", "undef" );
+		og.assert.argType( "argSchemas", argSchemas, "arr", "undef" );
 		
-		assert.argType(
+		og.assert.argType(
 			"returnSchema",
 			returnSchema,
 			"obj",
@@ -21,7 +20,7 @@ function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 			"undef"
 		);
 		
-		assert.argType(
+		og.assert.argType(
 			"extraArgsSchema",
 			extraArgsSchema,
 			"obj",
@@ -41,11 +40,11 @@ function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 
 FuncVer.prototype.addArgs = function( argSchemas )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 		
-		assert.argType( "argSchemas", argSchemas, "arr" );
+		og.assert.argType( "argSchemas", argSchemas, "arr" );
 	}
 	
 	this.argsSchemas.push( argSchemas );
@@ -55,11 +54,11 @@ FuncVer.prototype.addArgs = function( argSchemas )
 
 FuncVer.prototype.setExtraArgs = function( extraArgsSchema )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 		
-		assert.argType(
+		og.assert.argType(
 			"extraArgsSchema", extraArgsSchema, "obj", "arr", "str"
 		);
 	}
@@ -71,11 +70,11 @@ FuncVer.prototype.setExtraArgs = function( extraArgsSchema )
 
 FuncVer.prototype.setReturn = function( returnSchema )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 		
-		assert.argType(
+		og.assert.argType(
 			"returnSchema", returnSchema, "obj", "arr", "str"
 		);
 	}
@@ -87,11 +86,11 @@ FuncVer.prototype.setReturn = function( returnSchema )
 
 FuncVer.prototype.verArgs = function( args )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 		
-		assert.argType( "args", args, "obj" );
+		og.assert.argType( "args", args, "obj" );
 	}
 	
 	try
@@ -100,7 +99,7 @@ FuncVer.prototype.verArgs = function( args )
 	}
 	catch( err )
 	{
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg args must be an arguments object",
 			{ providedArg: args }
 		);
@@ -138,13 +137,13 @@ FuncVer.prototype.verArgs = function( args )
 			denseItems: true
 		};
 		
-		if( Schema.test( schema, finalArgs ) === true )
+		if( og.Schema.test( schema, finalArgs ) === true )
 		{
 			return this;
 		}
 	}
 	
-	throw new FuncVerError(
+	throw new og.FuncVerError(
 		"This FuncVer doesnt approve the provided args",
 		{ argSchemas: this.argSchemas, providedArgs: args  },
 		undefined,
@@ -154,9 +153,9 @@ FuncVer.prototype.verArgs = function( args )
 
 FuncVer.prototype.verReturn = function( returnVar )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 	}
 	
 	this.returnSchema =
@@ -165,12 +164,12 @@ FuncVer.prototype.verReturn = function( returnVar )
 		"undef"
 	;
 	
-	if( Schema.test( this.returnSchema, returnVar ) === true )
+	if( og.Schema.test( this.returnSchema, returnVar ) === true )
 	{
 		return this;
 	}
 	
-	throw new FuncVerError(
+	throw new og.FuncVerError(
 		"This FuncVer doesnt approve the provided return variable",
 		{
 			returnSchema: this.returnSchema,
@@ -181,28 +180,6 @@ FuncVer.prototype.verReturn = function( returnVar )
 	);
 }
 
-exports.FuncVer = FuncVer;
-
-var RuntimeError =
-	require( "og/d/sys/runtimeerror" ).RuntimeError
-;
-var FuncVerError = require( "./funcvererror" ).FuncVerError;
-
-var conf = require( "og/d/conf/conf" ).conf;
-var assert = require( "og/d/verification/assert" ).assert;
-var Schema = require( "./schema" ).Schema;
-
-FuncVer.PROPER_STR = Schema.PROPER_STR;
-FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;
-FuncVer.PROPER_STR_L = Schema.PROPER_STR_L;
-FuncVer.R_PROPER_STR_L = Schema.R_PROPER_STR_L;
-
-FuncVer.PROPER_OBJ = Schema.PROPER_OBJ;
-FuncVer.R_PROPER_OBJ = Schema.R_PROPER_OBJ;
-
-FuncVer.NON_NEG_INT = Schema.NON_NEG_INT;
-FuncVer.R_NON_NEG_INT = Schema.R_NON_NEG_INT;
-FuncVer.POS_INT = Schema.POS_INT;
-FuncVer.R_POS_INT = Schema.R_POS_INT;
+return FuncVer;
 
 });

@@ -1,15 +1,14 @@
 og.core.define(
-[  "require", "exports" ],
-function( require, exports )
+function()
 {
 
 function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 2 || arguments.length <= 5 ) )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Between two and five args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -17,7 +16,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 		
 		if( typeof( boolVal ) !== "boolean" )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Arg boolVal must be a bool", { providedArg: boolVal }
 			);
 		}
@@ -27,7 +26,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 			msg instanceof OurGlobeError === false
 		)
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Arg msg must be a str or an instance of OurGlobeError",
 				{ providedArg: msg }
 			);
@@ -42,7 +41,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 			)
 		)
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"If arg msg is an instance of OurGlobeError then the "+
 				"args errorVar, errorCode and errorPlace must be "+
 				"undefined",
@@ -75,7 +74,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 		else
 		{
 			err =
-				new RuntimeError(
+				new og.RuntimeError(
 					msg,
 					errorVar,
 					errorCode,
@@ -90,7 +89,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 
 assert.argType = function( argName, arg )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
 		assert.nrArgs( arguments, 3, undefined );
 	}
@@ -99,13 +98,15 @@ assert.argType = function( argName, arg )
 		Array.prototype.slice.call( arguments, 1 )
 	;
 	
-	if( sys.hasType.apply( sys.hasType, hasTypeArgs ) === false )
+	if(
+		og.sys.hasType.apply( og.sys.hasType, hasTypeArgs ) === false
+	)
 	{
 		var types = hasTypeArgs.slice( 1 );
 		
 		var errorPlace = assert.argType;
 		
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg "+argName+" is not of required type",
 			{ providedArg: arg, requiredTypes: types },
 			undefined,
@@ -116,11 +117,11 @@ assert.argType = function( argName, arg )
 
 assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 && arguments.length <= 3 ) )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Between one and three args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -128,7 +129,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 		
 		if( typeof( minNrArgs ) !== "number" )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Arg minNrArgs must be an int",
 				{ providedArg: minNrArgs }
 			);
@@ -144,7 +145,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 			)
 		)
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Arg maxNrArgs must be undef or an int no smaller than "+
 				"minNrArgs",
 				{ minNrArgs: minNrArgs, maxNrArgs: maxNrArgs }
@@ -158,7 +159,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length !== minNrArgs )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Exactly "+minNrArgs+" arg(s) must be provided",
 				{ providedArgs: args },
 				undefined,
@@ -170,7 +171,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length < minNrArgs || args.length > maxNrArgs )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Between "+minNrArgs+" and "+maxNrArgs+" args must "+
 				"be provided",
 				{ providedArgs: args },
@@ -186,7 +187,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length < minNrArgs )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Atleast "+minNrArgs+" arg(s) must be provided",
 				{ providedArgs: args },
 				undefined,
@@ -198,7 +199,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 
 assert.arg = function( argName, arg, schema )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
 		assert.nrArgs( arguments, 3 );
 		
@@ -207,11 +208,11 @@ assert.arg = function( argName, arg, schema )
 		assert.argType( "schema", schema, "obj", "arr", "str" );
 	}
 	
-	if( Schema.test( schema, arg ) === false )
+	if( og.Schema.test( schema, arg ) === false )
 	{
 		errorPlace = assert.arg;
 		
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg "+argName+" doesnt comply to required schema",
 			{ providedArg: arg, schema: schema },
 			undefined,
@@ -220,14 +221,6 @@ assert.arg = function( argName, arg, schema )
 	}
 }
 
-exports.assert = assert;
-
-var RuntimeError =
-	require( "og/d/sys/runtimeerror" ).RuntimeError
-;
-
-var conf = require( "og/d/conf/conf" ).conf;
-var sys = require( "og/d/sys/sys" ).sys;
-var Schema = require( "./schema" ).Schema;
+return assert;
 
 });

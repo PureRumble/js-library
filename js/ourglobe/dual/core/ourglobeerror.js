@@ -1,15 +1,14 @@
 og.core.define(
-[ "require", "exports" ],
-function( require, exports )
+function()
 {
 
 function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"Between one and four args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -41,7 +40,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 {
 	if( typeof( msg ) !== "string" )
 	{
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg msg must be a string",
 			{ providedArg: msg },
 			undefined,
@@ -57,7 +56,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg errorVar must be undef or a non-empty obj",
 			{ providedArg: errorVar },
 			undefined,
@@ -73,7 +72,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg errorCode must be undef or a non-empty str",
 			{ providedArg: errorCode },
 			undefined,
@@ -86,7 +85,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		typeof( errorPlace ) !== "function"
 	)
 	{
-		throw new RuntimeError(
+		throw new og.RuntimeError(
 			"Arg errorPlace must be undef or a func",
 			{ providedArg: errorPlace },
 			undefined,
@@ -94,16 +93,6 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		);
 	}
 }
-
-exports.OurGlobeError = OurGlobeError;
-
-var RuntimeError = require( "./runtimeerror" ).RuntimeError;
-
-var conf = require( "og/d/conf/conf" ).conf;
-var sys = require( "./sys" ).sys;
-var FuncVer = require( "og/d/verification/funcver" ).FuncVer;
-
-sys.extend( OurGlobeError, Error );
 
 // Do not use these vars in core modules, instead use
 // OurGlobeError.verArgs() where applicable
@@ -116,14 +105,7 @@ OurGlobeError.CODE_S =
 	chars:"letters/digits/underscore"
 };
 OurGlobeError.PLACE_S = "func/undef";
-OurGlobeError.ARGS_FV =
-new FuncVer(
-	[
-		OurGlobeError.MSG_S,
-		OurGlobeError.VAR_S,
-		OurGlobeError.CODE_S,
-		OurGlobeError.PLACE_S
-	]
-);
+
+return OurGlobeError;
 
 });

@@ -7,12 +7,12 @@ var sys = {};
 
 sys.extend = function( subClass, superClass )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 2 );
+		og.assert.nrArgs( arguments, 2 );
 		
-		assert.argType( "subClass", subClass, "func" );
-		assert.argType( "superClass", superClass, "func" );
+		og.assert.argType( "subClass", subClass, "func" );
+		og.assert.argType( "superClass", superClass, "func" );
 	}
 	
 	subClass.prototype.__proto__ = superClass.prototype;
@@ -26,9 +26,9 @@ sys.extend = function( subClass, superClass )
 
 sys.isOurType = function( str )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 	}
 	
 	return(
@@ -47,9 +47,9 @@ sys.isOurType = function( str )
 
 sys.typeOf = function( variable )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 1 );
+		og.assert.nrArgs( arguments, 1 );
 	}
 	
 	return (
@@ -61,9 +61,9 @@ sys.typeOf = function( variable )
 
 sys.hasType = function( variable )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		assert.nrArgs( arguments, 2, undefined );
+		og.assert.nrArgs( arguments, 2, undefined );
 	}
 	
 	var varType = sys.typeOf( variable );
@@ -109,7 +109,7 @@ sys.hasType = function( variable )
 		}
 		else if( hasType === undefined )
 		{
-			throw new RuntimeError(
+			throw new og.RuntimeError(
 				"One of the provided args isnt a valid type",
 				{ providedArg: reqType, argPos: pos }
 			);
@@ -121,9 +121,9 @@ sys.hasType = function( variable )
 
 sys.errorCheck = function( err, cb )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		new FuncVer( [ "any", "func" ] ).verArgs( arguments );
+		new og.FuncVer( [ "any", "func" ] ).verArgs( arguments );
 	}
 	
 	if( err instanceof Error === true )
@@ -138,30 +138,30 @@ sys.errorCheck = function( err, cb )
 
 sys.getFunc = function( funcVer, func )
 {
-	if( conf.doVer() === true )
+	if( og.conf.doVer() === true )
 	{
-		new FuncVer( [ [ FuncVer, "func" ], "func" ] )
+		new og.FuncVer( [ [ og.FuncVer, "func" ], "func" ] )
 			.verArgs( arguments )
 		;
 		
 		var newFunc =
 		function()
 		{
-			if( conf.doVer() === false )
+			if( og.conf.doVer() === false )
 			{
 				return func.apply( this, arguments );
 			}
 			else
 			{
 				funcVer =
-					funcVer instanceof FuncVer === true ?
+					funcVer instanceof og.FuncVer === true ?
 					funcVer :
 					funcVer()
 				;
 				
-				if( funcVer instanceof FuncVer === false )
+				if( funcVer instanceof og.FuncVer === false )
 				{
-					throw new RuntimeError(
+					throw new og.RuntimeError(
 						"The arg funcVer that sys.getFunc() was provided "+
 						"with is a func but it didnt return a FuncVer",
 						{ returnedVar: funcVer }
@@ -187,12 +187,5 @@ sys.getFunc = function( funcVer, func )
 }
 
 exports.sys = sys;
-
-var OurGlobeError = require( "./ourglobeerror" ).OurGlobeError;
-var RuntimeError = require( "./runtimeerror" ).RuntimeError;
-
-var conf = require( "og/d/conf/conf" ).conf;
-var assert = require( "og/d/verification/assert" ).assert;
-var FuncVer = require( "og/d/verification/funcver" ).FuncVer;
 
 });

@@ -1,5 +1,4 @@
-ourglobe.core.define(
-[ "exports" ],
+og.core.define(
 function( exports )
 {
 
@@ -22,6 +21,6 @@ conf.turnOnVer = function()
 	conf._doVer = true;
 }
 
-exports.conf = conf;
+return conf;
 
 });

@@ -3,7 +3,7 @@ var jsFilePath = process.argv[ 2 ];
 var requirejs = require( "og/l/d/requirejs/r.js" );
 
 requirejs.config({
-	baseUrl: "/home/work-purerumble/files/projects/ourglobe"
+	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
 
 ourglobe = {};
@@ -14,34 +14,24 @@ ourglobe.core.require = requirejs;
 ourglobe.core.define = requirejs.define;
 
 ourglobe.core.require(
-[
-	"og/d/sys",
-	"og/d/verification"
-],
-function(
-	sysM,
-	verificationM
-)
+[ "ourglobe/dual/core/core", "./modulehandler" ],
+function( core, ModuleHandler )
 {
-	var getF = sysM.sys.getFunc;
-	var RuntimeError = verificationM.RuntimeError;
-	var FuncVer = verificationM.FuncVer;
+	ourglobe.OurGlobeError = core.OurGlobeError;
+	ourglobe.RuntimeError = core.RuntimeError;
+	ourglobe.SchemaError = core.SchemaError;
+	ourglobe.FuncVerError = core.FuncVerError;
+	ourglobe.conf = core.conf;
+	ourglobe.sys = core.sys;
+	ourglobe.getF = core.getF;
+	ourglobe.assert = core.assert;
+	ourglobe.FuncVer = core.FuncVer;
+	ourglobe.Schema = core.Schema;
 	
-	var MODULE_S = { minProps: 1 };
-	
-	var isValidModule =
-	getF(
-		new FuncVer( [ "any" ], "bool" ),
-		function( module )
-		{
-			var returnVar =
-				typeof( module ) === "object" &&
-				Object.keys( module ).length > 0
-			;
-			
-			return returnVar;
-		}
-	);
+	var sys = og.sys;
+	var getF = og.getF;
+	var RuntimeError = og.RuntimeError;
+	var FuncVer = og.FuncVer;
 	
 	var MODULE_PATH_S = { minStrLen: 1 };
 	
@@ -51,385 +41,166 @@ function(
 		function( modulePath )
 		{
 			var returnVar =
-				typeof( modulePath ) === "string" &&
+				sys.hasType( modulePath, "str" ) === true &&
 				modulePath.length > 0
 			;
 			
 			return returnVar;
 		}
 	);
-
-	var getLoadModFunc =
-	getF(
-	new FuncVer()
-		.addArgs([
-			{ values:[ "require", "define" ] },
-			"arr",
-			"arr",
-			"func",
-			"obj"
-		])
-		.addArgs([
-			{ values:[ "require", "define" ] },
-			"arr",
-			"arr"
-		])
-		.setReturn( "func" ),
-	function( forFunc, reqs, mods, require, exports )
-	{
-		var loadMod =
-		getF(
-		new FuncVer( [ "str", "bool/undef" ] ),
-		function( pathStr, complete )
-		{
-			if( complete === undefined )
-			{
-				complete = false;
-			}
-			
-			pathStr =
-				pathStr.replace( /^\s+/, "" ).replace( /\s+$/, "" )
-			;
-			
-			var pathWithSep = undefined;
-			
-			if( complete === false && pathStr[ 0 ] !== "/" )
-			{
-				pathWithSep = "/"+pathStr;
-			}
-			
-			var foundMod = undefined
-			
-			for( var pos in reqs )
-			{
-				var currReq = reqs[ pos ];
-				
-				if(
-					currReq === pathStr ||
-					(
-						pathWithSep !== undefined &&
-						currReq.indexOf(
-							pathWithSep,
-							currReq.length - pathWithSep.length
-						) !== -1
-					)
-				)
-				{
-					if( foundMod !== undefined )
-					{
-						throw new RuntimeError(
-							"Provided module path search str matches "+
-							"multiple modules",
-							{ providedPathStr: pathStr }
-						);
-					}
-					
-					foundMod = pos;
-				}
-			}
-			
-			if( foundMod === undefined )
-			{
-				throw new RuntimeError(
-					"Provided module path search str matches no modules",
-					{ providedPathStr: pathStr }
-				);
-			}
-			
-			return mods[ foundMod ];
-		});
-		
-		if( forFunc === "define" )
-		{
-			loadMod.require =
-			getF(
-			new FuncVer( [ "any" ], MODULE_S ),
-			function( path )
-			{
-				if( isValidModulePath( path ) === false )
-				{
-					throw new RuntimeError(
-						"Arg path isnt a valid module path",
-						{ argPath: path }
-					);
-				}
-				
-				var mod = require( path );
-				
-				if( isValidModule( mod ) === false )
-				{
-					throw new RuntimeError(
-					"Module path '"+path+"' didnt give a valid module",
-					{ modulePath: path, yieldedModule: mod }
-				);
-				}
-				
-				return mod;
-			});
-		}
-		else
-		{
-			loadMod.require =
-			getF(
-			new FuncVer( undefined, undefined, "any" ),
-			function()
-			{
-				throw new RuntimeError(
-					"mods.require() must not be called in "+
-					"ourglobe.require()"
-				);
-			});
-		}
-		
-		if( forFunc === "define" )
-		{
-			loadMod.nrMods = 0;
-			
-// Args name and obj may be "any" since they are always to be
-// verified by mods.export()
-			loadMods.export =
-			getF(
-			new FuncVer( [ "any", "any" ] ),
-			function( name, obj )
-			{
-				if( typeof( name ) !== "string" )
-				{
-					throw new RuntimeError(
-						"Arg name must be a str", { argName: name }
-					);
-				}
-				
-				exports[ name ] = obj;
-				loadMod.nrMods++;
-				
-				if( isValidModule( exports ) === false )
-				{
-					throw new RuntimeError(
-						"The export doesnt yield a valid module",
-						{ argName: name, argObj: obj }
-					);
-				}
-			});
-			
-		}
-		else
-		{
-			loadMods.export =
-			getF(
-			new FuncVer( undefined, undefined, "any" ),
-			function()
-			{
-				throw new RuntimeError(
-					"mods.export() must not be called in "+
-					"ourglobe.require()"
-				);
-			});
-		}
-	});
 	
-// cleanReqs() always performs validation of provided req paths,
-// which is why the FuncVer only verifies that arg requirements
+// cleanDeps() always performs validation of provided dep paths,
+// which is why the FuncVer only verifies that arg dependencies
 // is an arr
-	var cleanReqs =
+	var cleanDeps =
 	getF(
-	new FuncVer()
-		.addArgs([ { values:[ "require", "define" ] }, "arr" ])
-		.setReturn( { extraItems: MODULE_PATH_S } ),
-	function( forFunc, requirements )
+	new FuncVer( [ "arr" ], { extraItems: MODULE_PATH_S } ),
+	function( dependencies )
 	{
-		var newReqs = [];
-		var reqsDic = [];
+		var newDeps = [];
+		var depsDic = [];
 		
-		for( var pos in requirements )
+		for( var pos in dependencies )
 		{
-			var currReq = requirements[ pos ];
+			var currDep = dependencies[ pos ];
 			
-			currReq =
-				currReq.replace( /^\s+/, "" ).replace(/\s+$/, "" )
+			currDep =
+				currDep.replace( /^\s+/, "" ).replace(/\s+$/, "" )
 			;
 			
-			if( isValidModulePath( currReq ) === false )
+			if( isValidModulePath( currDep ) === false )
 			{
-					throw new RuntimeError(
-						"One of the module requirement paths isnt valid",
-						{ providedReqPath: currReq, reqPathPos: pos },
-						cleanReqs
-					);
+				throw new RuntimeError(
+					"One of the dependency paths isnt valid",
+					{
+						providedDependencyPath: currDep,
+						dependencyArrPos: pos
+					},
+					cleanDeps
+				);
 			}
 			
-			if( currReq === "require" || currReq === "exports" )
+			if( currDep === "require" || currDep === "exports" )
 			{
-				if( forFunc === "require" )
-				{
-					throw new RuntimeError(
-						"The special modules 'require' and 'exports' must "+
-						"not be used in ourglobe.require()",
-						undefined,
-						cleanReqs
-					);
-				}
+				throw new RuntimeError(
+					"The special dependencies 'require' and 'exports' "+
+					"may not be specified",
+					undefined,
+					cleanDeps
+				);
 			}
 			else
 			{
-				if( reqsDic[ currReq ] !== undefined )
+				if( depsDic[ currDep ] !== undefined )
 				{
 					throw new RuntimeError(
-						"Module '"+currReq+"' is being required multiple "+
-						"times"
+						"Dependency '"+currDep+"' has been specified "+
+						"multiple times"
 					);
 				}
 				
-				reqsDic[ currReq ] = true;
+				depsDic[ currDep ] = true;
 				
-				newReqs.push( currReq );
+				newDeps.push( currDep );
 			}
 		}
 		
-		return newReqs;
-	});
-	
-	var verModules =
-	getF(
-	new FuncVer( [ { extraItems: MODULE_PATH_S }, "arr" ] ),
-	function( reqPaths, mods )
-	{
-		for( var pos = 0; pos < mods.length-2; pos++ )
-		{
-			if( isValidModule( mods[ pos ] ) === false )
-			{
-				throw new RuntimeError(
-					"Module path '"+reqPaths[ pos ]+"' didnt give a "+
-					"valid module",
-					{
-						modulePath: reqPaths[ pos ],
-						yieldedModule: mods[ pos ]
-					}
-				);
-			}
-		}
+		return newDeps;
 	});
 	
 	ourglobe.define =
 	getF(
 	new FuncVer()
-		.addArgs( "func" )
-		.addArgs( "arr/undef", "func" ),
-	function( requirements, cb )
+		.addArgs([ "func" ])
+		.addArgs([ "arr/undef", "func" ]),
+	function( dependencies, cb )
 	{
-		if( typeof( requirements ) === "function" )
+		if( sys.hasType( dependencies, "func" ) === true )
 		{
-			cb = requirements;
-			requirements = undefined;
+			cb = dependencies;
+			dependencies = undefined;
 		}
 		
-		if( requirements === undefined )
+		if( dependencies === undefined )
 		{
-			requirements = [];
+			dependencies = [];
 		}
 		
-		var newReqs = cleanReqs( "define", requirements );
+		var newDeps = cleanDeps( dependencies );
 		
-		newReqs.push( "require" )
-		newReqs.push( "exports" )
+		newDeps.push( "require" );
 		
 		ourglobe.core.define(
-			newReqs,
+			newDeps,
 			getF(
-			new FuncVer( undefined, undefined, "any" ),
+			new FuncVer( undefined, ModuleHandler.SET_RETURN )
+				.setExtraArgs( "any" ),
 			function()
 			{
-				var mods = Array.prototype.slice.call( arguments, 0 );
+				var require = arguments[ newDeps.length - 1 ];
 				
-				verModules( newReqs, mods );
+				newDeps.pop();
 				
-				var require = mods[ newReqs.length - 2 ];
-				var exports = mods[ newReqs.length - 1 ];
+				var mods = new ModuleHandler( newDeps, require );
 				
-				newReqs.pop();
-				newReqs.pop();
+				var returnVar = cb( mods );
 				
-				var loadMod =
-				getLoadModFunc(
-					"define", newReqs, mods, require, exports
-				);
-				
-				var returnVar = cb( loadMod );
-				
-				if( returnVar !== undefined )
+				if( ModuleHandler.isValidModule( returnVar ) === false )
 				{
 					throw new RuntimeError(
-						"The cb func of ourglobe.define() may not return a "+
-						"var and must define the module by "+
-						"mods.export()",
-						{ returnVar: returnVar }
+						"The cb of ourglobe.define() didnt return a valid "+
+						"module",
+						{ returnedModule: returnVar }
 					);
 				}
 				
-				if( loadMod.nrMods === 0 )
-				{
-					throw new RuntimeError(
-						"A module wasnt defined in ourglobe.define()"
-					);
-				}
-			});
+				return returnVar;
+			})
 		);
 	});
 	
 	ourglobe.require =
 	getF(
 	new FuncVer( [ "arr", "func/undef" ] ),
-	function( requirements, cb )
+	function( dependencies, cb )
 	{
-		var newReqs = cleanReqs( "require", requirements );
+		var newDeps = cleanDeps( dependencies );
 		
 		if( cb === undefined )
 		{
-			ourglobe.core.require( newReqs );
+			ourglobe.core.require( newDeps );
+			
+			return;
 		}
-		else
-		{
-			ourglobe.core.require(
-				newReqs,
-				getF(
-				new FuncVer( undefined, undefined, "any" ),
-				function()
+		
+		newDeps.push( "require" );
+		
+		ourglobe.core.require(
+			newDeps,
+			getF(
+			new FuncVer( undefined, ModuleHandler.SET_RETURN )
+				.setExtraArgs( "any" ),
+			function()
+			{
+				var require = arguments[ newDeps.length - 1 ];
+				
+				newDeps.pop();
+				
+				var mods = new ModuleHandler( newDeps, require );
+				
+				var returnVar = cb( mods );
+				
+				if( returnVar !== undefined )
 				{
-					var mods = Array.prototype.slice.call( arguments, 0 );
-					
-					verModules( newReqs, mods );
-					
-					var loadMod =
-						getLoadModFunc( "require", newReqs, mods )
-					;
-					
-					cb( loadMod );
-				});
-			);
-		}
+					throw new RuntimeError(
+						"The cb of ourglobe.require() may not return "+
+						"anything",
+						{ returnVar: returnVar }
+					);
+				}
+			})
+		);
 	});
 
-	ourglobe.require(
-	[
-		"og/d/sys/ourglobeerror",
-		"og/d/sys/runtimeerror",
-		"og/d/conf/conf",
-		"og/d/sys/sys",
-		"og/d/verification/assert",
-		"og/d/verification/Schema",
-		"og/d/verification/funcver"
-	],
-	function( mods )
-	{
-		ourglobe.OurGlobeError =
-			mods( "ourglobeerror" ).OurGlobeError
-		;
-		ourglobe.RuntimeError = mods( "runtimeerror" ).RuntimeError;
-		ourglobe.conf = mods( "conf" ).conf;
-		ourglobe.sys = mods( "sys" ).sys;
-		ourglobe.assert = mods( "assert" ).assert;
-		ourglobe.Schema = mods( "schema" ).Schema;
-		ourglobe.FuncVer = mods( "funcver" ).FuncVer;
-		
-		ourglobe.require( [ jsFilePath ] );
-	});
+	ourglobe.require( [ jsFilePath ] );
 });
