@@ -11,7 +11,8 @@ requirejs.config({
 	[
 		"ourglobe/server/initserver",
 		"ourglobe/dual/core",
-		"ourglobe/dual/testing"
+		"ourglobe/dual/testing",
+		"ourglobe/server/morehttp"
 	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
