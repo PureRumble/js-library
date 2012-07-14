@@ -1,10 +1,35 @@
 var jsFilePath = process.argv[ 2 ];
 
-var requirejs = require( "og/l/d/requirejs/r.js" );
+var requirejs =
+require(
+	"/home/work-purerumble/files/projects/ourglobe/js/"+
+	"og/l/d/requirejs/r.js"
+);
 
 requirejs.config({
+	packages:
+	[
+		"ourglobe/server/initserver",
+		"ourglobe/dual/core",
+		"ourglobe/dual/testing"
+	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
+
+// requirejs wraps an encountered error into its own and throws
+// it instead but this gives no useful information as the origin
+// of the original error. The error handling func of requirejs is
+// therefore redefined to obtain the original error
+requirejs.onError =
+function( err )
+{
+	if( err.originalError !== undefined )
+	{
+		throw err.originalError;
+	}
+	
+	throw err;
+}
 
 ourglobe = {};
 og = ourglobe;
@@ -13,8 +38,16 @@ ourglobe.core = {};
 ourglobe.core.require = requirejs;
 ourglobe.core.define = requirejs.define;
 
+// Since this is the absolutely first call to requirejs, the
+// module wont understand relative paths because it doesnt know
+// what module package the relative path refers to. Thus
+// modulehandler.js must be fetched via a path that is absolute
+// compared to requirejs' baseUrl
 ourglobe.core.require(
-[ "ourglobe/dual/core/core", "./modulehandler" ],
+[
+	"ourglobe/dual/core/core",
+	"ourglobe/server/initserver/modulehandler"
+],
 function( core, ModuleHandler )
 {
 	ourglobe.OurGlobeError = core.OurGlobeError;
@@ -28,47 +61,26 @@ function( core, ModuleHandler )
 	ourglobe.FuncVer = core.FuncVer;
 	ourglobe.Schema = core.Schema;
 	
+	var RuntimeError = og.RuntimeError;
 	var sys = og.sys;
 	var getF = og.getF;
-	var RuntimeError = og.RuntimeError;
 	var FuncVer = og.FuncVer;
-	
-	var MODULE_PATH_S = { minStrLen: 1 };
-	
-	var isValidModulePath =
-	getF(
-		new FuncVer( [ "any" ], "bool" ),
-		function( modulePath )
-		{
-			var returnVar =
-				sys.hasType( modulePath, "str" ) === true &&
-				modulePath.length > 0
-			;
-			
-			return returnVar;
-		}
-	);
 	
 // cleanDeps() always performs validation of provided dep paths,
 // which is why the FuncVer only verifies that arg dependencies
 // is an arr
-	var cleanDeps =
+	var verDeps =
 	getF(
-	new FuncVer( [ "arr" ], { extraItems: MODULE_PATH_S } ),
+	new FuncVer( [ "arr" ] ),
 	function( dependencies )
 	{
-		var newDeps = [];
 		var depsDic = [];
 		
 		for( var pos in dependencies )
 		{
 			var currDep = dependencies[ pos ];
 			
-			currDep =
-				currDep.replace( /^\s+/, "" ).replace(/\s+$/, "" )
-			;
-			
-			if( isValidModulePath( currDep ) === false )
+			if( ModuleHandler.isValidModulePath( currDep ) === false )
 			{
 				throw new RuntimeError(
 					"One of the dependency paths isnt valid",
@@ -76,7 +88,8 @@ function( core, ModuleHandler )
 						providedDependencyPath: currDep,
 						dependencyArrPos: pos
 					},
-					cleanDeps
+					undefined,
+					verDeps
 				);
 			}
 			
@@ -86,7 +99,8 @@ function( core, ModuleHandler )
 					"The special dependencies 'require' and 'exports' "+
 					"may not be specified",
 					undefined,
-					cleanDeps
+					undefined,
+					verDeps
 				);
 			}
 			else
@@ -95,17 +109,16 @@ function( core, ModuleHandler )
 				{
 					throw new RuntimeError(
 						"Dependency '"+currDep+"' has been specified "+
-						"multiple times"
+						"multiple times",
+						undefined,
+						undefined,
+						verDeps
 					);
 				}
 				
 				depsDic[ currDep ] = true;
-				
-				newDeps.push( currDep );
 			}
 		}
-		
-		return newDeps;
 	});
 	
 	ourglobe.define =
@@ -126,14 +139,16 @@ function( core, ModuleHandler )
 			dependencies = [];
 		}
 		
-		var newDeps = cleanDeps( dependencies );
+		verDeps( dependencies );
+		
+		var newDeps = dependencies.slice();
 		
 		newDeps.push( "require" );
 		
 		ourglobe.core.define(
 			newDeps,
 			getF(
-			new FuncVer( undefined, ModuleHandler.SET_RETURN )
+			new FuncVer( undefined, ModuleHandler.MODULE_S )
 				.setExtraArgs( "any" ),
 			function()
 			{
@@ -164,7 +179,9 @@ function( core, ModuleHandler )
 	new FuncVer( [ "arr", "func/undef" ] ),
 	function( dependencies, cb )
 	{
-		var newDeps = cleanDeps( dependencies );
+		verDeps( dependencies );
+		
+		var newDeps = dependencies.slice();
 		
 		if( cb === undefined )
 		{

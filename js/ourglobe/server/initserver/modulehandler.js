@@ -1,8 +1,10 @@
-og.core.require(
-[ "og/d/core/core" ],
+og.core.define(
+[ "ourglobe/dual/core/core" ],
 function( core )
 {
 
+var RuntimeError = core.RuntimeError;
+var sys = core.sys;
 var getF = core.getF;
 var FuncVer = core.FuncVer;
 
@@ -13,8 +15,6 @@ function( dependencies, require )
 {
 	this.deps = dependencies;
 	this.require = require;
-	
-	exports.ourglobe = {};
 });
 
 ModuleHandler.MODULE_S = { types: "obj/func", minProps: 1 };
@@ -34,9 +34,28 @@ function( module )
 	return returnVar;
 });
 
+ModuleHandler.MODULE_PATH_S = { minStrLen: 1 };
+
+ModuleHandler.isValidModulePath =
+getF(
+	new FuncVer( [ "any" ], "bool" ),
+	function( modulePath )
+	{
+		var returnVar =
+			sys.hasType( modulePath, "str" ) === true &&
+			modulePath.length > 0 &&
+			modulePath.search( /\s/ ) === -1
+		;
+		
+		return returnVar;
+	}
+);
+
+// Arg pathStr is always verified by ModuleHandler.get(), which
+// is why the FuncVer allows it to be anything
 ModuleHandler.prototype.get =
 getF(
-new FuncVer( [ "str", "bool/undef" ], ModuleHandler.MODULE_S ),
+new FuncVer( [ "any", "bool/undef" ], ModuleHandler.MODULE_S ),
 function( pathStr, complete )
 {
 	if( complete === undefined )
@@ -44,7 +63,13 @@ function( pathStr, complete )
 		complete = false;
 	}
 	
-	pathStr = pathStr.replace( /^\s+/, "" ).replace( /\s+$/, "" );
+	if( ModuleHandler.isValidModulePath( pathStr ) === false )
+	{
+		throw new RuntimeError(
+			"Provided dependency search str isnt valid",
+			{ providedSearchStr: pathStr }
+		);
+	}
 	
 	var pathWithSep = undefined;
 	
@@ -77,7 +102,7 @@ function( pathStr, complete )
 				throw new RuntimeError(
 					"Provided dependency search str matches multiple "+
 					"dependencies",
-					{ providedPathStr: pathStr }
+					{ providedSearchStr: pathStr }
 				);
 			}
 			
@@ -89,7 +114,7 @@ function( pathStr, complete )
 	{
 		throw new RuntimeError(
 			"Provided dependency search str matches no dependencies",
-			{ providedPathStr: pathStr }
+			{ providedSearchStr: pathStr }
 		);
 	}
 	
@@ -99,7 +124,10 @@ function( pathStr, complete )
 	{
 		throw new RuntimeError(
 			"Obtained dependency path doesnt yield a valid module",
-			{ obtainedDepPath: deps[ foundMod ], yieldedModule: mod }
+			{
+				obtainedDependencyPath: deps[ foundMod ],
+				yieldedModule: mod
+			}
 		);
 	}
 	
