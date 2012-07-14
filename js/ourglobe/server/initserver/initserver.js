@@ -12,7 +12,8 @@ requirejs.config({
 		"ourglobe/server/initserver",
 		"ourglobe/dual/core",
 		"ourglobe/dual/testing",
-		"ourglobe/server/morehttp"
+		"ourglobe/server/morehttp",
+		"ourglobe/dual/moremath"
 	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
@@ -59,6 +60,7 @@ function( core, ModuleHandler )
 	ourglobe.sys = core.sys;
 	ourglobe.getF = core.getF;
 	ourglobe.assert = core.assert;
+	ourglobe.OurGlobeObject = core.OurGlobeObject;
 	ourglobe.FuncVer = core.FuncVer;
 	ourglobe.Schema = core.Schema;
 	

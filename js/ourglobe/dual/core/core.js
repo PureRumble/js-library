@@ -7,6 +7,7 @@ og.core.define(
 	"./conf",
 	"./sys",
 	"./assert",
+	"./ourglobeobject",
 	"./funcver",
 	"./schema"
 ],
@@ -18,6 +19,7 @@ function(
 	conf,
 	sys,
 	assert,
+	OurGlobeObject,
 	FuncVer,
 	Schema
 )
@@ -33,6 +35,7 @@ og.conf = conf;
 og.sys = sys;
 og.getF = getF;
 og.assert = assert;
+og.OurGlobeObject = OurGlobeObject;
 og.FuncVer = FuncVer;
 og.Schema = Schema;
 
@@ -78,6 +81,7 @@ var returnVar =
 	sys: sys,
 	getF: getF,
 	assert: assert,
+	OurGlobeObject: OurGlobeObject,
 	FuncVer: FuncVer,
 	Schema: Schema
 };
