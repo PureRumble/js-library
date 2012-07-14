@@ -4,8 +4,8 @@ var timers = require("timers");
 var crypto = require("crypto");
 
 var RuntimeError = require("ourglobe").RuntimeError;
-var TestRuntimeError =
-	require("ourglobe/testing").TestRuntimeError
+var TestError =
+	require("ourglobe/testing").TestError
 ;
 var ServerRuntimeError =
 	require("ourglobe/webframework").ServerRuntimeError
@@ -294,7 +294,7 @@ sys.getFunc(
 new FuncVer().setExtraArgs( "any" ),
 function()
 {
-	throw new TestRuntimeError(
+	throw new TestError(
 		"This Error was thrown from _throwErr() in "+
 		"server-test.js"
 	);
@@ -321,7 +321,7 @@ function()
 	var cb = arguments[ nrArgs-1 ];
 	
 	cb(
-		new TestRuntimeError(
+		new TestError(
 			"This Error was given to cb from _throwErr() in "+
 			"server-test.js"
 		)
@@ -652,7 +652,7 @@ function( callStack, sendStr, recStr, opts )
 								(
 									errClass === expectedEntry.errorClass ||
 									(
-										errClass === TestRuntimeError &&
+										errClass === TestError &&
 										expectedEntry.errorClass === undefined
 									)
 								) &&
@@ -1908,7 +1908,7 @@ suite.addBatch( Testing.getTests(
 									function()
 									{
 										cb(
-											new TestRuntimeError(
+											new TestError(
 												"This err was handed to cb in "+
 												"server-test.js"
 											)

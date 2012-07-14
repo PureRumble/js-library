@@ -1,14 +1,6 @@
 og.define(
-[
-	"exports"
-],
-function(
-	exports
-)
+function()
 {
-
-var FuncVer = og.FuncVer;
-var sys = og.sys;
 
 var Test = {};
 
@@ -308,6 +300,6 @@ Test.clone = function( source )
 	return clone;
 }
 
-exports.Test = Test;
+return Test;
 
 });

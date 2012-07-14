@@ -1,17 +1,17 @@
 og.define(
 [
-	"./testruntimeerror",
-	"./test",
-	"exports"
+	"./testerror",
+	"./test"
 ],
-function(
-	TestRuntimeErrorM,
-	TestM,
-	exports
-)
+function( mods )
 {
 
-exports.TestRuntimeError = TestRuntimeErrorM.TestRuntimeError;
-exports.Test = TestM.Test;
+var returnVar =
+{
+	TestError: mods.get( "testerror" ),
+	Test: mods.get( "test" )
+};
+
+return returnVar;
 
 });

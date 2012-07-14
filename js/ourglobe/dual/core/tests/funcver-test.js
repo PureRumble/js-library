@@ -1,13 +1,20 @@
-var vows = require("vows");
+og.require(
+[
+	"ourglobe/lib/server/vows",
+	"ourglobe/dual/testing"
+],
+function( mods )
+{
 
-var Testing = require("ourglobe/testing").Testing;
+var vows = mods.get( "vows" );
 
-var assert = require("ourglobe").assert;
-var sys = require("ourglobe").sys;
+var Test = mods.get( "testing" ).Test;
 
-var MoreObject = require("ourglobe").MoreObject;
-var FuncVer = require("ourglobe").FuncVer;
-var FuncVerError = require("ourglobe").FuncVerError;
+var assert = og.assert;
+var sys = og.sys;
+
+var FuncVer = og.FuncVer;
+var FuncVerError = og.FuncVerError;
 
 var suite = vows.describe( "funcver" );
 
@@ -55,9 +62,10 @@ function testArgs( funcVer, args, argsHold )
 		{
 			assert(
 				topic === argsHold,
-				"The following arg set was supposed to yield "+
-				argsHold+": "+
-				MoreObject.getPrettyStr( { funcVer:funcVer, args:args } )
+				"The FuncVer should "+
+				( argsHold === true ? "approve" : "disapprove" )+
+				" the args",
+				{ funcVer:funcVer, args:args }
 			);
 		}
 	};
@@ -78,7 +86,7 @@ function argsFail( funcVer, args )
 function doubleTestArgs( funcVer, okArgs, notOkArgs )
 {
 	var returnVar =
-		Testing.getTests(
+		Test.getTests(
 			
 			"- holding args", argsHold( funcVer, okArgs ),
 			
@@ -98,11 +106,10 @@ function testReturn( funcVer, returnVar, returnHolds )
 		{
 			assert(
 				topic === returnHolds,
-				"The following arg set was supposed to yield "+
-				returnHolds+": "+
-				MoreObject.getPrettyStr(
-					{ funcVer:funcVer, returnVar:returnVar }
-				)
+				"The FuncVer should "+
+				( returnHolds === true ? "approve" : "disapprove" )+
+				" the return var",
+				{ funcVer: funcVer, returnVar: returnVar }
 			);
 		}
 	};
@@ -113,7 +120,7 @@ function testReturn( funcVer, returnVar, returnHolds )
 function doubleTestReturn( funcVer, okReturn, notOkReturn )
 {
 	var returnVar =
-		Testing.getTests(
+		Test.getTests(
 			
 			"- holding return",
 			testReturn( funcVer, okReturn, true ),
@@ -128,7 +135,7 @@ function doubleTestReturn( funcVer, okReturn, notOkReturn )
 }
 
 // no args
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"FuncVer given nothing with no args and one arg",
 	doubleTestArgs(
@@ -150,10 +157,10 @@ suite.addBatch( Testing.getTests(
 		new FuncVer(), [], [ undefined ]
 	)
 	
-) );
+));
 
 // simple args
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"Arg int FuncVer with arg int and no args",
 	doubleTestArgs(
@@ -197,10 +204,10 @@ suite.addBatch( Testing.getTests(
 		[ 11, "dingo", undefined ]
 	)
 	
-) );
+));
 
 // undef args
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"Arg undef FuncVer with no args and arg null",
 	doubleTestArgs(
@@ -258,10 +265,10 @@ suite.addBatch( Testing.getTests(
 		[ "dango", 43 ]
 	)
 	
-) );
+));
 
 // extra args
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"str,int,bool with str,int,bool and str,int,bool,bool",
 	doubleTestArgs(
@@ -322,10 +329,10 @@ suite.addBatch( Testing.getTests(
 		[ "dango", 43, undefined, undefined ]
 	)
 	
-) );
+));
 
 // many args
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"str|int args with str and number",
 	doubleTestArgs(
@@ -383,10 +390,10 @@ suite.addBatch( Testing.getTests(
 		[ "dango", 43, false, false, false, null ]
 	)
 	
-) );
+));
 
 // return var
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"undef return with undef and int",
 	doubleTestReturn(
@@ -407,6 +414,8 @@ suite.addBatch( Testing.getTests(
 		43
 	)
 	
-) );
+));
 
-suite.export( module );
+suite.run();
+
+});

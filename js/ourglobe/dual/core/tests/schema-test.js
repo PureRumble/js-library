@@ -1,13 +1,20 @@
-var vows = require("vows");
+og.require(
+[
+	"ourglobe/lib/server/vows",
+	"ourglobe/dual/testing"
+],
+function( mods )
+{
 
-var Testing = require("ourglobe/testing").Testing;
+var vows = mods.get( "vows" );
 
-var assert = require("ourglobe").assert;
-var sys = require("ourglobe").sys;
+var Test = mods.get( "testing" ).Test;
 
-var MoreObject = require("ourglobe").MoreObject;
-var Schema = require("ourglobe/verification").Schema;
-var SchemaError = require("ourglobe/verification").SchemaError;
+var assert = og.assert;
+var sys = og.sys;
+
+var Schema = og.Schema;
+var SchemaError = og.SchemaError;
 
 var suite = vows.describe( "schema" );
 
@@ -19,13 +26,14 @@ function testSchema( schema, variable, varExists, holds )
 		{
 			assert(
 				topic === holds,
-				"The following arg set was supposed to yield "+
-				holds+":\n"+
-				MoreObject.getPrettyStr({
+				"The schema should "+
+				( holds === true ? "approve" : "disapprove" ) +
+				" variable",
+				{
 					schema: schema,
 					variable: variable,
 					varExists: varExists
-				})
+				}
 			);
 		}
 	};
@@ -47,7 +55,7 @@ function doubleTest(
 	schema, varHolds, varFails, varHoldsExists, varFailsExists
 )
 {
-	return Testing.getTests(
+	return Test.getTests(
 		
 		"- holding test",
 		schemaHolds( schema, varHolds, varHoldsExists ),
@@ -82,8 +90,8 @@ function faultySchema( schema, variable, varExists )
 			
 			assert(
 				topic !== false,
-				"The following schema was supposed to be regarded "+
-				"as faulty:\n"+MoreObject.getPrettyStr( schema )
+				"The schema isnt faulty",
+				{ schema: schema }
 			);
 			
 			if( topic instanceof SchemaError !== true )
@@ -97,7 +105,7 @@ function faultySchema( schema, variable, varExists )
 }
 
 // empty schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"empty schema with undef", schemaHolds( {}, undefined ),
 	"empty schema with null", schemaHolds( {}, null ),
@@ -126,10 +134,10 @@ suite.addBatch( Testing.getTests(
 		}
 	)
 	
-) );
+));
 
 // general schema-tests
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"non-req schema (default value) with non-existing var",
 	schemaHolds( {}, undefined, false ),
@@ -151,10 +159,10 @@ suite.addBatch( Testing.getTests(
 		{ items:[], keys:undefined },
 		[]
 	)
-) );
+));
 
 // no type schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"props:{}, extraProps:'+' with {dingo:42} and []",
 	doubleTest( { props:{} }, { dingo:42 }, [] ),
@@ -186,10 +194,10 @@ suite.addBatch( Testing.getTests(
 	"types:int, chars:'letters' with 42 and 43.3",
 	doubleTest( { types:"int" }, 42, 43.3 )
 	
-) );
+));
 
 // str schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"'' with 'dingo'",
 	schemaHolds( "", "dingo" ),
@@ -251,10 +259,10 @@ suite.addBatch( Testing.getTests(
 	"' +  int /  string ' schema with 'dingo'",
 	schemaHolds( " +  int /  string ", "dingo" )
 	
-) );
+));
 
 // goodValues schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"goodValues:'dingo' with 'dingo' and 'dango'",
 	doubleTest( { goodValues:[ "dingo" ] }, "dingo", "dango" ),
@@ -274,10 +282,10 @@ suite.addBatch( Testing.getTests(
 		"dongo"
 	)
 	
-) );
+));
 
 // faulty schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	"faulty schema ' +  !¤% '",
 	faultySchema( " +  !¤% " ),
 	
@@ -322,7 +330,7 @@ suite.addBatch( Testing.getTests(
 	"faulty schema with nrProps and maxKeys",
 	faultySchema( { nrProps:3, maxKeys:3 }, {} )
 	
-) );
+));
 
 var arrOne = [];
 var arrTwo = [];
@@ -353,7 +361,7 @@ function Dengo() { }
 
 function Dongo() { }
 
-sys.inherits( Dango, Dingo );
+sys.extend( Dango, Dingo );
 
 var dingo = new Dingo();
 
@@ -364,7 +372,7 @@ var dengo = new Dengo();
 var dongo = new Dongo();
 
 // class schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"Dingo with dingo and dengo",
 	doubleTest( Dingo, dingo, dengo ),
@@ -372,10 +380,10 @@ suite.addBatch( Testing.getTests(
 	"[Dingo,Dongo] non-existing var and dengo",
 	doubleTest( [ Dingo, Dongo ], undefined, dengo, false, true )
 	
-) );
+));
 
 // obj schemas
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"empty schema with obj",
 	schemaHolds( {}, { dingo:"dinga", dinge:undefined } ),
@@ -514,10 +522,10 @@ suite.addBatch( Testing.getTests(
 		{ inherits:[ Dango, Dingo, Dengo ] }, dingo, dongo
 	)
 	
-) );
+));
 
 // schemas for strings
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"str with str and int",
 	doubleTest( [ "str" ], "dingo", 33 ),
@@ -667,9 +675,9 @@ suite.addBatch( Testing.getTests(
 	"faulty schema with badChars:'digit'",
 	faultySchema( { badChars:"digit" }, "dingo" )
 	
-) );
+));
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"gte:0.1 with large and too small number",
 	doubleTest( { types:"number", gte:0.1 }, 0.11, 0.09 ),
@@ -695,6 +703,8 @@ suite.addBatch( Testing.getTests(
 	"faulty schema with gt:0 and ste:-1",
 	faultySchema( { gt:0, ste:-1 }, 55 )
 	
-) );
+));
 
-suite.export( module );
+suite.run();
+
+});

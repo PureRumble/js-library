@@ -1,15 +1,15 @@
 og.require(
 [
-	"ourglobe/testing"
+	"crypto",
+	"ourglobe/lib/server/vows",
+	"ourglobe/dual/testing"
 ],
-function(
-	TestingM
-)
+function( mods )
 {
 
-var vows = require( "vows" );
-var crypto = require( "crypto" );
-var Test = TestingM.Test;
+var crypto = mods.get( "crypto" );
+var vows = mods.get( "vows" );
+var Test = mods.get( "testing" ).Test;
 
 var assert = og.assert;
 var FuncVer = og.FuncVer;
@@ -38,13 +38,10 @@ function _areEqualTest( objOne, objTwo, areEqual )
 			
 			assert(
 				topic === areEqual,
-				"The following arg set was supposed to yield "+areEqual+
-				": "+
-				MoreObject.getPrettyStr( {
-					objOne:objOne,
-					objTwo:objTwo,
-					areEqual:areEqual
-				} )
+				"Objs arent "+
+				( areEqual === true ? "equal" : "unequal" )+
+				" as expected",
+				{ objOne:objOne, objTwo:objTwo }
 			);
 		}
 	);
@@ -455,9 +452,9 @@ Dingo.prototype.dengo = "dengo";
 
 function Dango( dongo )
 {
-	Dango.super_.call( this, dongo );
+	Dango.ourGlobeSuper.call( this, dongo );
 }
-sys.inherits( Dango, Dingo );
+sys.extend( Dango, Dingo );
 
 suite.addBatch( Test.getTests(
 	
@@ -598,9 +595,9 @@ suite.addBatch( Test.getTests(
 				this.dengo = {};
 				this.dengo.dongo = [ 0, 1, 2, 3 ];
 				
-				Dango.super_.call( this );
+				Dango.ourGlobeSuper.call( this );
 			}
-			sys.inherits( Dango, Dingo );
+			sys.extend( Dango, Dingo );
 			
 			return new Dango();
 			
@@ -627,6 +624,6 @@ suite.addBatch( Test.getTests(
 	
 ) );
 
-suite.export( module );
+suite.run();
 
 });
