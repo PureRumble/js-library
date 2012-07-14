@@ -11,28 +11,19 @@ og.core.define(
 	"./schema"
 ],
 function(
-	OurGlobeErrorM,
-	RuntimeErrorM,
-	SchemaErrorM,
-	FuncVerErrorM,
-	confM,
-	sysM,
-	assertM,
-	FuncVerM,
-	SchemaM
+	OurGlobeError,
+	RuntimeError,
+	SchemaError,
+	FuncVerError,
+	conf,
+	sys,
+	assert,
+	FuncVer,
+	Schema
 )
 {
 
-var OurGlobeError = OurGlobeErrorM.OurGlobeError;
-var RuntimeError = RuntimeErrorM.RuntimeError;
-var SchemaError = SchemaErrorM.SchemaError;
-var FuncVerError = FuncVerErrorM.FuncVerError;
-var conf = confM.conf;
-var sys = sysM.sys;
-var getF = sysM.sys.getF;
-var assert = assertM.assert;
-var FuncVer = FuncVerM.FuncVer;
-var Schema = SchemaM.Schema;
+var getF = sys.getFunc;
 
 og.OurGlobeError = OurGlobeError;
 og.RuntimeError = RuntimeError;
@@ -45,7 +36,7 @@ og.assert = assert;
 og.FuncVer = FuncVer;
 og.Schema = Schema;
 
-OurGlobeError.ARGS_FV =
+OurGlobeError.CONSTR_FV =
 new FuncVer(
 	[
 		OurGlobeError.MSG_S,
@@ -54,6 +45,12 @@ new FuncVer(
 		OurGlobeError.PLACE_S
 	]
 );
+
+RuntimeError.MSG_S = OurGlobeError.MSG_S;
+RuntimeError.VAR_S = OurGlobeError.VAR_S;
+RuntimeError.CODE_S = OurGlobeError.CODE_S;
+RuntimeError.PLACE_S = OurGlobeError.PLACE_S;
+RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
 
 sys.extend( OurGlobeError, Error );
 sys.extend( RuntimeError, OurGlobeError );

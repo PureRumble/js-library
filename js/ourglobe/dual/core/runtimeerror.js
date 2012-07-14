@@ -28,14 +28,6 @@ function RuntimeError( msg, errorVar, errorCode, errorPlace )
 	);
 }
 
-// Do not use these vars in core modules, instead use
-// OurGlobeError.verArgs() where applicable
-RuntimeError.MSG_S = OurGlobeError.MSG_S;
-RuntimeError.VAR_S = OurGlobeError.VAR_S;
-RuntimeError.CODE_S = OurGlobeError.CODE_S;
-RuntimeError.PLACE_S = OurGlobeError.PLACE_S;
-RuntimeError.ARGS_FV = OurGlobeError.ARGS_FV;
-
-og.RuntimeError = RuntimeError;
+return RuntimeError;
 
 });

@@ -1,6 +1,5 @@
 og.core.define(
-[ "require", "exports" ],
-function( require, exports )
+function()
 {
 
 var sys = {};
@@ -18,7 +17,7 @@ sys.extend = function( subClass, superClass )
 	subClass.prototype.__proto__ = superClass.prototype;
 	
 	Object.defineProperty(
-		subClass.prototype,
+		subClass,
 		"ourGlobeSuper",
 		{ value: superClass, enumerable:false }
 	);
@@ -186,6 +185,6 @@ sys.getFunc = function( funcVer, func )
 	}
 }
 
-exports.sys = sys;
+return sys;
 
 });

@@ -27,7 +27,7 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 	OurGlobeError.ourGlobeSuper.call( this, msg );
 	
 	this.message = msg;
-	this.name = "OurGlobeError";
+	this.name = this.constructor.name;
 	this.ourGlobeVar = errorVar;
 	this.ourGlobeCode = errorCode;
 	this.ourGlobePlace = errorPlace;
@@ -52,7 +52,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		errorVar !== undefined &&
 		(
 			typeof( errorVar ) !== "object" ||
-			Object.keys.length( errorVar ) === 0
+			Object.keys( errorVar ).length === 0
 		)
 	)
 	{

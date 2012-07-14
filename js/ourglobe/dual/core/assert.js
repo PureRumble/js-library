@@ -23,7 +23,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 		
 		if(
 			typeof( msg ) !== "string" &&
-			msg instanceof OurGlobeError === false
+			msg instanceof og.OurGlobeError === false
 		)
 		{
 			throw new og.RuntimeError(
@@ -33,7 +33,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 		}
 		
 		if(
-			msg instanceof OurGlobeError === true &&
+			msg instanceof og.OurGlobeError === true &&
 			(
 				errorVar !== undefined ||
 				errorCode !== undefined ||
@@ -53,9 +53,9 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 				}
 			);
 		}
-		else if( msg instanceof OurGlobeError === false )
+		else if( msg instanceof og.OurGlobeError === false )
 		{
-			OurGlobeError.verArgs(
+			og.OurGlobeError.verArgs(
 				msg, errorVar, errorCode, errorPlace
 			);
 		}
@@ -67,7 +67,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 	{
 		var err = undefined;
 		
-		if( msg instanceof OurGlobeError === true )
+		if( msg instanceof og.OurGlobeError === true )
 		{
 			err = msg;
 		}
