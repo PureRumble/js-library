@@ -1,6 +1,6 @@
 og.core.define(
-[ "require", "exports" ],
-function( require, exports )
+[],
+function()
 {
 
 function SchemaError( msg, errorVar, errorCode, errorPlace )

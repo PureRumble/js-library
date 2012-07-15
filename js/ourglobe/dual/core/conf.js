@@ -1,4 +1,5 @@
 og.core.define(
+[],
 function( exports )
 {
 

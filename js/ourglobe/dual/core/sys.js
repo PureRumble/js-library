@@ -1,8 +1,45 @@
 og.core.define(
+[],
 function()
 {
 
 var sys = {};
+
+sys.funcsWithDelayedFvs = [];
+
+sys.prepareDelayedFuncVers =
+function()
+{
+	if( og.conf.doVer() === true )
+	{
+		new og.FuncVer().verArgs( arguments );
+	}
+	
+	for(
+		var item = 0;
+		item < sys.funcsWithDelayedFvs.length;
+		item++
+	)
+	{
+		var currFunc = sys.funcsWithDelayedFvs[ item ];
+		
+		var cb = currFunc.ourglobe.funcVer;
+		var funcVer = cb();
+		
+		if( funcVer instanceof og.FuncVer === false )
+		{
+			throw new RuntimeError(
+				"The cb given to getF() or sys.getFunc() didnt return "+
+				"a FuncVer",
+				{ returnedVar: funcVer }
+			);
+		}
+		
+		currFunc.ourglobe.funcVer = funcVer;
+	}
+	
+	sys.funcsWithDelayedFvs = [];
+};
 
 sys.extend = function( subClass, superClass )
 {
@@ -152,20 +189,7 @@ sys.getFunc = function( funcVer, func )
 			}
 			else
 			{
-				funcVer =
-					funcVer instanceof og.FuncVer === true ?
-					funcVer :
-					funcVer()
-				;
-				
-				if( funcVer instanceof og.FuncVer === false )
-				{
-					throw new og.RuntimeError(
-						"The arg funcVer that sys.getFunc() was provided "+
-						"with is a func but it didnt return a FuncVer",
-						{ returnedVar: funcVer }
-					);
-				}
+				var funcVer = newFunc.ourglobe.funcVer;
 				
 				funcVer.verArgs( arguments );
 				
@@ -176,6 +200,14 @@ sys.getFunc = function( funcVer, func )
 				return returnVar;
 			}
 		};
+		
+		newFunc.ourglobe = {};
+		newFunc.ourglobe.funcVer = funcVer;
+		
+		if( sys.hasType( funcVer, "func" ) === true )
+		{
+			sys.funcsWithDelayedFvs.push( newFunc );
+		}
 		
 		return newFunc;
 	}

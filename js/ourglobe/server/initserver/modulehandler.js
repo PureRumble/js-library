@@ -8,15 +8,18 @@ var sys = core.sys;
 var getF = core.getF;
 var FuncVer = core.FuncVer;
 
+var constrFv = new FuncVer( [ { extraItems: "str" }, "func" ] );
+
 var ModuleHandler =
 getF(
-new FuncVer( [ { extraItems: "str" }, "func" ] ),
+constrFv,
 function( dependencies, require )
 {
 	this.deps = dependencies;
 	this.require = require;
 });
 
+ModuleHandler.CONSTR_FV = constrFv;
 ModuleHandler.MODULE_S = { types: "obj/func", minProps: 1 };
 
 ModuleHandler.isValidModule =
@@ -123,10 +126,10 @@ function( pathStr, complete )
 	if( ModuleHandler.isValidModule( mod ) === false )
 	{
 		throw new RuntimeError(
-			"Obtained dependency path doesnt yield a valid module",
+			"Obtained dependency path doesnt return a valid module",
 			{
-				obtainedDependencyPath: deps[ foundMod ],
-				yieldedModule: mod
+				dependency: deps[ foundMod ],
+				returnedModule: mod
 			}
 		);
 	}

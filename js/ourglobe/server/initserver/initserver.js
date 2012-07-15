@@ -27,6 +27,9 @@ function( err )
 {
 	if( err.originalError !== undefined )
 	{
+// d
+		console.log( JSON.stringify( err ) );
+		
 		throw err.originalError;
 	}
 	
@@ -48,9 +51,16 @@ ourglobe.core.define = requirejs.define;
 ourglobe.core.require(
 [
 	"ourglobe/dual/core/core",
-	"ourglobe/server/initserver/modulehandler"
+	"ourglobe/server/initserver/modulehandler",
+	"ourglobe/server/initserver/definemodulehandler",
+	"ourglobe/server/initserver/requiremodulehandler"
 ],
-function( core, ModuleHandler )
+function(
+	core,
+	ModuleHandler,
+	DefineModuleHandler,
+	RequireModuleHandler
+)
 {
 	ourglobe.OurGlobeError = core.OurGlobeError;
 	ourglobe.RuntimeError = core.RuntimeError;
@@ -69,9 +79,6 @@ function( core, ModuleHandler )
 	var getF = og.getF;
 	var FuncVer = og.FuncVer;
 	
-// cleanDeps() always performs validation of provided dep paths,
-// which is why the FuncVer only verifies that arg dependencies
-// is an arr
 	var verDeps =
 	getF(
 	new FuncVer( [ "arr" ] ),
@@ -124,6 +131,36 @@ function( core, ModuleHandler )
 		}
 	});
 	
+	var verMods =
+	getF(
+	new FuncVer( [
+		"arr",
+		{ extraItems: ModuleHandler.MODULE_PATH_S }
+	]),
+	function( mods, deps )
+	{
+		for( var item in mods )
+		{
+			var currMod = mods[ item ];
+			
+			if(
+// og.define() may obtain an undef module due to circular deps
+// that are later resolved by mods.get(), while og.require()
+// may obtain such module because it requires a dep that in turn
+// only executes og.require()
+				currMod !== undefined &&
+				ModuleHandler.isValidModule( currMod ) === false
+			)
+			{
+				throw new RuntimeError(
+					"Dependency '"+deps[ item ]+"' didnt return a valid "+
+					"module",
+					{ dependency: deps[ item ], returnedModule: currMod }
+				);
+			}
+		}
+	});
+	
 	ourglobe.define =
 	getF(
 	new FuncVer()
@@ -155,13 +192,18 @@ function( core, ModuleHandler )
 				.setExtraArgs( "any" ),
 			function()
 			{
-				var require = arguments[ newDeps.length - 1 ];
+				var mods = Array.prototype.slice.call( arguments );
 				
+				var require = mods.pop();
 				newDeps.pop();
 				
-				var mods = new ModuleHandler( newDeps, require );
+				verMods( mods, newDeps );
 				
-				var returnVar = cb( mods );
+				var modHandler =
+					new DefineModuleHandler( newDeps, require )
+				;
+				
+				var returnVar = cb( modHandler );
 				
 				if( ModuleHandler.isValidModule( returnVar ) === false )
 				{
@@ -202,13 +244,25 @@ function( core, ModuleHandler )
 				.setExtraArgs( "any" ),
 			function()
 			{
-				var require = arguments[ newDeps.length - 1 ];
+				var mods = Array.prototype.slice.call( arguments );
 				
+				var require = mods.pop();
 				newDeps.pop();
 				
-				var mods = new ModuleHandler( newDeps, require );
+				verMods( mods, newDeps );
 				
-				var returnVar = cb( mods );
+// These two funcs are executed in this order since a delayed fv
+// probably wants to use a variable pointer to a module that is
+// part of a circular dependency, but that pointer is set by a
+// delayed cb that has been registered with DefineModuleHandler
+				DefineModuleHandler.execDelayedCbs();
+				sys.prepareDelayedFuncVers();
+				
+				var modHandler =
+					new RequireModuleHandler( newDeps, require )
+				;
+				
+				var returnVar = cb( modHandler );
 				
 				if( returnVar !== undefined )
 				{
