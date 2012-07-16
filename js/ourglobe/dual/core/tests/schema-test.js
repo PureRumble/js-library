@@ -22,7 +22,7 @@ function testSchema( schema, variable, varExists, holds )
 {
 	var returnVar = {
 		topic: new Schema( schema ).test( variable, varExists ),
-		"is OK": function( topic )
+		"result is as expected": function( topic )
 		{
 			assert(
 				topic === holds,
@@ -57,10 +57,10 @@ function doubleTest(
 {
 	return Test.getTests(
 		
-		"- holding test",
+		"- schema approves first var",
 		schemaHolds( schema, varHolds, varHoldsExists ),
 		
-		"- failing test",
+		"- schema disapproves second var",
 		schemaFails( schema, varFails, varFailsExists )
 		
 	);
@@ -103,6 +103,20 @@ function faultySchema( schema, variable, varExists )
 	
 	return returnVar;
 }
+
+function func() { }
+
+function Dingo() { }
+function Dango() { }
+function Dengo() { }
+function Dongo() { }
+
+sys.extend( Dango, Dingo );
+
+var dingo = new Dingo();
+var dango = new Dango();
+var dengo = new Dengo();
+var dongo = new Dongo();
 
 // empty schemas
 suite.addBatch( Test.getTests(
@@ -164,7 +178,7 @@ suite.addBatch( Test.getTests(
 // no type schemas
 suite.addBatch( Test.getTests(
 	
-	"props:{}, extraProps:'+' with {dingo:42} and []",
+	"props:{} with {dingo:42} and []",
 	doubleTest( { props:{} }, { dingo:42 }, [] ),
 	
 	"extraItems:'+' with [42] and {}",
@@ -182,8 +196,11 @@ suite.addBatch( Test.getTests(
 	"nrKeys:1 with obj and int",
 	doubleTest( { nrKeys:1 }, { dingo:42 }, 43 ),
 	
-	"inherits:Object with {} and []",
-	doubleTest( { inherits:Object }, {}, [] ),
+	"extraProps:true with { dingo:42 } and dengo",
+	doubleTest( { extraProps:true }, { dingo:42 }, dengo ),
+	
+	"inherits:Object with {} and null",
+	doubleTest( { inherits:Object }, {}, null ),
 	
 	"chars:'letters' with '' and 43",
 	doubleTest( { chars:"letters" }, "", 43 ),
@@ -353,24 +370,6 @@ arrSix[4] = "dingi";
 
 delete arrFive[0];
 
-function Dingo() { }
-
-function Dango() { }
-
-function Dengo() { }
-
-function Dongo() { }
-
-sys.extend( Dango, Dingo );
-
-var dingo = new Dingo();
-
-var dango = new Dango();
-
-var dengo = new Dengo();
-
-var dongo = new Dongo();
-
 // class schemas
 suite.addBatch( Test.getTests(
 	
@@ -391,8 +390,11 @@ suite.addBatch( Test.getTests(
 	"empty schema with arr",
 	schemaHolds( {}, [ "dingo", "dinga", "dinge" ] ),
 	
-	"types:'obj' with obj and arr",
+	"types:'obj' with empty obj and arr",
 	doubleTest( { types:"obj" }, {}, [] ),
+	
+	"types:'obj' with non-empty obj and dingo",
+	doubleTest( { types:"obj" }, { dingo:42 }, dingo ),
 	
 	"prop dingo:'int' with and without correct prop type",
 	doubleTest(
@@ -514,12 +516,32 @@ suite.addBatch( Test.getTests(
 	"inherits:[Dingo] with dingo and dengo",
 	doubleTest( { inherits:[Dingo] }, dingo, dengo ),
 	
-	"inherits:Dingo with dango and dengo",
-	doubleTest( { inherits:Dingo }, dango, dengo ),
+	"extends:Dingo with dango and dengo",
+	doubleTest( { extends:Dingo }, dango, dengo ),
 	
 	"inherits:[Dango,Dingo,Dengo] with dingo and dongo",
 	doubleTest(
 		{ inherits:[ Dango, Dingo, Dengo ] }, dingo, dongo
+	),
+	
+	"types:'func/arr', extends:[Array] with [42] and func",
+	doubleTest(
+		{ types:"func/arr", extends:[Array] }, [42], func
+	),
+	
+	"types:'func/arr', extends:[Function] with func and [43]",
+	doubleTest(
+		{ types:"func/arr", extends:[Function] }, func, [43]
+	),
+	
+	"extends:[Object] with {} and null",
+	doubleTest(
+		{ extends:[Object] }, {}, null
+	),
+	
+	"extends:[Object] with func and undefined",
+	doubleTest(
+		{ extends:[Object] }, func, undefined
 	)
 	
 ));

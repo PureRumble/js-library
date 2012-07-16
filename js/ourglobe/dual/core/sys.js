@@ -70,6 +70,7 @@ sys.isOurType = function( str )
 	return(
 		str === "any" ||
 		str === "object" || str === "obj" ||
+		str === "instance" || str === "inst" ||
 		str === "function" || str === "func" ||
 		str === "array" || str === "arr" ||
 		str === "string" || str === "str" ||
@@ -90,8 +91,11 @@ sys.typeOf = function( variable )
 	
 	return (
 		variable === null ? "null" :
+		variable instanceof Object === false ? typeof( variable ) :
+		variable.__proto__ === Object.prototype ? "object" :
 		variable instanceof Array === true ? "array" :
-		typeof( variable )
+		variable instanceof Function === true ? "function" :
+		"instance"
 	);
 }
 
@@ -114,28 +118,46 @@ sys.hasType = function( variable )
 			reqType === "number" ? varType === "number" :
 			
 			( reqType === "integer" || reqType === "int" ) ?
-			varType === "number" && variable % 1 === 0 :
-			
+					
+					varType === "number" && variable % 1 === 0 :
+					
 			( reqType == "boolean" || reqType === "bool" ) ?
-			varType === "boolean" :
-			
+					
+					varType === "boolean" :
+					
 			( reqType === "string" || reqType === "str" ) ?
-			varType === "string" :
-			
+					
+					varType === "string" :
+					
 			( reqType === "undefined" || reqType === "undef" ) ?
-			varType === "undefined" :
-			
-			reqType === "null" ? varType === "null" :
-			
+					
+					varType === "undefined" :
+					
+			reqType === "null" ?
+					
+					varType === "null" :
+					
 			( reqType === "array" || reqType === "arr" ) ?
-			varType === "array" :
-			
+					
+					varType === "array" :
+					
 			( reqType === "function" || reqType === "func" ) ?
-			varType === "function" :
-			
+					
+					varType === "function" :
+					
 			( reqType === "object" || reqType === "obj" ) ?
-			varType === "object" :
-			
+					
+					varType === "object" :
+					
+			( reqType === "instance" || reqType === "inst" ) ?
+					
+					(
+						varType === "object" ||
+						varType === "array" ||
+						varType === "function" ||
+						varType === "instance"
+					) :
+					
 			undefined
 		;
 		

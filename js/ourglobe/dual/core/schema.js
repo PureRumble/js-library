@@ -455,6 +455,7 @@ Schema.test = function( schema, variable, varExists )
 					prop === "nrItems" ||
 					prop === "denseItems" ||
 					prop === "inherits" ||
+					prop === "extends" ||
 					prop === "keys" ||
 					prop === "extraKeys" ||
 					prop === "minKeys" ||
@@ -575,121 +576,94 @@ Schema.test = function( schema, variable, varExists )
 		if( matchesValue === false ) { return false; }
 	}
 	
-	if( og.sys.hasType( variable, "obj", "arr" ) === true )
+	if( og.sys.hasType( variable, "inst" ) === true )
 	{
-		var obj = variable;
-		var isArr = og.sys.hasType( variable, "arr" );
-		
-		var keysProp = isArr === true ?
-			Schema.getSchemaProp(
-				schema, [ "items", "keys" ], [ "obj", "arr" ],
-				true
-			) :
-			
-			Schema.getSchemaProp(
-				schema,
-				[ "props", "properties", "keys" ],
-				[ "obj", "arr" ],
-				true
-			)
-		;
-		
-		var extraKeysProp = isArr === true ?
-			Schema.getSchemaProp(
-				schema,
-				[ "extraItems", "extraKeys" ],
-				[ "bool", "str", "func", "obj", "arr" ]
-			) :
-			
-			Schema.getSchemaProp(
-				schema,
-				[ "extraProps", "extraProperties", "extraKeys" ],
-				[ "bool", "str", "func", "obj", "arr" ]
-			)
-		;
-		
-		var minKeysProp = isArr === true ?
-			Schema.getSchemaProp(
-				schema, [ "minItems", "minKeys", ], "int"
-			) :
-			
-			Schema.getSchemaProp(
-				schema,
-				[ "minProps", "minProperties", "minKeys", ],
-				"int"
-			)
-		;
-		
-		var maxKeysProp = isArr === true ?
-			Schema.getSchemaProp(
-				schema, [ "maxItems", "maxKeys", ], "int"
-			) :
-			
-			Schema.getSchemaProp(
-				schema,
-				[ "maxProps", "maxProperties", "maxKeys", ],
-				"int"
-			)
-		;
-		
-		var nrKeysProp = isArr === true ?
-			Schema.getSchemaProp(
-				schema, [ "nrItems", "nrKeys", ], "int"
-			) :
-			
-			Schema.getSchemaProp(
-				schema, [ "nrProps", "nrProperties", "nrKeys", ], "int"
-			)
-		;
-		
-		Schema.assertSingleSchemaProp(
-			schema, minKeysProp, nrKeysProp
-		);
-		
-		Schema.assertSingleSchemaProp(
-			schema, maxKeysProp, nrKeysProp
-		);
-		
-		var keys = undefined;
-		
-		if( keysProp !== undefined )
+		if( og.sys.hasType( variable, "obj", "arr" ) === true )
 		{
-			keys = schema[keysProp];
+			var obj = variable;
+			var isArr = og.sys.hasType( variable, "arr" );
 			
-			for( var key in keys )
-			{
-				if(
-					Schema.testMany(
-						keys[key], obj[key], key in obj
-					) === false
+			var keysProp = isArr === true ?
+				Schema.getSchemaProp(
+					schema, [ "items", "keys" ], [ "obj", "arr" ],
+					true
+				) :
+				
+				Schema.getSchemaProp(
+					schema,
+					[ "props", "properties", "keys" ],
+					[ "obj", "arr" ],
+					true
 				)
-				{
-					return false;
-				}
-			}
-		}
-		
-		var extraKeys = extraKeysProp !== undefined ?
-			schema[extraKeysProp] :
-			true
-		;
-		
-		if( extraKeys !== true )
-		{
-			var currKeys = keys !== undefined ? keys : {};
+			;
 			
-			var hasExtraKey = false;
+			var extraKeysProp = isArr === true ?
+				Schema.getSchemaProp(
+					schema,
+					[ "extraItems", "extraKeys" ],
+					[ "bool", "str", "func", "obj", "arr" ]
+				) :
+				
+				Schema.getSchemaProp(
+					schema,
+					[ "extraProps", "extraProperties", "extraKeys" ],
+					[ "bool", "str", "func", "obj", "arr" ]
+				)
+			;
 			
-			for( var key in obj )
+			var minKeysProp = isArr === true ?
+				Schema.getSchemaProp(
+					schema, [ "minItems", "minKeys", ], "int"
+				) :
+				
+				Schema.getSchemaProp(
+					schema,
+					[ "minProps", "minProperties", "minKeys", ],
+					"int"
+				)
+			;
+			
+			var maxKeysProp = isArr === true ?
+				Schema.getSchemaProp(
+					schema, [ "maxItems", "maxKeys", ], "int"
+				) :
+				
+				Schema.getSchemaProp(
+					schema,
+					[ "maxProps", "maxProperties", "maxKeys", ],
+					"int"
+				)
+			;
+			
+			var nrKeysProp = isArr === true ?
+				Schema.getSchemaProp(
+					schema, [ "nrItems", "nrKeys", ], "int"
+				) :
+				
+				Schema.getSchemaProp(
+					schema, [ "nrProps", "nrProperties", "nrKeys", ], "int"
+				)
+			;
+			
+			Schema.assertSingleSchemaProp(
+				schema, minKeysProp, nrKeysProp
+			);
+			
+			Schema.assertSingleSchemaProp(
+				schema, maxKeysProp, nrKeysProp
+			);
+			
+			var keys = undefined;
+			
+			if( keysProp !== undefined )
 			{
-				if( key in currKeys === false )
+				keys = schema[keysProp];
+				
+				for( var key in keys )
 				{
-					hasExtraKey = true;
-					
 					if(
-						extraKeys === false ||
 						Schema.testMany(
-							extraKeys, obj[key], true
+							keys[key], obj[key], key in obj
 						) === false
 					)
 					{
@@ -698,155 +672,183 @@ Schema.test = function( schema, variable, varExists )
 				}
 			}
 			
-			if(
-				hasExtraKey === false &&
-				og.sys.hasType( extraKeys, "bool" ) === false &&
-				Schema.test(
-					extraKeys, undefined, false
-				) === false
-			)
+			var extraKeys = extraKeysProp !== undefined ?
+				schema[extraKeysProp] :
+				true
+			;
+			
+			if( extraKeys !== true )
 			{
-				return false;
-			}
-		}
-		
-		var nrActualKeys =
-			minKeysProp !== undefined ||
-			maxKeysProp !== undefined ||
-			nrKeysProp !== undefined ?
-			Object.keys( obj ).length :
-			undefined
-		;
-		
-		var minKeys = undefined;
-		
-		if( minKeysProp !== undefined )
-		{
-			minKeys = schema[minKeysProp];
-			
-			if( minKeys < 0 )
-			{
-				throw new og.SchemaError(
-					"Prop '"+minKeysProp+"' of a schema must be a "+
-					"non-neg",
-					{ propValue: minKeys, schema: schema }
-				);
-			}
-			
-			if( nrActualKeys < minKeys ){ return false; }
-		}
-		
-		var maxKeys = undefined;
-		
-		if( maxKeysProp !== undefined )
-		{
-			maxKeys = schema[maxKeysProp];
-			
-			if(
-				maxKeys < 0 ||
-				( minKeys !== undefined && maxKeys < minKeys )
-			)
-			{
-				throw new og.SchemaError(
-					"Prop '"+maxKeysProp+"' of a schema must be a non-neg"+
-					"int greater than prop '"+minKeysProp+"' (if the "+
-					"latter is set)",
-					{
-						maxKeysPropValue: maxKeys,
-						minKeysPropValue: minKeys,
-						schema: schema
-					}
-				);
-			}
-			
-			if( nrActualKeys > maxKeys ){ return false; }
-		}
-		
-		var nrKeys = undefined;
-		
-		if( nrKeysProp !== undefined )
-		{
-			nrKeys = schema[nrKeysProp];
-			
-			if( nrKeys < 0 )
-			{
-				throw new og.SchemaError(
-					"Prop '"+nrKeysProp+"' of a schema must be a non-neg "+
-					"int",
-					{ propValue: nrKeys, schema: schema }
-				);
-			}
-			
-			if( nrActualKeys !== nrKeys ){ return false; }
-		}
-		
-		if( isArr === true )
-		{
-			var arr = obj;
-			
-			var denseItemsProp = Schema.getSchemaProp(
-				schema, [ "denseItems" ], "bool"
-			);
-			
-			var denseItems = undefined;
-			
-			if(
-				denseItemsProp !== undefined &&
-				schema[denseItemsProp] !== false
-			)
-			{
-				denseItems = schema[denseItemsProp];
+				var currKeys = keys !== undefined ? keys : {};
 				
-				for(
-					var nrDenseItems = 0;
-					nrDenseItems in arr === true;
-					nrDenseItems++
+				var hasExtraKey = false;
+				
+				for( var key in obj )
+				{
+					if( key in currKeys === false )
+					{
+						hasExtraKey = true;
+						
+						if(
+							extraKeys === false ||
+							Schema.testMany(
+								extraKeys, obj[key], true
+							) === false
+						)
+						{
+							return false;
+						}
+					}
+				}
+				
+				if(
+					hasExtraKey === false &&
+					og.sys.hasType( extraKeys, "bool" ) === false &&
+					Schema.test(
+						extraKeys, undefined, false
+					) === false
 				)
-				{ }
+				{
+					return false;
+				}
+			}
+			
+			var nrActualKeys =
+				minKeysProp !== undefined ||
+				maxKeysProp !== undefined ||
+				nrKeysProp !== undefined ?
+				Object.keys( obj ).length :
+				undefined
+			;
+			
+			var minKeys = undefined;
+			
+			if( minKeysProp !== undefined )
+			{
+				minKeys = schema[minKeysProp];
 				
-				if( nrDenseItems !== arr.length ){ return false; }
+				if( minKeys < 0 )
+				{
+					throw new og.SchemaError(
+						"Prop '"+minKeysProp+"' of a schema must be a "+
+						"non-neg",
+						{ propValue: minKeys, schema: schema }
+					);
+				}
+				
+				if( nrActualKeys < minKeys ){ return false; }
+			}
+			
+			var maxKeys = undefined;
+			
+			if( maxKeysProp !== undefined )
+			{
+				maxKeys = schema[maxKeysProp];
+				
+				if(
+					maxKeys < 0 ||
+					( minKeys !== undefined && maxKeys < minKeys )
+				)
+				{
+					throw new og.SchemaError(
+						"Prop '"+maxKeysProp+"' of a schema must be a "+
+						"non-neg int greater than prop '"+minKeysProp+
+						"' (if the latter is set)",
+						{
+							maxKeysPropValue: maxKeys,
+							minKeysPropValue: minKeys,
+							schema: schema
+						}
+					);
+				}
+				
+				if( nrActualKeys > maxKeys ){ return false; }
+			}
+			
+			var nrKeys = undefined;
+			
+			if( nrKeysProp !== undefined )
+			{
+				nrKeys = schema[nrKeysProp];
+				
+				if( nrKeys < 0 )
+				{
+					throw new og.SchemaError(
+						"Prop '"+nrKeysProp+"' of a schema must be a "+
+						"non-neg int",
+						{ propValue: nrKeys, schema: schema }
+					);
+				}
+				
+				if( nrActualKeys !== nrKeys ){ return false; }
+			}
+			
+			if( isArr === true )
+			{
+				var arr = obj;
+				
+				var denseItemsProp = Schema.getSchemaProp(
+					schema, [ "denseItems" ], "bool"
+				);
+				
+				var denseItems = undefined;
+				
+				if(
+					denseItemsProp !== undefined &&
+					schema[denseItemsProp] !== false
+				)
+				{
+					denseItems = schema[denseItemsProp];
+					
+					for(
+						var nrDenseItems = 0;
+						nrDenseItems in arr === true;
+						nrDenseItems++
+					)
+					{ }
+					
+					if( nrDenseItems !== arr.length ){ return false; }
+				}
 			}
 		}
-		else
+		
+		var inheritsProp = Schema.getSchemaProp(
+			schema, [ "inherits", "extends" ], [ "func", "arr" ]
+		);
+		
+		var inherits = undefined;
+		
+		if( inheritsProp !== undefined )
 		{
-			var inheritsProp = Schema.getSchemaProp(
-				schema, [ "inherits" ], [ "func", "arr" ]
-			);
+			inherits = schema[inheritsProp];
 			
-			var inherits = undefined;
-			
-			if( inheritsProp !== undefined )
+			if( og.sys.hasType( inherits, "func" ) === true )
 			{
-				inherits = schema[inheritsProp];
-				
-				if( og.sys.hasType( inherits, "func" ) === true )
-				{
-					inherits = [ inherits ];
-				}
-				
-				var doesInherit = false;
-				
-				for( var pos in inherits )
-				{
-					var inheritsFunc = inherits[pos];
-					
-					if( og.sys.hasType( inheritsFunc, "func" ) === false )
-					{
-						throw new og.SchemaError(
-							"Prop '"+inheritsProp+"' of a schema must "+
-							"specify funcs",
-							{ propValue: inherits, schema: schema }
-						);
-					}
-					
-					if( obj instanceof inheritsFunc === true )
-					{
-						doesInherit = true;
-					}
-				}
-				
-				if( doesInherit === false ){ return false; }
+				inherits = [ inherits ];
 			}
+			
+			var doesInherit = false;
+			
+			for( var pos in inherits )
+			{
+				var inheritsFunc = inherits[pos];
+				
+				if( og.sys.hasType( inheritsFunc, "func" ) === false )
+				{
+					throw new og.SchemaError(
+						"Prop '"+inheritsProp+"' of a schema must "+
+						"specify funcs",
+						{ propValue: inherits, schema: schema }
+					);
+				}
+				
+				if( variable instanceof inheritsFunc === true )
+				{
+					doesInherit = true;
+				}
+			}
+			
+			if( doesInherit === false ){ return false; }
 		}
 	}
 	else if( og.sys.hasType( variable, "str" ) === true )
@@ -1084,8 +1086,11 @@ Schema.test = function( schema, variable, varExists )
 			schema["maxKeys"] !== undefined ||
 			schema["nrProps"] !== undefined ||
 			schema["nrProperties"] !== undefined ||
-			schema["nrKeys"] !== undefined ||
-			schema["inherits"] !== undefined
+			schema["nrKeys"] !== undefined
+		;
+		var hasInstProp =
+			schema["inherits"] !== undefined ||
+			schema["extends"] !== undefined
 		;
 		var hasStrProp =
 			schema["minStrLen"] !== undefined ||
@@ -1111,6 +1116,7 @@ Schema.test = function( schema, variable, varExists )
 			(
 				hasArrProp === true ||
 				hasObjProp === true ||
+				hasInstProp === true ||
 				hasStrProp === true ||
 				hasIntProp === true
 			)
@@ -1124,6 +1130,10 @@ Schema.test = function( schema, variable, varExists )
 				(
 					og.sys.hasType( variable, "obj" ) === true &&
 					hasObjProp === true
+				) ||
+				(
+					og.sys.hasType( variable, "inst" ) === true &&
+					hasInstProp === true
 				) ||
 				(
 					og.sys.hasType( variable, "str" ) === true &&
@@ -1214,6 +1224,7 @@ Schema.META_SCHEMA =
 		denseItems: "bool/undef",
 		
 		inherits: "func/arr/undef",
+		extends: "func/arr/undef",
 		
 		minStrLen: "int/undef",
 		minStrLength: "int/undef",
