@@ -1,4 +1,4 @@
-og.core.define(
+ourglobe.core.define(
 [ "ourglobe/dual/core/core" ],
 function( core )
 {

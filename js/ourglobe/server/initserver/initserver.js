@@ -3,17 +3,18 @@ var jsFilePath = process.argv[ 2 ];
 var requirejs =
 require(
 	"/home/work-purerumble/files/projects/ourglobe/js/"+
-	"og/l/d/requirejs/r.js"
+	"ourglobe/l/d/requirejs/r.js"
 );
 
 requirejs.config({
 	packages:
 	[
-		"ourglobe/server/initserver",
 		"ourglobe/dual/core",
 		"ourglobe/dual/testing",
+		"ourglobe/dual/moremath",
+		"ourglobe/server/initserver",
 		"ourglobe/server/morehttp",
-		"ourglobe/dual/moremath"
+		"ourglobe/server/cluster"
 	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
@@ -27,9 +28,6 @@ function( err )
 {
 	if( err.originalError !== undefined )
 	{
-// d
-		console.log( JSON.stringify( err ) );
-		
 		throw err.originalError;
 	}
 	
@@ -37,7 +35,6 @@ function( err )
 }
 
 ourglobe = {};
-og = ourglobe;
 
 ourglobe.core = {};
 ourglobe.core.require = requirejs;
@@ -74,10 +71,10 @@ function(
 	ourglobe.FuncVer = core.FuncVer;
 	ourglobe.Schema = core.Schema;
 	
-	var RuntimeError = og.RuntimeError;
-	var sys = og.sys;
-	var getF = og.getF;
-	var FuncVer = og.FuncVer;
+	var RuntimeError = ourglobe.RuntimeError;
+	var sys = ourglobe.sys;
+	var getF = ourglobe.getF;
+	var FuncVer = ourglobe.FuncVer;
 	
 	var verDeps =
 	getF(
@@ -144,10 +141,10 @@ function(
 			var currMod = mods[ item ];
 			
 			if(
-// og.define() may obtain an undef module due to circular deps
-// that are later resolved by mods.get(), while og.require()
-// may obtain such module because it requires a dep that in turn
-// only executes og.require()
+// ourglobe.define() may obtain an undef module due to
+// circular deps that are later resolved by mods.get(),
+// while ourglobe.require() may obtain such module because it
+// requires a dep that in turn only executes ourglobe.require()
 				currMod !== undefined &&
 				ModuleHandler.isValidModule( currMod ) === false
 			)
@@ -164,12 +161,13 @@ function(
 	ourglobe.define =
 	getF(
 	new FuncVer()
-		.addArgs([ "func" ])
-		.addArgs([ "arr/undef", "func" ]),
-	function( dependencies, cb )
+		.addArgs([ "func", "func/undef" ])
+		.addArgs([ "arr/undef", "func", "func/undef" ]),
+	function( dependencies, cb, delayedCb )
 	{
 		if( sys.hasType( dependencies, "func" ) === true )
 		{
+			delayedCb = cb;
 			cb = dependencies;
 			dependencies = undefined;
 		}
@@ -212,6 +210,26 @@ function(
 						"module",
 						{ returnedModule: returnVar }
 					);
+				}
+				
+				if( delayedCb !== undefined )
+				{
+					modHandler.delay(
+					function()
+					{
+						delayedCb( modHandler, returnVar );
+						
+						if(
+							ModuleHandler.isValidModule( returnVar ) === false
+						)
+						{
+							throw new RuntimeError(
+								"The delayed cb of ourglobe.define() modified "+
+								"the module to be non-valid",
+								{ module: returnVar }
+							);
+						}
+					});
 				}
 				
 				return returnVar;
