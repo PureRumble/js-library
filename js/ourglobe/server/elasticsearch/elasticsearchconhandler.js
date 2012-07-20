@@ -288,7 +288,7 @@ ElasticsearchConHandler.prototype.insert = function(
 	for( var prop in objs )
 	{
 		finalObjs.push(
-			{ index:{ _id:objs[ prop ].id.toString() } }
+			{ index:{ _id: objs[ prop ].id.toString() } }
 		);
 		finalObjs.push( objs[ prop ] );
 	}
@@ -301,7 +301,7 @@ ElasticsearchConHandler.prototype.insert = function(
 	}
 	
 	var restoreInfo =
-		ClusterConHandler.prepareObjsForCluster(
+		ClusterConHandler.prepareSetForCluster(
 			objs, _preparingHandlers
 		)
 	;
@@ -323,7 +323,7 @@ ElasticsearchConHandler.prototype.insert = function(
 			;
 		}
 		
-		ClusterConHandler.restoreObjs( restoreInfo );
+		ClusterConHandler.restoreSet( restoreInfo );
 		
 		if( sys.errorCheck( err, cb ) === true )
 		{
@@ -502,7 +502,7 @@ ElasticsearchConHandler.prototype.query = function(
 			hits[ pos ] = resHits[ pos ]._source;
 		}
 		
-		ClusterConHandler.restoreObjsFromCluster(
+		ClusterConHandler.restoreSetFromCluster(
 			hits, _restoringHandlers
 		);
 		

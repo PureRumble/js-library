@@ -14,7 +14,8 @@ requirejs.config({
 		"ourglobe/dual/moremath",
 		"ourglobe/server/initserver",
 		"ourglobe/server/morehttp",
-		"ourglobe/server/cluster"
+		"ourglobe/server/cluster",
+		"ourglobe/server/mongodb"
 	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });
@@ -26,9 +27,11 @@ requirejs.config({
 requirejs.onError =
 function( err )
 {
+	console.log( err );
+	
 	if( err.originalError !== undefined )
 	{
-		throw err.originalError;
+		err = err.originalError;
 	}
 	
 	throw err;

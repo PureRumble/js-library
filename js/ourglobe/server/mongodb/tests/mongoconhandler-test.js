@@ -1,35 +1,48 @@
-var vows = require("vows");
+ourglobe.require(
+[
+	"timers",
+	"crypto",
+	"ourglobe/lib/server/vows",
+	"ourglobe/lib/server/mongodb",
+	"ourglobe/dual/testing",
+	"ourglobe/server/cluster",
+	"ourglobe/server/mongodb",
+	"ourglobe/server/morehttp"
+],
+function( mods )
+{
 
-var timers = require("timers");
-var crypto = require("crypto");
+var RuntimeError = ourglobe.RuntimeError;
+var assert = ourglobe.assert;
+var FuncVer = ourglobe.FuncVer;
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
 
-var Db = require("mongodb").Db;
-var Collection = require("mongodb").Collection;
-var MongoDbBinary = require("mongodb").Binary;
+var vows = mods.get( "vows" );
 
-var Testing = require("ourglobe/testing").Testing;
+var timers = mods.get( "timers" );
+var crypto = mods.get( "crypto" );
 
-var RuntimeError = require("ourglobe").RuntimeError;
+var Test = mods.get( "testing" ).Test;
 
-var assert = require("ourglobe").assert;
-var FuncVer = require("ourglobe").FuncVer;
+var mongoDbLib = mods.get( "lib/server/mongodb" );
 
-var sys = require("ourglobe").sys;
+var Db = mongoDbLib.Db;
+var Collection = mongoDbLib.Collection;
+var MongoDbBinary = mongoDbLib.Binary;
 
-var MoreHttp = require("ourglobe/utils").MoreHttp;
+var MoreHttp = mods.get( "morehttp" ).MoreHttp;
 
-var MongoDb = require("ourglobe/mongodb").MongoDb;
-var MongoConHandler =
-	require("ourglobe/mongodb").MongoConHandler
-;
-var ClusterMapper =
-	require("ourglobe/clusterconhandler").ClusterMapper
-;
+var mongoDbServer = mods.get( "ourglobe/server/mongodb" );
 
-var Id = require("ourglobe/clusterconhandler").Id;
-var Link = require("ourglobe/clusterconhandler").Link;
-var Binary = require("ourglobe/clusterconhandler").Binary;
-var Cache = require("ourglobe/clusterconhandler").Cache;
+var MongoDb = mongoDbServer.MongoDb;
+var MongoConHandler = mongoDbServer.MongoConHandler;
+
+var ClusterMapper = mods.get( "cluster" ).ClusterMapper;
+var Id = mods.get( "cluster" ).Id;
+var Link = mods.get( "cluster" ).Link;
+var Binary = mods.get( "cluster" ).Binary;
+var Cache = mods.get( "cluster" ).Cache;
 
 var _MONGO_CON_HANDLER = new MongoConHandler(
 	"mongodb", [ { host:"localhost", port:27017 } ]
@@ -43,23 +56,20 @@ var _CLUSTER_MAPPER = new ClusterMapper(
 		[ _MONGO_CON_HANDLER ], _CLUSTER_MAPPING
 );
 
-function _insertQueryTest( objs, timeout )
+var objS = { props:{ id:{ req: true, types: Id } } };
+
+var _insertQueryTest =
+getF(
+new FuncVer( [
+	{ types:[ "arr", objS ], extraItems: objS },
+	[ FuncVer.NON_NEG_INT, "undef" ]
+])
+	.setReturn( "obj" ),
+function( objs, timeout )
 {
-	var objS = { props:{ id:{ req:true, types:Id } } };
-	
-	new FuncVer(
-		[
-			{ types:[ "arr", objS ], extraItems:objS },
-			[ FuncVer.NON_NEG_INT, "undef" ]
-		],
-		"obj"
-	)
-		.verArgs( arguments )
-	;
-	
 	timeout = timeout !== undefined ? timeout : 1000;
 	
-	var clone = Testing.clone( objs ); 
+	var clone = Test.clone( objs ); 
 	
 	var objsToInsert = clone;
 	
@@ -84,7 +94,7 @@ function _insertQueryTest( objs, timeout )
 		;
 	}
 	
-	var returnVar = Testing.getTests(
+	var returnVar = Test.getTests(
 		
 		"topic",
 		function()
@@ -96,31 +106,25 @@ function _insertQueryTest( objs, timeout )
 		},
 		
 		"objs are as they were before insertion",
+		getF(
+		new FuncVer( [ [ Error, "undef/null" ] ] ),
 		function( err )
 		{
-			new FuncVer( [ [ Error, "undef/null" ] ] )
-				.verArgs( arguments )
-			;
+			Test.errorCheckArgs( arguments );
 			
-			Testing.errorCheckArgs( arguments );
-			
-			var diff = Testing.compare( clone, objs );
+			var diff = Test.compare( clone, objs );
 			
 			if( diff !== undefined )
 			{
 				throw new RuntimeError(
-					"Objs are not as they were before insertion. The "+
-					"objs before and after insertion and their "+
-					"difference are: "+
-					Testing.getPrettyStr( {
-						before:clone, after:objs, diff: diff
-					} )
+					"Objs are not as they were before insertion",
+					{ beforeIns:clone, afterIns:objs, diff: diff }
 				);
 			}
-		},
+		}),
 		
 		"and querying the objs",
-		Testing.getTests(
+		Test.getTests(
 			
 			"topic",
 			function()
@@ -134,7 +138,7 @@ function _insertQueryTest( objs, timeout )
 							.getConHandler( _COLLECTION_NAME )
 							.query(
 								_COLLECTION_NAME,
-								{ _id:{ $in: idBinaries } },
+								{ _id:{ "$in": idBinaries } },
 								outerThis.callback
 							)
 						;
@@ -144,30 +148,26 @@ function _insertQueryTest( objs, timeout )
 			},
 			
 			"yields all objs as they were before insertion",
+			getF(
+			new FuncVer()
+				.addArgs( [ Error ] )
+				.addArgs( [
+					"null/undef",
+					{
+						denseItems: true,
+						extraItems:
+						{
+							props:
+							{
+								id:{ req: true, types: Id },
+								_id:{ badTypes:{} }
+							}
+						}
+					}
+				]),
 			function( err, res )
 			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ 
-						"null/undef",
-						[
-							Error,
-							{
-								denseItems:true,
-								extraItems:
-								{
-									props:{
-										id:{ req:true, types:Id },
-										_id:{ badTypes:{} }
-									}
-								}
-							}
-						]
-					] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
+				Test.errorCheckArgs( arguments );
 				
 				var resById = [];
 				
@@ -189,23 +189,24 @@ function _insertQueryTest( objs, timeout )
 					objsById[ currId ] = currObj;
 				}
 				
-				var diff = Testing.compare( objsById, resById );
+				var diff = Test.compare( objsById, resById );
 				
 				if( diff !== undefined )
 				{
 					throw new RuntimeError(
 						"Resulting objs from the query dont equal the "+
-						"original objs that were inserted. Resulting and "+
-						"original objs and their difference are "+
-						Testing.getPrettyStr( {
-							original:objsById, resulting:resById, diff: diff
-						} )
+						"original objs that were inserted",
+						{
+							original: objsById,
+							resulting: resById,
+							diff: diff
+						}
 					);
 				}
-			},
+			}),
 			
 			"and then deleting the inserted objs",
-			Testing.getTests(
+			Test.getTests(
 				
 				"topic",
 				function()
@@ -228,17 +229,15 @@ function _insertQueryTest( objs, timeout )
 				},
 				
 				"turns out OK",
+				getF(
+				new FuncVer( [ [ Error, "undef/null" ] ] ),
 				function( err )
 				{
-					new FuncVer( [ [ Error, "undef/null" ] ] )
-						.verArgs( arguments )
-					;
-					
-					Testing.errorCheckArgs( arguments );
-				},
+					Test.errorCheckArgs( arguments );
+				}),
 				
 				"and making sure there's nothing left",
-				Testing.getTests(
+				Test.getTests(
 					
 					"topic",
 					function()
@@ -261,15 +260,13 @@ function _insertQueryTest( objs, timeout )
 					},
 					
 					"turns out to be true",
+					getF(
+					new FuncVer()
+						.addArgs( [ Error ] )
+						.addArgs( [ "null/undef", "arr" ] ),
 					function( err, res )
 					{
-						new FuncVer()
-							.addArgs( [ Error ] )
-							.addArgs( [ "null/undef", [ Error, "arr" ] ] )
-							.verArgs( arguments )
-						;
-						
-						Testing.errorCheckArgs( arguments );
+						Test.errorCheckArgs( arguments );
 						
 						if( res.length !== 0 )
 						{
@@ -277,18 +274,19 @@ function _insertQueryTest( objs, timeout )
 								"No objs should be left after deletion"
 							);
 						}
-					}
+					})
 				)
 			)
 		)
 	);
 	
 	return returnVar;
-}
+});
 
 var suite = vows.describe( "mongodbconhandler" );
+suite.options.error = false;
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"no objs",
 	_insertQueryTest( [] ),
@@ -323,7 +321,7 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"obj with nested id objs",
 	_insertQueryTest(
@@ -344,7 +342,7 @@ suite.addBatch( Testing.getTests(
 	),
 	
 	"obj with nested binaries",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 256 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
@@ -397,7 +395,7 @@ suite.addBatch( Testing.getTests(
 	
 	"obj with nested cache obj containing ids, links, binaries "+
 	"and dates",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 1024 ) );
 		
@@ -425,7 +423,7 @@ suite.addBatch( Testing.getTests(
 	} ),
 	
 	"obj with all kind of class objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{ 
 		var bufOne = new Buffer( crypto.randomBytes( 512 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
@@ -465,10 +463,10 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"deleting the test collection",
-	Testing.getTests(
+	Test.getTests(
 		
 		"topic",
 		function()
@@ -479,66 +477,65 @@ suite.addBatch( Testing.getTests(
 				_CLUSTER_MAPPER.getConHandler( _COLLECTION_NAME )
 			;
 			
-			conHandler.getCurrCon( function( err, db )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "undefined", Db ] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
-				
-				db.collectionNames( function( err, collNames )
+			conHandler.getCurrCon(
+				getF(
+				new FuncVer( [ Error ] ).addArgs( [ "undefined", Db ] ),
+				function( err, db )
 				{
-					new FuncVer()
-						.addArgs( [ Error ] )
-						.addArgs( [
-							"null/undef",
+					Test.errorCheckArgs( arguments );
+					
+					db.collectionNames(
+						getF(
+						new FuncVer()
+							.addArgs( [ Error ] )
+							.addArgs( [
+								"null/undef",
+								{
+									extraItems:
+									{
+										props:{ name: FuncVer.R_PROPER_STR }
+									}
+								}
+							]),
+						function( err, collNames )
+						{
+							Test.errorCheckArgs( arguments );
+							
+							for( var prop in collNames )
 							{
-								extraItems:{
-									props:{ name:FuncVer.R_PROPER_STR }
+								var currColl = collNames[ prop ].name;
+								
+								var dbName =
+									MongoDb.getStandardDbName()+
+									"."+
+									_COLLECTION_NAME
+								;
+								
+								if( currColl === dbName )
+								{
+									db.dropCollection(
+										currColl, outerThis.callback
+									);
 								}
 							}
-						] )
-						.verArgs( arguments )
-					;
-					
-					Testing.errorCheckArgs( arguments );
-					
-					for( var prop in collNames )
-					{
-						var currColl = collNames[ prop ].name;
-						
-						if(
-							currColl ===
-								MongoDb.getStandardDbName()+"."+_COLLECTION_NAME
-						)
-						{
-							db.dropCollection( currColl, outerThis.callback );
-						}
-					}
-					
-					outerThis.callback();
-					
-				} );
-				
-			} );
+							
+							outerThis.callback();
+						})
+					);
+				})
+			);
 		},
 		
 		"gets rid of it",
+		getF(
+		new FuncVer( [ [ Error, "null/undef" ] ] ),
 		function( err )
 		{
-			new FuncVer()
-				.addArgs( [ [ Error, "null/undef" ] ] )
-				.verArgs( arguments )
-			;
-			
-			Testing.errorCheckArgs( arguments );
-		},
+			Test.errorCheckArgs( arguments );
+		}),
 		
 		"and then closing the db con",
-		Testing.getTests(
+		Test.getTests(
 			
 			"topic",
 			function()
@@ -549,34 +546,30 @@ suite.addBatch( Testing.getTests(
 					_CLUSTER_MAPPER.getConHandler( _COLLECTION_NAME )
 				;
 			
-				conHandler.getCurrCon( function( err, db )
-				{
-					new FuncVer()
-						.addArgs( [ Error ] )
-						.addArgs( [ "null/undef", Db ] )
-						.verArgs( arguments )
-					;
-					
-					Testing.errorCheckArgs( arguments );
-					
-					db.close( outerThis.callback );
-					
-				} );
+				conHandler.getCurrCon(
+					getF(
+					new FuncVer( [ Error ] )
+						.addArgs( [ "null/undef", Db ] ),
+					function( err, db )
+					{
+						Test.errorCheckArgs( arguments );
+						
+						db.close( outerThis.callback );
+					})
+				);
 			},
 			
 			"closes it",
+			getF(
+			new FuncVer( [ [ Error, "null/undef" ], "undef" ] ),
 			function( err )
 			{
-				new FuncVer()
-					.addArgs( [ [ Error, "null/undef" ] ] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
-			}
+				Test.errorCheckArgs( arguments );
+			})
 		)
 	)
-	
-) );
+));
 
-suite.export( module );
+suite.run();
+
+});

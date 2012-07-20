@@ -1,16 +1,23 @@
-var vows = require("vows");
+ourglobe.require(
+[
+	"ourglobe/lib/server/vows",
+	"ourglobe/dual/testing",
+	"ourglobe/server/cluster"
+],
+function( mods )
+{
 
-var Testing = require("ourglobe/testing").Testing;
+var assert = ourglobe.assert;
 
-var assert = require("ourglobe").assert;
+var conf = ourglobe.conf;
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
-var conf = require("ourglobe").conf;
-var sys = require("ourglobe").sys;
+var vows = mods.get( "vows" );
 
-var MoreObject = require("ourglobe").MoreObject;
-var FuncVer = require("ourglobe").FuncVer;
-
-var Id = require("ourglobe/clusterconhandler").Id;
+var Test = mods.get( "testing" ).Test;
+var Id = mods.get( "cluster" ).Id;
 
 var suite = vows.describe( "id" );
 
@@ -18,7 +25,7 @@ var NR_IDS = 500000;
 
 var checkId = function( topic )
 {
-	Testing.errorCheckArgs( arguments );
+	Test.errorCheckArgs( arguments );
 	
 	assert(
 		topic instanceof Id === true,
@@ -27,7 +34,7 @@ var checkId = function( topic )
 }
 
 // creating ids
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"creating an id",
 	{
@@ -45,13 +52,13 @@ suite.addBatch( Testing.getTests(
 		},
 		"gives and id": function( ids )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			checkId( ids.idTwo );
 		},
 		"gives and id equal to the string": function( ids )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			assert(
 				ids.idOne.toString() === ids.idTwo.toString(),
@@ -70,13 +77,13 @@ suite.addBatch( Testing.getTests(
 		},
 		"gives and id": function( ids )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			checkId( ids.idTwo );
 		},
 		"gives and id equal to the buf": function( ids )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			assert(
 				ids.idOne.toString() === ids.idTwo.toString(),
@@ -88,10 +95,10 @@ suite.addBatch( Testing.getTests(
 ) );
 
 // id collision test
-suite.addBatch( Testing.getTests(
+suite.addBatch( Test.getTests(
 	
 	"creating many ids",
-	Testing.getTests(
+	Test.getTests(
 		
 		"topic",
 		function()
@@ -118,7 +125,7 @@ suite.addBatch( Testing.getTests(
 		"doesnt give any collisions",
 		function( topic )
 		{
-			Testing.errorCheckArgs( arguments );
+			Test.errorCheckArgs( arguments );
 			
 			assert(
 				topic === 0,
@@ -129,4 +136,6 @@ suite.addBatch( Testing.getTests(
 	
 ) );
 
-suite.export( module );
+suite.run();
+
+});

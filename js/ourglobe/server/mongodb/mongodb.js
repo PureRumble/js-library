@@ -1,30 +1,25 @@
-var conf = require("ourglobe").conf;
-var FuncVer = require("ourglobe").FuncVer;
-
-var ClusterMapper =
-	require("ourglobe/clusterconhandler").ClusterMapper
-;
+ourglobe.define(
+function( mods )
+{
 
 var MongoDb = {};
 MongoDb.STANDARD_DB_NAME = "ourglobedb";
 
-MongoDb.getStandardDbName = function()
-{
-	if( conf.doVer() === true )
-	{
-		var fv =
-			new FuncVer().setReturn( "str" ).verArgs( arguments )
-		;
-	}
-	
-	var returnVar = MongoDb.STANDARD_DB_NAME;
-	
-	if( conf.doVer() === true )
-	{
-		fv.verReturn( returnVar );
-	}
-	
-	return returnVar;
-}
+return MongoDb;
 
-exports.MongoDb = MongoDb;
+},
+function( mods, MongoDb )
+{
+
+var FuncVer = ourglobe.FuncVer;
+var getF = ourglobe.getF;
+
+MongoDb.getStandardDbName =
+getF(
+new FuncVer().setReturn( "str" ),
+function()
+{
+	return MongoDb.STANDARD_DB_NAME;
+});
+
+});
