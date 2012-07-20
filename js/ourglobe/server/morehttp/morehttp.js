@@ -1,18 +1,15 @@
-og.define(
+ourglobe.define(
 [
 	"http"
 ],
 function( mods )
 {
 
-var http = mods.get( "http" );
-
-var conf = og.conf;
-var sys = og.sys;
-var getF = og.getF;
-var FuncVer = og.FuncVer;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
 var MoreHttp = {};
+
 
 MoreHttp.REQUEST_CB_FV =
 new FuncVer()
@@ -21,6 +18,18 @@ new FuncVer()
 		"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
 	] )
 ;
+
+return MoreHttp;
+
+},
+function( mods, MoreHttp )
+{
+
+var http = mods.get( "http" );
+
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
 MoreHttp.request =
 getF(
@@ -185,7 +194,5 @@ function( hostname, opts, cb )
 	
 	req.end();
 });
-
-return MoreHttp
 
 });
