@@ -1,17 +1,16 @@
-og.define(
-
+ourglobe.define(
 function( mods )
 {
 
-var getF = og.getF;
-var FuncVer = og.FuncVer;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
 var MoreMath = {};
 
-MoreMath.randInt =
+MoreMath.getRandInt =
 getF(
 new FuncVer( [ { gte: 0 } ], { gte: 0 } ),
-function( int )
+function( integer )
 {
 	return Math.floor( Math.random() * integer );
 });

@@ -1,15 +1,15 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function()
 {
 
 function FuncVerError( msg, errorVar, errorCode, errorPlace )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Between one and four args must be provided",
 				{ providedArgs: arguments }
 			);

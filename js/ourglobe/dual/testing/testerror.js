@@ -1,10 +1,10 @@
-og.define(
+ourglobe.define(
 function()
 {
 
-var OurGlobeError = og.OurGlobeError;
-var getF = og.getF;
-var sys = og.sys;
+var OurGlobeError = ourglobe.OurGlobeError;
+var getF = ourglobe.getF;
+var sys = ourglobe.sys;
 
 var TestError =
 getF(

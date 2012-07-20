@@ -1,15 +1,17 @@
-og.core.define(
-[],
-function()
+ourglobe.core.define(
+[
+	"util"
+],
+function( util )
 {
 
 function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Between one and four args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -41,7 +43,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 {
 	if( typeof( msg ) !== "string" )
 	{
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg msg must be a string",
 			{ providedArg: msg },
 			undefined,
@@ -57,7 +59,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg errorVar must be undef or a non-empty obj",
 			{ providedArg: errorVar },
 			undefined,
@@ -73,7 +75,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg errorCode must be undef or a non-empty str",
 			{ providedArg: errorCode },
 			undefined,
@@ -86,13 +88,19 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		typeof( errorPlace ) !== "function"
 	)
 	{
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg errorPlace must be undef or a func",
 			{ providedArg: errorPlace },
 			undefined,
 			verArgs
 		);
 	}
+}
+
+OurGlobeError.prototype.toString =
+function()
+{
+	return util.inspect( this, false, null );
 }
 
 // Do not use these vars in core modules, instead use

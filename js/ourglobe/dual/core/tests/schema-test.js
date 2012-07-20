@@ -1,4 +1,4 @@
-og.require(
+ourglobe.require(
 [
 	"ourglobe/lib/server/vows",
 	"ourglobe/dual/testing"
@@ -10,11 +10,11 @@ var vows = mods.get( "vows" );
 
 var Test = mods.get( "testing" ).Test;
 
-var assert = og.assert;
-var sys = og.sys;
+var assert = ourglobe.assert;
+var sys = ourglobe.sys;
 
-var Schema = og.Schema;
-var SchemaError = og.SchemaError;
+var Schema = ourglobe.Schema;
+var SchemaError = ourglobe.SchemaError;
 
 var suite = vows.describe( "schema" );
 

@@ -1,4 +1,4 @@
-og.core.define(
+ourglobe.core.define(
 [
 	"./ourglobeerror",
 	"./runtimeerror",
@@ -27,17 +27,17 @@ function(
 
 var getF = sys.getFunc;
 
-og.OurGlobeError = OurGlobeError;
-og.RuntimeError = RuntimeError;
-og.SchemaError = SchemaError;
-og.FuncVerError = FuncVerError;
-og.conf = conf;
-og.sys = sys;
-og.getF = getF;
-og.assert = assert;
-og.OurGlobeObject = OurGlobeObject;
-og.FuncVer = FuncVer;
-og.Schema = Schema;
+ourglobe.OurGlobeError = OurGlobeError;
+ourglobe.RuntimeError = RuntimeError;
+ourglobe.SchemaError = SchemaError;
+ourglobe.FuncVerError = FuncVerError;
+ourglobe.conf = conf;
+ourglobe.sys = sys;
+ourglobe.getF = getF;
+ourglobe.assert = assert;
+ourglobe.OurGlobeObject = OurGlobeObject;
+ourglobe.FuncVer = FuncVer;
+ourglobe.Schema = Schema;
 
 OurGlobeError.CONSTR_FV =
 new FuncVer(

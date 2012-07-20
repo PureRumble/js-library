@@ -1,4 +1,4 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function( exports )
 {

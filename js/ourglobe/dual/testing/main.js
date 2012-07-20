@@ -1,4 +1,4 @@
-og.define(
+ourglobe.define(
 [
 	"./testerror",
 	"./test"
@@ -6,12 +6,11 @@ og.define(
 function( mods )
 {
 
-var returnVar =
-{
-	TestError: mods.get( "testerror" ),
-	Test: mods.get( "test" )
-};
-
-return returnVar;
+return(
+	{
+		TestError: mods.get( "testerror" ),
+		Test: mods.get( "test" )
+	}
+);
 
 });

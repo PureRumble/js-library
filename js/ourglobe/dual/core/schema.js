@@ -1,15 +1,15 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function()
 {
 
 function Schema( schema )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1 );
+		ourglobe.assert.nrArgs( arguments, 1 );
 		
-		og.assert.argType(
+		ourglobe.assert.argType(
 			"schema", schema, "obj", "str", "func", "arr"
 		);
 	}
@@ -19,11 +19,13 @@ function Schema( schema )
 
 Schema.prototype.test = function( variable, varExists )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1, 2 );
+		ourglobe.assert.nrArgs( arguments, 1, 2 );
 		
-		og.assert.argType( "varExists", varExists, "bool", "undef" )
+		ourglobe.assert.argType(
+			"varExists", varExists, "bool", "undef"
+		);
 	}
 	
 	return Schema.test( this.schema, variable, varExists );
@@ -31,9 +33,9 @@ Schema.prototype.test = function( variable, varExists )
 
 Schema.isSchema = function( variable )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1 );
+		ourglobe.assert.nrArgs( arguments, 1 );
 	}
 	
 	return Schema.test( Schema.META_SCHEMA, variable );
@@ -43,24 +45,24 @@ Schema.getSchemaProp = function(
 	schema, props, types, allowEmptyArr
 )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 3, 4 );
+		ourglobe.assert.nrArgs( arguments, 3, 4 );
 		
-		og.assert.argType( "schema", schema, "obj" );
+		ourglobe.assert.argType( "schema", schema, "obj" );
 		
-		og.assert.argType( "props", props, "arr" );
+		ourglobe.assert.argType( "props", props, "arr" );
 		
-		og.assert.argType( "types", types, "str", "arr" );
+		ourglobe.assert.argType( "types", types, "str", "arr" );
 		
-		og.assert.argType(
+		ourglobe.assert.argType(
 			"allowEmptyArr", allowEmptyArr, "bool", "undef"
 		);
 	}
 	
 	if( allowEmptyArr === undefined ) { allowEmptyArr = false; }
 	
-	if( og.sys.hasType( types, "arr" ) === false )
+	if( ourglobe.sys.hasType( types, "arr" ) === false )
 	{
 		types = [types];
 	}
@@ -88,7 +90,7 @@ Schema.getSchemaProp = function(
 	
 	if( foundMany === true )
 	{
-		throw new og.SchemaError(
+		throw new ourglobe.SchemaError(
 			"There are certain groups of props that are restricted "+
 			"in such way that only one of them may occur in a schema",
 			{ propGroup: props, schema: schema }
@@ -102,12 +104,14 @@ Schema.getSchemaProp = function(
 		var hasTypeArgs = [ propVar ].concat( types );
 		
 		var hasType =
-			og.sys.hasType.apply( og.sys.hasType, hasTypeArgs )
+			ourglobe.sys.hasType.apply(
+				ourglobe.sys.hasType, hasTypeArgs
+			)
 		;
 		
 		if( hasType === false )
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"Prop '"+propFound+"' may have only one of certain "+
 				"types",
 				{
@@ -119,12 +123,12 @@ Schema.getSchemaProp = function(
 		}
 		
 		if(
-			og.sys.hasType( propVar, "arr" ) === true &&
+			ourglobe.sys.hasType( propVar, "arr" ) === true &&
 			allowEmptyArr === false &&
 			propVar.length === 0
 		)
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"Prop '"+propFound+"' of a schema may not be an "+
 				"empty arr",
 				{ propValue: propVar, schema: schema }
@@ -137,11 +141,11 @@ Schema.getSchemaProp = function(
 
 Schema.assertSingleSchemaProp = function( schema )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 3, undefined );
+		ourglobe.assert.nrArgs( arguments, 3, undefined );
 		
-		og.assert.argType( "schema", schema, "obj" );
+		ourglobe.assert.argType( "schema", schema, "obj" );
 	}
 	
 	var foundProp = undefined;
@@ -154,7 +158,7 @@ Schema.assertSingleSchemaProp = function( schema )
 		{
 			if( foundProp !== undefined )
 			{
-				throw new og.SchemaError(
+				throw new ourglobe.SchemaError(
 					"A schema may have only one of the props '"+
 					foundProp+"'' and '"+currProp+"'",
 					{ schema: schema }
@@ -168,16 +172,16 @@ Schema.assertSingleSchemaProp = function( schema )
 
 Schema.fineResolve = function( schemas )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1 );
+		ourglobe.assert.nrArgs( arguments, 1 );
 		
-		og.assert.argType(
+		ourglobe.assert.argType(
 			"schemas", schemas, "str", "obj", "func", "arr"
 		);
 	}
 	
-	if( og.sys.hasType( schemas, "arr", "obj" ) === true )
+	if( ourglobe.sys.hasType( schemas, "arr", "obj" ) === true )
 	{
 		return schemas;
 	}
@@ -204,9 +208,9 @@ Schema.fineResolve = function( schemas )
 	
 	for( var pos in strParts )
 	{
-		if( og.sys.isOurType( strParts[pos] ) === false )
+		if( ourglobe.sys.isOurType( strParts[pos] ) === false )
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"'"+origSchemaStr+"' isnt a valid schema str "+
 				"because '"+strParts[pos]+"' isnt a valid type"
 			);
@@ -225,17 +229,17 @@ Schema.fineResolve = function( schemas )
 
 Schema.testChars = function( chars, areGood, str, charsProp )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 4 );
+		ourglobe.assert.nrArgs( arguments, 4 );
 		
-		og.assert.argType( "chars", chars, "str" );
+		ourglobe.assert.argType( "chars", chars, "str" );
 		
-		og.assert.argType( "areGood", areGood, "bool" );
+		ourglobe.assert.argType( "areGood", areGood, "bool" );
 		
-		og.assert.argType( "str", str, "str" );
+		ourglobe.assert.argType( "str", str, "str" );
 		
-		og.assert.argType( "charsProp", charsProp, "str" )
+		ourglobe.assert.argType( "charsProp", charsProp, "str" );
 	}
 	
 	chars = chars.replace( /\s/g, "" );
@@ -298,7 +302,7 @@ Schema.testChars = function( chars, areGood, str, charsProp )
 		}
 		else
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"'"+testChar+"' isnt a valid value to list "+
 				"for prop '"+charsProp+"' in a schema"
 			);
@@ -320,18 +324,18 @@ Schema.testChars = function( chars, areGood, str, charsProp )
 
 Schema.testMany = function( schemas, variable, varExists )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 3 );
+		ourglobe.assert.nrArgs( arguments, 3 );
 		
-		og.assert.argType( "varExists", varExists, "bool" );
+		ourglobe.assert.argType( "varExists", varExists, "bool" );
 		
-		og.assert.argType(
+		ourglobe.assert.argType(
 			"schemas", schemas, "str", "obj", "func", "arr"
 		);
 	}
 	
-	if( og.sys.hasType( schemas, "arr" ) === false )
+	if( ourglobe.sys.hasType( schemas, "arr" ) === false )
 	{
 		schemas = [schemas];
 	}
@@ -341,13 +345,13 @@ Schema.testMany = function( schemas, variable, varExists )
 		var schema = schemas[pos];
 		
 		if(
-			og.sys.hasType( schema, "str" ) === true ?
+			ourglobe.sys.hasType( schema, "str" ) === true ?
 				Schema.schemaStrTest( schema, variable, varExists ) :
 				
-			og.sys.hasType( schema, "obj" ) === true ?
+			ourglobe.sys.hasType( schema, "obj" ) === true ?
 				Schema.test( schema, variable, varExists ) === true :
 			
-			og.sys.hasType( schema, "func" ) === true ?
+			ourglobe.sys.hasType( schema, "func" ) === true ?
 				Schema.schemaClassTest( schema, variable, varExists ) :
 			
 			Schema.testMany( schema, variable, varExists ) === true
@@ -364,13 +368,13 @@ Schema.schemaClassTest = function(
 	classFunc, variable, varExists
 )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 3 );
+		ourglobe.assert.nrArgs( arguments, 3 );
 		
-		og.assert.argType( "classFunc", classFunc, "func" );
+		ourglobe.assert.argType( "classFunc", classFunc, "func" );
 		
-		og.assert.argType( "varExists", varExists, "bool" );
+		ourglobe.assert.argType( "varExists", varExists, "bool" );
 	}
 	
 	return (
@@ -383,19 +387,19 @@ Schema.schemaStrTest = function(
 	schemaStr, variable, varExists
 )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 3 );
+		ourglobe.assert.nrArgs( arguments, 3 );
 		
-		og.assert.argType( "schemaStr", schemaStr, "str" );
+		ourglobe.assert.argType( "schemaStr", schemaStr, "str" );
 		
-		og.assert.argType( "varExists", varExists, "bool" );
+		ourglobe.assert.argType( "varExists", varExists, "bool" );
 	}
 	
 	return (
-		og.sys.isOurType( schemaStr ) === true ?
+		ourglobe.sys.isOurType( schemaStr ) === true ?
 			varExists === false ||
-			og.sys.hasType( variable, schemaStr ) === true :
+			ourglobe.sys.hasType( variable, schemaStr ) === true :
 			
 		Schema.testMany(
 			Schema.fineResolve( schemaStr ), variable, varExists
@@ -407,26 +411,26 @@ Schema.test = function( schema, variable, varExists )
 {
 	varExists = varExists === undefined ? true : varExists;
 	
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 2, 3 );
+		ourglobe.assert.nrArgs( arguments, 2, 3 );
 		
-		og.assert.argType(
+		ourglobe.assert.argType(
 			"schema", schema, "obj", "str", "func", "arr"
 		);
 		
-		og.assert.argType( "varExists", varExists, "bool" );
+		ourglobe.assert.argType( "varExists", varExists, "bool" );
 		
 		if( varExists === false && variable !== undefined )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Arg variable must be undef if arg varExists is set to "+
 				"true",
 				{ providedArg: variable }
 			);
 		}
 		
-		if( og.sys.hasType( schema, "obj" ) === true )
+		if( ourglobe.sys.hasType( schema, "obj" ) === true )
 		{
 			for( var prop in schema )
 			{
@@ -478,7 +482,7 @@ Schema.test = function( schema, variable, varExists )
 					prop === "st"
 				) )
 				{
-					throw new og.SchemaError(
+					throw new ourglobe.SchemaError(
 						"'"+prop+"' isnt a schema prop", { schema: schema }
 					);
 				}
@@ -487,7 +491,7 @@ Schema.test = function( schema, variable, varExists )
 		
 	}
 	
-	if( og.sys.hasType( schema, "obj" ) === false )
+	if( ourglobe.sys.hasType( schema, "obj" ) === false )
 	{
 		return Schema.testMany( schema, variable, varExists );
 	}
@@ -557,10 +561,12 @@ Schema.test = function( schema, variable, varExists )
 			var value = values[pos];
 			
 			if(
-				og.sys.hasType( value, "func", "obj", "arr" ) === true
+				ourglobe.sys.hasType(
+					value, "func", "obj", "arr"
+				) === true
 			)
 			{
-				throw new og.SchemaError(
+				throw new ourglobe.SchemaError(
 					"Prop '"+valuesProp+"' of a schema may not contain "+
 					"funcs, objs or arrs",
 					{ propValue: values, schema: schema }
@@ -576,12 +582,12 @@ Schema.test = function( schema, variable, varExists )
 		if( matchesValue === false ) { return false; }
 	}
 	
-	if( og.sys.hasType( variable, "inst" ) === true )
+	if( ourglobe.sys.hasType( variable, "inst" ) === true )
 	{
-		if( og.sys.hasType( variable, "obj", "arr" ) === true )
+		if( ourglobe.sys.hasType( variable, "obj", "arr" ) === true )
 		{
 			var obj = variable;
-			var isArr = og.sys.hasType( variable, "arr" );
+			var isArr = ourglobe.sys.hasType( variable, "arr" );
 			
 			var keysProp = isArr === true ?
 				Schema.getSchemaProp(
@@ -703,7 +709,7 @@ Schema.test = function( schema, variable, varExists )
 				
 				if(
 					hasExtraKey === false &&
-					og.sys.hasType( extraKeys, "bool" ) === false &&
+					ourglobe.sys.hasType( extraKeys, "bool" ) === false &&
 					Schema.test(
 						extraKeys, undefined, false
 					) === false
@@ -729,7 +735,7 @@ Schema.test = function( schema, variable, varExists )
 				
 				if( minKeys < 0 )
 				{
-					throw new og.SchemaError(
+					throw new ourglobe.SchemaError(
 						"Prop '"+minKeysProp+"' of a schema must be a "+
 						"non-neg",
 						{ propValue: minKeys, schema: schema }
@@ -750,7 +756,7 @@ Schema.test = function( schema, variable, varExists )
 					( minKeys !== undefined && maxKeys < minKeys )
 				)
 				{
-					throw new og.SchemaError(
+					throw new ourglobe.SchemaError(
 						"Prop '"+maxKeysProp+"' of a schema must be a "+
 						"non-neg int greater than prop '"+minKeysProp+
 						"' (if the latter is set)",
@@ -773,7 +779,7 @@ Schema.test = function( schema, variable, varExists )
 				
 				if( nrKeys < 0 )
 				{
-					throw new og.SchemaError(
+					throw new ourglobe.SchemaError(
 						"Prop '"+nrKeysProp+"' of a schema must be a "+
 						"non-neg int",
 						{ propValue: nrKeys, schema: schema }
@@ -822,7 +828,7 @@ Schema.test = function( schema, variable, varExists )
 		{
 			inherits = schema[inheritsProp];
 			
-			if( og.sys.hasType( inherits, "func" ) === true )
+			if( ourglobe.sys.hasType( inherits, "func" ) === true )
 			{
 				inherits = [ inherits ];
 			}
@@ -833,9 +839,11 @@ Schema.test = function( schema, variable, varExists )
 			{
 				var inheritsFunc = inherits[pos];
 				
-				if( og.sys.hasType( inheritsFunc, "func" ) === false )
+				if(
+					ourglobe.sys.hasType( inheritsFunc, "func" ) === false
+				)
 				{
-					throw new og.SchemaError(
+					throw new ourglobe.SchemaError(
 						"Prop '"+inheritsProp+"' of a schema must "+
 						"specify funcs",
 						{ propValue: inherits, schema: schema }
@@ -851,7 +859,7 @@ Schema.test = function( schema, variable, varExists )
 			if( doesInherit === false ){ return false; }
 		}
 	}
-	else if( og.sys.hasType( variable, "str" ) === true )
+	else if( ourglobe.sys.hasType( variable, "str" ) === true )
 	{
 		var str = variable;
 		
@@ -885,7 +893,7 @@ Schema.test = function( schema, variable, varExists )
 			schema[strPatternProp] instanceof RegExp === false
 		)
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"Prop '"+strPatternProp+"' of a schema must be a str "+
 				"or a RegExp obj",
 				{ propValue: schema[ strPatternProp ], schema: schema }
@@ -916,7 +924,7 @@ Schema.test = function( schema, variable, varExists )
 			
 			if( minStrLen < 0 )
 			{
-				throw new og.SchemaError(
+				throw new ourglobe.SchemaError(
 					"Prop '"+minStrLenProp+"' of a schema must be a "+
 					"non-neg int",
 					{ minStrLenPropValue: minStrLen, schema: schema }
@@ -937,7 +945,7 @@ Schema.test = function( schema, variable, varExists )
 				( minStrLen !== undefined && maxStrLen < minStrLen )
 			)
 			{
-				throw new og.SchemaError(
+				throw new ourglobe.SchemaError(
 					"Prop '"+maxStrLenProp+"' of a schema "+
 					"must be non-neg int and greater than prop '"+
 					minStrLenProp+"' (if the latter is set)",
@@ -959,7 +967,7 @@ Schema.test = function( schema, variable, varExists )
 		{
 			strPattern = schema[strPatternProp];
 			
-			if( og.sys.hasType( strPattern, "str" ) === true )
+			if( ourglobe.sys.hasType( strPattern, "str" ) === true )
 			{
 				strPattern = new RegExp( strPattern );
 			}
@@ -993,7 +1001,7 @@ Schema.test = function( schema, variable, varExists )
 			return false;
 		}
 	}
-	else if( og.sys.hasType( variable, "number" ) === true )
+	else if( ourglobe.sys.hasType( variable, "number" ) === true )
 	{
 		var number = variable;
 		
@@ -1032,7 +1040,7 @@ Schema.test = function( schema, variable, varExists )
 		
 		if( gte > ste || gte >= st || gt >= ste || gt >= st )
 		{
-			throw new og.SchemaError(
+			throw new ourglobe.SchemaError(
 				"The props gte, gt, ste and st of a schema may not be "+
 				"set to values that are impossible to uphold",
 				{
@@ -1123,24 +1131,24 @@ Schema.test = function( schema, variable, varExists )
 			&&
 			!(
 				(
-					og.sys.hasType( variable, "arr" ) === true &&
+					ourglobe.sys.hasType( variable, "arr" ) === true &&
 					hasArrProp === true
 				)
 				||
 				(
-					og.sys.hasType( variable, "obj" ) === true &&
+					ourglobe.sys.hasType( variable, "obj" ) === true &&
 					hasObjProp === true
 				) ||
 				(
-					og.sys.hasType( variable, "inst" ) === true &&
+					ourglobe.sys.hasType( variable, "inst" ) === true &&
 					hasInstProp === true
 				) ||
 				(
-					og.sys.hasType( variable, "str" ) === true &&
+					ourglobe.sys.hasType( variable, "str" ) === true &&
 					hasStrProp === true
 				) ||
 				(
-					og.sys.hasType( variable, "int" ) === true &&
+					ourglobe.sys.hasType( variable, "int" ) === true &&
 					hasIntProp === true
 				)
 			)

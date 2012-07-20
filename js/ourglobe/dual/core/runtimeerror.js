@@ -1,11 +1,11 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function()
 {
 
 function RuntimeError( msg, errorVar, errorCode, errorPlace )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
 		{

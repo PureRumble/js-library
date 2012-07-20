@@ -1,4 +1,4 @@
-og.require(
+ourglobe.require(
 [
 	"crypto",
 	"ourglobe/lib/server/vows",
@@ -11,9 +11,9 @@ var crypto = mods.get( "crypto" );
 var vows = mods.get( "vows" );
 var Test = mods.get( "testing" ).Test;
 
-var assert = og.assert;
-var FuncVer = og.FuncVer;
-var sys = og.sys;
+var assert = ourglobe.assert;
+var FuncVer = ourglobe.FuncVer;
+var sys = ourglobe.sys;
 
 var suite = vows.describe( "Testing" );
 
@@ -66,20 +66,20 @@ function _cloneTest( source )
 		{
 			Test.errorCheckArgs( arguments );
 			
-			if( sys.hasType( source, "obj", "arr" ) === true )
+			if( sys.hasType( source, "inst" ) === true )
 			{
 				assert(
 					source !== topic,
-					"clone is precisely equal to source despite being "+
-					"obj/arr"
+					"clone var points to the same instance that was "+
+					"cloned, however a new copy of the instance should "+
+					"be created"
 				);
 			}
 			else
 			{
 				assert(
 					source === topic,
-					"clone isnt precisely equal to source despite not "+
-					"obj/arr"
+					"clone var doesnt equal original var"
 				);
 			}
 		},

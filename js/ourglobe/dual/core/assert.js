@@ -1,15 +1,15 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function()
 {
 
 function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 2 || arguments.length <= 5 ) )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Between two and five args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -17,24 +17,24 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 		
 		if( typeof( boolVal ) !== "boolean" )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Arg boolVal must be a bool", { providedArg: boolVal }
 			);
 		}
 		
 		if(
 			typeof( msg ) !== "string" &&
-			msg instanceof og.OurGlobeError === false
+			msg instanceof ourglobe.OurGlobeError === false
 		)
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Arg msg must be a str or an instance of OurGlobeError",
 				{ providedArg: msg }
 			);
 		}
 		
 		if(
-			msg instanceof og.OurGlobeError === true &&
+			msg instanceof ourglobe.OurGlobeError === true &&
 			(
 				errorVar !== undefined ||
 				errorCode !== undefined ||
@@ -42,7 +42,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 			)
 		)
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"If arg msg is an instance of OurGlobeError then the "+
 				"args errorVar, errorCode and errorPlace must be "+
 				"undefined",
@@ -54,9 +54,9 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 				}
 			);
 		}
-		else if( msg instanceof og.OurGlobeError === false )
+		else if( msg instanceof ourglobe.OurGlobeError === false )
 		{
-			og.OurGlobeError.verArgs(
+			ourglobe.OurGlobeError.verArgs(
 				msg, errorVar, errorCode, errorPlace
 			);
 		}
@@ -68,14 +68,14 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 	{
 		var err = undefined;
 		
-		if( msg instanceof og.OurGlobeError === true )
+		if( msg instanceof ourglobe.OurGlobeError === true )
 		{
 			err = msg;
 		}
 		else
 		{
 			err =
-				new og.RuntimeError(
+				new ourglobe.RuntimeError(
 					msg,
 					errorVar,
 					errorCode,
@@ -90,7 +90,7 @@ function assert( boolVal, msg, errorVar, errorCode, errorPlace )
 
 assert.argType = function( argName, arg )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		assert.nrArgs( arguments, 3, undefined );
 	}
@@ -100,14 +100,16 @@ assert.argType = function( argName, arg )
 	;
 	
 	if(
-		og.sys.hasType.apply( og.sys.hasType, hasTypeArgs ) === false
+		ourglobe.sys.hasType.apply(
+			ourglobe.sys.hasType, hasTypeArgs
+		) === false
 	)
 	{
 		var types = hasTypeArgs.slice( 1 );
 		
 		var errorPlace = assert.argType;
 		
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg "+argName+" is not of required type",
 			{ providedArg: arg, requiredTypes: types },
 			undefined,
@@ -118,11 +120,11 @@ assert.argType = function( argName, arg )
 
 assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		if( !( arguments.length >= 1 && arguments.length <= 3 ) )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Between one and three args must be provided",
 				{ providedArgs: arguments }
 			);
@@ -130,7 +132,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 		
 		if( typeof( minNrArgs ) !== "number" )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Arg minNrArgs must be an int",
 				{ providedArg: minNrArgs }
 			);
@@ -146,7 +148,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 			)
 		)
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Arg maxNrArgs must be undef or an int no smaller than "+
 				"minNrArgs",
 				{ minNrArgs: minNrArgs, maxNrArgs: maxNrArgs }
@@ -160,7 +162,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length !== minNrArgs )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Exactly "+minNrArgs+" arg(s) must be provided",
 				{ providedArgs: args },
 				undefined,
@@ -172,7 +174,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length < minNrArgs || args.length > maxNrArgs )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Between "+minNrArgs+" and "+maxNrArgs+" args must "+
 				"be provided",
 				{ providedArgs: args },
@@ -188,7 +190,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 	{
 		if( args.length < minNrArgs )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"Atleast "+minNrArgs+" arg(s) must be provided",
 				{ providedArgs: args },
 				undefined,
@@ -200,7 +202,7 @@ assert.nrArgs = function( args, minNrArgs, maxNrArgs )
 
 assert.arg = function( argName, arg, schema )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
 		assert.nrArgs( arguments, 3 );
 		
@@ -209,11 +211,11 @@ assert.arg = function( argName, arg, schema )
 		assert.argType( "schema", schema, "obj", "arr", "str" );
 	}
 	
-	if( og.Schema.test( schema, arg ) === false )
+	if( ourglobe.Schema.test( schema, arg ) === false )
 	{
 		errorPlace = assert.arg;
 		
-		throw new og.RuntimeError(
+		throw new ourglobe.RuntimeError(
 			"Arg "+argName+" doesnt comply to required schema",
 			{ providedArg: arg, schema: schema },
 			undefined,

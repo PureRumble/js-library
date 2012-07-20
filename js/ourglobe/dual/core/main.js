@@ -1,4 +1,4 @@
-og.define(
+ourglobe.define(
 [
 	"./core"
 ],

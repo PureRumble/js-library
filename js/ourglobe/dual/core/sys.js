@@ -1,4 +1,4 @@
-og.core.define(
+ourglobe.core.define(
 [],
 function()
 {
@@ -10,9 +10,9 @@ sys.funcsWithDelayedFvs = [];
 sys.prepareDelayedFuncVers =
 function()
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		new og.FuncVer().verArgs( arguments );
+		new ourglobe.FuncVer().verArgs( arguments );
 	}
 	
 	for(
@@ -26,7 +26,7 @@ function()
 		var cb = currFunc.ourglobe.funcVer;
 		var funcVer = cb();
 		
-		if( funcVer instanceof og.FuncVer === false )
+		if( funcVer instanceof ourglobe.FuncVer === false )
 		{
 			throw new RuntimeError(
 				"The cb given to getF() or sys.getFunc() didnt return "+
@@ -43,12 +43,12 @@ function()
 
 sys.extend = function( subClass, superClass )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 2 );
+		ourglobe.assert.nrArgs( arguments, 2 );
 		
-		og.assert.argType( "subClass", subClass, "func" );
-		og.assert.argType( "superClass", superClass, "func" );
+		ourglobe.assert.argType( "subClass", subClass, "func" );
+		ourglobe.assert.argType( "superClass", superClass, "func" );
 	}
 	
 	subClass.prototype.__proto__ = superClass.prototype;
@@ -60,11 +60,27 @@ sys.extend = function( subClass, superClass )
 	);
 }
 
+sys.getClass =
+function( obj )
+{
+	if( ourglobe.conf.doVer() === true )
+	{
+		ourglobe.assert.nrArgs( arguments, 1 );
+	}
+	
+	if( obj instanceof Object === false )
+	{
+		return undefined;
+	}
+	
+	return obj.constructor;
+}
+
 sys.isOurType = function( str )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1 );
+		ourglobe.assert.nrArgs( arguments, 1 );
 	}
 	
 	return(
@@ -82,11 +98,11 @@ sys.isOurType = function( str )
 	);
 }
 
-sys.typeOf = function( variable )
+sys.getType = function( variable )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 1 );
+		ourglobe.assert.nrArgs( arguments, 1 );
 	}
 	
 	return (
@@ -101,12 +117,12 @@ sys.typeOf = function( variable )
 
 sys.hasType = function( variable )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		og.assert.nrArgs( arguments, 2, undefined );
+		ourglobe.assert.nrArgs( arguments, 2, undefined );
 	}
 	
-	var varType = sys.typeOf( variable );
+	var varType = sys.getType( variable );
 	
 	for( var pos = 1; pos < arguments.length; pos++ )
 	{
@@ -167,7 +183,7 @@ sys.hasType = function( variable )
 		}
 		else if( hasType === undefined )
 		{
-			throw new og.RuntimeError(
+			throw new ourglobe.RuntimeError(
 				"One of the provided args isnt a valid type",
 				{ providedArg: reqType, argPos: pos }
 			);
@@ -179,9 +195,11 @@ sys.hasType = function( variable )
 
 sys.errorCheck = function( err, cb )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		new og.FuncVer( [ "any", "func" ] ).verArgs( arguments );
+		new ourglobe.FuncVer( [ "any", "func" ] )
+			.verArgs( arguments )
+		;
 	}
 	
 	if( err instanceof Error === true )
@@ -196,16 +214,18 @@ sys.errorCheck = function( err, cb )
 
 sys.getFunc = function( funcVer, func )
 {
-	if( og.conf.doVer() === true )
+	if( ourglobe.conf.doVer() === true )
 	{
-		new og.FuncVer( [ [ og.FuncVer, "func" ], "func" ] )
+		new ourglobe.FuncVer(
+			[ [ ourglobe.FuncVer, "func" ], "func" ]
+		)
 			.verArgs( arguments )
 		;
 		
 		var newFunc =
 		function()
 		{
-			if( og.conf.doVer() === false )
+			if( ourglobe.conf.doVer() === false )
 			{
 				return func.apply( this, arguments );
 			}
