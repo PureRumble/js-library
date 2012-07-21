@@ -67,10 +67,10 @@ MongoConHandler.PREPARING_HANDLERS =
 {
 	Id:
 	getF(
-	new FuncVer( [ Id ], MongoDbBinary ),
+	new FuncVer( [ Id.ID_STR_S ], MongoDbBinary ),
 	function( id )
 	{
-		return new MongoDbBinary( id.getBuffer() );
+		return new MongoDbBinary( new Buffer( id, "hex" ) );
 	}),
 	
 	Binary:
@@ -86,53 +86,33 @@ MongoConHandler.RESTORING_HANDLERS =
 {
 	Id:
 	getF(
-	new FuncVer( [ "any" ], Id ),
+	new FuncVer( [ "any" ] ).setReturn( "any" ),
 	function( id )
 	{
 		if( id instanceof MongoDbBinary === false )
 		{
 			throw new ClusterDataRuntimeError(
-				"An Id obj must contain a MongoDbBinary"
+				"An Id obj must contain a MongoDbBinary",
+				{ insteadOfMongoDbBinary: id }
 			);
 		}
 		
-		var returnVar = undefined;
-		var buf = undefined;
+		var idStr = undefined;
 		
 		try
 		{
-			buf = id.read( 0 );
+			idStr = id.read( 0 ).toString( "hex" );
 		}
 		catch( e )
 		{
 			throw new ClusterDataRuntimeError(
-				"An error occurred while converting a MongoDbBinary to "+
-				"a Buffer",
+				"An error occurred while converting a MongoDbBinary "+
+				"to a hex str",
 				{ mongoDbBinary: id, err: e }
 			);
 		}
 		
-		try
-		{
-			returnVar = new Id( buf );
-		}
-		catch( e )
-		{
-			if( e.ourGlobeCode === Id.INVALID_ARGS_FOR_ID_CREATION )
-			{
-				e =
-					new ClusterDataRuntimeError(
-						"An Id obj must contain a MongoDbBinary that "+
-						"represents an id validly",
-						{ mongoDbBinary: id }
-					);
-				;
-			}
-			
-			throw e;
-		}
-		
-		return returnVar;
+		return idStr;
 	}),
 	
 	Binary:
