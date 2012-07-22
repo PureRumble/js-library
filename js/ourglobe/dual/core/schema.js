@@ -881,24 +881,9 @@ Schema.test = function( schema, variable, varExists )
 		
 		var strPatternProp =
 			Schema.getSchemaProp(
-				schema,
-				[ "strPattern", "stringPattern" ],
-				[ "str", "obj" ]
+				schema, [ "strPattern", "stringPattern" ], "str"
 			)
 		;
-		
-		if(
-			strPatternProp !== undefined &&
-			schema[strPatternProp] instanceof Object === true &&
-			schema[strPatternProp] instanceof RegExp === false
-		)
-		{
-			throw new ourglobe.SchemaError(
-				"Prop '"+strPatternProp+"' of a schema must be a str "+
-				"or a RegExp obj",
-				{ propValue: schema[ strPatternProp ], schema: schema }
-			);
-		}
 		
 		var goodCharsProp =
 			Schema.getSchemaProp(
@@ -961,19 +946,25 @@ Schema.test = function( schema, variable, varExists )
 			if( str.length > maxStrLen ) { return false; }
 		}
 		
-		var strPattern = undefined;
-		
 		if( strPatternProp !== undefined )
 		{
-			strPattern = schema[strPatternProp];
+			var strPattern = schema[ strPatternProp ];
+			var regExp = undefined;
 			
-			if( ourglobe.sys.hasType( strPattern, "str" ) === true )
+			try
 			{
-				strPattern = new RegExp( strPattern );
+				regExp = new RegExp( strPattern );
+			}
+			catch( e )
+			{
+				throw new ourglobe.SchemaError(
+					"Prop '"+strPatternProp+"' isnt a valid regular "+
+					"expression string",
+					{ propValue: strPattern, schema: schema }
+				);
 			}
 			
-			var searchRes = str.search( strPattern );
-			
+			var searchRes = str.search( regExp );
 			
 			if( searchRes === -1 || searchRes === str.length )
 			{
@@ -1242,8 +1233,8 @@ Schema.META_SCHEMA =
 		maxStrLength: "int/undef",
 		maxStringLength: "int/undef",
 		
-		strPattern: "str/obj/undef",
-		stringPattern: "str/obj/undef",
+		strPattern: "str/undef",
+		stringPattern: "str/undef",
 		
 		chars: "str/undef",
 		goodChars: "str/undef",
