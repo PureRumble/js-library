@@ -107,10 +107,9 @@ sys.getType = function( variable )
 	
 	return (
 		variable === null ? "null" :
-		variable instanceof Object === false ? typeof( variable ) :
+		typeof( variable ) !== "object" ? typeof( variable ) :
+		variable.__proto__ === Array.prototype ? "array" :
 		variable.__proto__ === Object.prototype ? "object" :
-		variable instanceof Array === true ? "array" :
-		variable instanceof Function === true ? "function" :
 		"instance"
 	);
 }
