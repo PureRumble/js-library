@@ -14,71 +14,33 @@ var sys = ourglobe.sys;
 var getF = ourglobe.getF;
 var FuncVer = ourglobe.FuncVer;
 
+var idStrRegExp =
+	"^[0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}"
+	"[89ab][0-9a-f]{3}[0-9a-f]{12}$"
+;
+var idStrS = { strPattern: idStrRegExp };
+
 var Id =
 getF(
-new FuncVer( [ [ "str", Buffer, "undef" ] ] ),
-function( src )
+new FuncVer( [ [ idStrS, "undef" ] ]  ),
+function( idStr )
 {
-	var buf = src;
-	
-	if(	sys.hasType( src, "str" ) === true )
+	if( idStr === undefined )
 	{
-		if( src.length === 0 )
-		{
-			throw new RuntimeError(
-				"An Id str can not be empty",
-				undefined,
-				Id.INVALID_ARGS_FOR_ID_CREATION
-			);
-		}
-		
-		try
-		{
-			buf = new Buffer( src, "base64" );
-		}
-		catch( e )
-		{
-			throw new RuntimeError(
-				"An Id str must be a valid base-64 str",
-				{ providedIdStr: src },
-				Id.INVALID_ARGS_FOR_ID_CREATION
-			);
-		}
-	}
-	
-	if(
-		buf !== undefined &&
-		(
-			buf.length !== Id.ID_SIZE ||
-			( buf[ 6 ] & 0xf0 ) !== 0x40 ||
-			( buf[ 8 ] & 0xc0 ) !== 0x80
-		)
-	)
-	{
-		throw new RuntimeError(
-			"Provided Buffer/str must represent a valid Id",
-			{ providedBuffer: buf },
-			Id.INVALID_ARGS_FOR_ID_CREATION
-		);
-	}
-	
-	if( buf === undefined )
-	{
-		var rb = crypto.randomBytes( Id.ID_SIZE );
+		var rb = crypto.randomBytes( 16 );
 		
 		rb[ 6 ] = ( rb[ 6 ] & 0x0f ) | 0x40;
 		rb[ 8 ] = ( rb[ 8 ] & 0x3f ) | 0x80;
 		
-		buf = new Buffer( rb );
+		idStr = new Buffer( rb ).toString( "hex" );
 	}
 	
-	this.buf = buf;
+	this.idStr = idStr;
 });
 
-Id.INVALID_ARGS_FOR_ID_CREATION = "InvalidArgsForIdCreation";
-Id.ID_SIZE = 16;
-Id.ID_STR_S = FuncVer.PROPER_STR;
-Id.R_ID_STR_S = FuncVer.R_PROPER_STR;
+Id.ID_STR_REG_EXP = idStrRegExp;
+Id.ID_STR_S = idStrS;
+Id.R_ID_STR_S = { req: true, strPattern: Id.ID_STR_REG_EXP };
 
 return Id;
 
@@ -86,23 +48,37 @@ return Id;
 function( mods, Id )
 {
 
+var sys = ourglobe.sys;
 var getF = ourglobe.getF;
 var FuncVer = ourglobe.FuncVer;
 
-Id.prototype.getBuffer =
+Id.verIdStr =
 getF(
-new FuncVer( undefined, Buffer ),
-function()
+new FuncVer( [ "any" ] )
+	.setReturn( "bool" ),
+function( idStr )
 {
-	return this.buf;
+	return(
+		sys.hasType( idStr, "str" ) === true &&
+		idStr.search( Id.ID_STR_REG_EXP ) === 0
+	);
 });
+
+Id.verClusterVars =
+getF(
+new FuncVer( [ "any" ] ).
+	setReturn( "bool" ),
+function( idStr )
+{
+	return Id.verIdStr( idStr );
+})
 
 Id.prototype.toString =
 getF(
-new FuncVer( undefined, Id.ID_STR_S ),
+new FuncVer().setReturn( Id.ID_STR_S ),
 function()
 {
-	return this.buf.toString( "base64" );
+	return this.idStr;
 });
 
 });

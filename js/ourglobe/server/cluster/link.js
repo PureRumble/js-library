@@ -34,9 +34,21 @@ function( mods, Link )
 
 var getF = ourglobe.getF;
 var FuncVer = ourglobe.FuncVer;
+var sys = ourglobe.sys;
 
 var Id = mods.get( "id" );
 var ClusterConHandler = mods.get( "clusterconhandler" );
+
+Link.verClusterVars =
+getF(
+new FuncVer( [ "any" ] ).setReturn( "bool" ),
+function( collection )
+{
+	return(
+		sys.hasType( collection, "str" ) === true &&
+		collection.length > 0
+	);
+});
 
 Link.prototype.getCollection =
 getF(

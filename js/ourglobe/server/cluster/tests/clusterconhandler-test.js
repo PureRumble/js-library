@@ -18,20 +18,31 @@ var getF = ourglobe.getF;
 
 vows = mods.get( "vows" );
 
-var crypto = mods.get( "crypto");
+var crypto = mods.get( "crypto" );
 
-var Test = mods.get( "testing").Test;
+var Test = mods.get( "testing" ).Test;
 
-var ClusterConHandler = mods.get( "cluster").ClusterConHandler;
+var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+var ClusterDataRuntimeError =
+	mods.get( "cluster" ).ClusterDataRuntimeError
+;
 
 var Id = mods.get( "cluster" ).Id;
 var Binary = mods.get( "cluster" ).Binary;
 var Link = mods.get( "cluster" ).Link;
 var Cache = mods.get( "cluster" ).Cache;
 
-var suite = vows.describe( "clusterconhandler" );
+var sysValue = ClusterConHandler.OUR_GLOBE_SYS_VALUE;
 
-var _IdCont =
+var IdCont =
+getF(
+new FuncVer( [ "str" ] ),
+function( idStr )
+{
+	this.idStr = idStr;
+});
+
+var BinaryCont =
 getF(
 new FuncVer( [ Buffer ] ),
 function( buffer )
@@ -39,15 +50,7 @@ function( buffer )
 	this.buffer = buffer;
 });
 
-var _BinaryCont =
-getF(
-new FuncVer( [ Buffer ] ),
-function( buffer )
-{
-	this.buffer = buffer;
-});
-
-var _DateCont =
+var DateCont =
 getF(
 new FuncVer( [ Date ] ),
 function( date )
@@ -55,108 +58,156 @@ function( date )
 	this.date = date;
 });
 
-var _IdPrepareFunc =
+var prepareId =
 getF(
-new FuncVer( [ Id ], _IdCont ),
+new FuncVer( [ ClusterConHandler.ID_STR_S ] )
+	.setReturn( IdCont ),
 function( id )
 {
-	return new _IdCont( id.getBuffer() );
+	return new IdCont( id.toString() );
 });
 
-var _BinaryPrepareFunc =
+var prepareBinary =
 getF(
-new FuncVer( [ Binary ], _BinaryCont ),
-function( binary )
+new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
+	.setReturn( BinaryCont ),
+function( buf, contentType )
 {
-	return new _BinaryCont( binary.getBuffer() );
+	return new BinaryCont( buf );
 });
 
-var _DatePrepareFunc =
+var prepareDate =
 getF(
-new FuncVer( [ Date ], _DateCont ),
+new FuncVer( [ Date ] ).setReturn( DateCont ),
 function( date )
 {
-	return new _DateCont( date );
+	return new DateCont( date );
 });
 
-var _IdRestoreFunc =
+var restoreId =
 getF(
-new FuncVer( [ _IdCont ], Id ),
+new FuncVer( [ "any" ] ).setReturn( "str" ),
 function( idCont )
 {
-	return new Id( idCont.buffer );
+	if( idCont instanceof IdCont === false )
+	{
+		throw new ClusterDataRuntimeError(
+			"An IdCont must be provided when restoring an Id",
+			{ providedVar: idCont }
+		);
+	}
+	
+	return idCont.idStr;
 });
 
-var _BinaryRestoreFunc =
+var restoreBinary =
 getF(
-new FuncVer( [ _BinaryCont, FuncVer.PROPER_STR ], Binary ),
+new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
 function( binaryCont, contentType )
 {
-	return new Binary( binaryCont.buffer, contentType );
+	if( binaryCont instanceof BinaryCont === false )
+	{
+		throw new ClusterDataRuntimeError(
+			"A BinaryCont must be provided when restoring a Binary",
+			{ providedVar: binaryCont }
+		);
+	}
+	
+	return binaryCont.buffer;
 });
 
-var _DateRestoreFunc =
+var restoreDate =
 getF(
-new FuncVer( [ _DateCont ], Date ),
+new FuncVer( [ "any" ] ).setReturn( Date ),
 function( dateCont )
 {
+	if( dateCont instanceof DateCont === false )
+	{
+		throw new ClusterDataRuntimeError(
+			"A DateCont must be provided when restoring a Date",
+			{ providedVar: dateCont }
+		);
+	}
+	
 	return dateCont.date;
 });
 
-var _getPreparedCache =
+var getPreparedCache =
 getF(
-new FuncVer( [ Cache, "obj", "bool/undef" ], "obj" ),
-function( cache, preparedCacheObj, dateFuncUsed )
+new FuncVer( [
+	Cache,
+	"obj/arr/null/bool/number/str",
+	"bool/undef",
+	"bool/undef"
+])
+	.setReturn( "obj" ),
+function(
+	cache, preparedCacheObj, preparingDateUsed, preparingIdUsed
+)
 {
-	dateFuncUsed =
-		dateFuncUsed !== undefined ?
-		dateFuncUsed :
-		true
+	if( preparingDateUsed === undefined )
+	{
+		preparingDateUsed = true;
+	}
+	
+	if( preparingIdUsed === undefined )
+	{
+		preparingIdUsed = true;
+	}
+	
+	var returnVar =
+	{
+		"type": "Cache",
+		"cache": preparedCacheObj,
+		"collection": cache.getLink().getCollection(),
+		"id":
+			preparingIdUsed === false ?
+				cache.getLink().getId().toString() :
+				new IdCont( cache.getLink().getId().toString() ),
+		"refreshedDate":
+			preparingDateUsed === false ?
+				cache.getRefreshedDate() :
+				new DateCont( cache.getRefreshedDate() )
+	};
+	
+	returnVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
+		ClusterConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
-	return(
-	{
-		"::type": "Cache",
-		"::link":
-		{
-			"::type": "Link",
-			"::collection": cache.getLink().getCollection(),
-			"::id":
-			{
-				"::type": "Id",
-				"::id":
-					new _IdCont( cache.getLink().getId().getBuffer() )
-			}
-		},
-		"::refreshedDate":
-			dateFuncUsed === false ?
-				cache.getRefreshedDate() :
-				{
-					"::type": "Date",
-					"::date": new _DateCont( cache.getRefreshedDate() )
-				}
-		,
-		"::cache": preparedCacheObj
-	});
+	return returnVar;
 });
 
-var _prepareObjsTest =
+var prepareObjsTest =
 getF(
 new FuncVer()
 	.addArgs( [
-		{ extraItems: "obj" },
-		{ extraItems: "obj" },
+		"obj/arr",
+		"obj/arr",
+		"obj/arr/undef",
 		"bool/undef",
-		{ types: "arr/undef", extraItems: "obj" }
+		"bool/undef"
 	])
 	.setReturn( "obj" ),
 function(
-	objsBeforePrep, objsAfterPrep, useDateFunc, objsAfterRest
+	setBeforePrep,
+	setAfterPrep,
+	setAfterRest,
+	useDateFuncs,
+	useIdFuncs
 )
 {
-	useDateFunc = useDateFunc !== undefined ? useDateFunc : true;
+	if( useDateFuncs === undefined )
+	{
+		useDateFuncs = true;
+	}
 	
-	var clones = Test.clone( objsBeforePrep );
+	if( useIdFuncs === undefined )
+	{
+		useIdFuncs = true;
+	}
+	
+	var cloneOne = Test.clone( setBeforePrep );
+	var cloneTwo = Test.clone( setAfterPrep );
 	var firstTopic = undefined;
 	
 	return(
@@ -167,13 +218,16 @@ function(
 			firstTopic =
 				ClusterConHandler
 					.prepareSetForCluster(
-						clones,
+						cloneOne,
 						{
-							Id: _IdPrepareFunc,
-							Binary: _BinaryPrepareFunc,
-							Date:
-								useDateFunc === true ?
-									_DatePrepareFunc :
+							prepareBinary: prepareBinary,
+							prepareId:
+								useIdFuncs === true ?
+									prepareId :
+									undefined,
+							prepareDate:
+								useDateFuncs === true ?
+									prepareDate :
 									undefined
 						}
 					)
@@ -197,7 +251,9 @@ function(
 			{
 				Test.errorCheckArgs( arguments );
 				
-				var diff = Test.compare( clones, objsAfterPrep );
+				var diff =
+					Test.compare( cloneOne, setAfterPrep )
+				;
 				
 				if( diff !== undefined )
 				{
@@ -205,7 +261,9 @@ function(
 						"Preparing the objs for cluster doesnt yield "+
 						"expected objs",
 						{
-							result: clones, expected: objsAfterPrep, diff: diff
+							result: cloneOne,
+							expected: setAfterPrep,
+							diff: diff
 						}
 					);
 				}
@@ -216,20 +274,20 @@ function(
 			topic:
 			function()
 			{
-				var result = ClusterConHandler.restoreSet( firstTopic );
+				ClusterConHandler.restoreSet( firstTopic );
 				
-				return result === undefined ? false : true;
+				return true;
 			},
 			"makes them properly restored":
 			getF(
-				new FuncVer( [
-					{ types:[ Error, { values:[ false ] } ] }
-				]),
+				new FuncVer( [ [ Error, "bool" ] ] ),
 				function( topic )
 				{
 					Test.errorCheckArgs( arguments );
 					
-					var diff = Test.compare( clones, objsBeforePrep );
+					var diff =
+						Test.compare( cloneOne, setBeforePrep )
+					;
 					
 					if( diff !== undefined )
 					{
@@ -237,8 +295,8 @@ function(
 							"Restoring objs after preparing them for cluster "+
 							"doesnt yield original objs",
 							{
-								result: clones,
-								original: objsBeforePrep,
+								result: cloneOne,
+								original: setBeforePrep,
 								diff: diff
 							}
 						);
@@ -250,54 +308,50 @@ function(
 				topic:
 				function()
 				{
-					var result = ClusterConHandler.restoreSetFromCluster(
-						objsAfterPrep,
-						{
-							Id: _IdRestoreFunc,
-							Binary: _BinaryRestoreFunc,
-							Date:
-								useDateFunc === true ?
-									_DateRestoreFunc :
-									undefined
-						}
-					);
+					var result =
+						ClusterConHandler.restoreSetFromCluster(
+							cloneTwo,
+							{
+								restoreBinary: restoreBinary,
+								restoreId:
+									useIdFuncs === true ?
+										restoreId :
+										undefined,
+								restoreDate:
+									useDateFuncs === true ?
+										restoreDate :
+										undefined
+							}
+						)
+					;
 					
-					return result === undefined ? false : true;
+					return true;
 				},
 				"makes them properly restored":
 				getF(
-					new FuncVer( [
-						{ types:[ Error, { values:[ false ] } ] }
-					]),
+					new FuncVer( [ [ Error, "bool" ] ] ),
 					function( topic )
 					{
 						Test.errorCheckArgs( arguments );
 						
 						var objsToCompare =
-							objsAfterRest !== undefined ?
-								objsAfterRest :
-								objsBeforePrep
+							setAfterRest !== undefined ?
+								setAfterRest :
+								setBeforePrep
 						;
 						
 						var diff =
-							Test.compare( objsToCompare, objsAfterPrep )
+							Test.compare( objsToCompare, cloneTwo )
 						;
 						
 						if( diff !== undefined )
 						{
-							//d
-							console.log({
-								restoredObj: objsAfterPrep,
-								expectedObj: objsBeforePrep,
-								diff: diff
-							});
-							
 							throw new RuntimeError(
 								"Restoring objs from cluster doesnt yield "+
 								"expected objs",
 								{
-									restoredObj: objsAfterPrep,
-									expectedObj: objsBeforePrep,
+									restoredObj: cloneTwo,
+									expectedObj: objsToCompare,
 									diff: diff
 								}
 							);
@@ -309,10 +363,12 @@ function(
 	});
 });
 
+var suite = vows.describe( "clusterconhandler" );
+
 // Preparing and restoring simple objs and ars
 suite.addBatch( Test.getTests(
-	"empty arr", _prepareObjsTest( [], [] ),
-	"empty obj in arr", _prepareObjsTest( [ {} ], [ {} ] ),
+	"empty arr", prepareObjsTest( [], [] ),
+	"empty obj", prepareObjsTest( {}, {} ),
 	
 	"objs and arrs with undefs",
 	Test.getVar(
@@ -326,26 +382,25 @@ suite.addBatch( Test.getTests(
 		arr[ 4 ] = [];
 		arr[ 5 ] = "";
 		
-		var objs =
-			[ { dingo: "dingo", dango: "dango", dingi: arr } ]
+		var obj =
+			{ dingo: "dingo", dango: "dango", dingi: arr }
 		;
 		
-		return _prepareObjsTest(
-			[ {
+		return prepareObjsTest(
+			{
 				dingo: "dingo",
 				dango: "dango",
 				dongo: undefined,
 				dingi:[ 42, true, false, undefined, [ undefined ], "" ]
-			} ],
-			objs,
-			undefined,
-			objs
+			},
+			obj,
+			obj
 		);
 		
 	} ),
 	
 	"multiple simple objs",
-	_prepareObjsTest(
+	prepareObjsTest(
 		[
 			{ dingo: "dingo" },
 			{ dingi: null, dangi: false },
@@ -370,14 +425,12 @@ suite.addBatch( Test.getTests(
 		arr1[ "dingi" ] = true;
 		arr1[ "dangi" ] = { a: 1, b:{ danga: false }, c: 3 };
 		
-		return _prepareObjsTest(
+		return prepareObjsTest(
 			[ { dingo:[ 0, 1, arr0, 2, 3 ], dango:{ dongo: 1 } } ],
 			[ { dingo:[ 0, 1, arr1, 2, 3 ], dango:{ dongo: 1 } } ]
 		);
-		
-	} )
-	
-) );
+	})
+));
 
 // Id/Binary/Date/Link/Cache tests
 suite.addBatch( Test.getTests(
@@ -388,45 +441,80 @@ suite.addBatch( Test.getTests(
 	{
 		var date = new Date();
 		
-		return _prepareObjsTest(
-			[ { date: date } ],
-			[ {
+		return prepareObjsTest(
+			{ date: date },
+			{
 				date:
-					{ "::type": "Date", "::date": new _DateCont( date ) }
-			} ]
+				{
+					ourGlobeSysSet: sysValue,
+					type: "Date",
+					date: new DateCont( date )
+				}
+			}
 		);
-	} ),
+	}),
 	
-	"single date without date func",
+	"single date without date funcs",
 	Test.getVar(
 	function()
 	{
 		var date = new Date();
 		
-		return _prepareObjsTest(
-			[ { date: date } ], [ { date: date } ], false
+		return prepareObjsTest(
+			{ date: date },
+			{
+				date:
+				{
+					ourGlobeSysSet: sysValue,
+					type: "Date",
+					date: date
+				}
+			},
+			undefined,
+			false
 		);
-	} ),
+	}),
 	
-	"single id",
+	"single id with id funcs",
 	Test.getVar(
 	function()
 	{
 		var id = new Id();
 		
-		return _prepareObjsTest(
-			[ { id: id } ],
-			[
+		return prepareObjsTest(
+			{ id: id },
+			{
+				id:
 				{
-					id:
-					{
-						"::type": "Id",
-						"::id": new _IdCont( id.getBuffer() )
-					}
+					ourGlobeSysSet: sysValue,
+					type: "Id",
+					id: new IdCont( id.toString() )
 				}
-			]
+			}
 		);
-	} ),
+	}),
+	
+	"single id without id funcs",
+	Test.getVar(
+	function()
+	{
+		var id = new Id();
+		
+		return prepareObjsTest(
+			{ id: id },
+			{
+				id:
+				{
+					ourGlobeSysSet: sysValue,
+					type: "Id",
+					id: id.toString()
+				}
+			},
+			undefined,
+			undefined,
+			false
+		);
+	}),
 	
 	"single binary",
 	Test.getVar(
@@ -436,42 +524,64 @@ suite.addBatch( Test.getTests(
 			new Buffer( crypto.randomBytes( 64 ) ), "jpg"
 		);
 		
-		return _prepareObjsTest(
-			[ { binary: binary } ],
-			[ {
+		return prepareObjsTest(
+			{ binary: binary },
+			{
 				binary:
 				{
-					"::type": "Binary",
-					"::contentType": binary.getContentType(),
-					"::content": new _BinaryCont( binary.getBuffer() )
+					ourGlobeSysSet: sysValue,
+					type: "Binary",
+					binary: new BinaryCont( binary.getBuffer() ),
+					contentType: binary.getContentType()
 				}
-			} ]
+			}
 		);
-	} ),
+	}),
 	
-	"single link",
+	"single link with id funcs",
 	Test.getVar(
 	function()
 	{
 		var id = new Id();
 		var collection = "BogyCollection";
 		
-		return _prepareObjsTest(
+		return prepareObjsTest(
 			[ { link: new Link( collection, id ) } ],
 			[ {
 				link:
 				{
-					"::type": "Link",
-					"::collection": collection,
-					"::id":
-					{
-						"::type": "Id",
-						"::id": new _IdCont( id.getBuffer() )
-					}
+					ourGlobeSysSet: sysValue,
+					type: "Link",
+					collection: collection,
+					id: new IdCont( id.toString() )
 				}
-			} ]
+			}]
 		);
-	} ),
+	}),
+	
+	"single link without id funcs",
+	Test.getVar(
+	function()
+	{
+		var id = new Id();
+		var collection = "BogyCollection";
+		
+		return prepareObjsTest(
+			[ { link: new Link( collection, id ) } ],
+			[ {
+				link:
+				{
+					ourGlobeSysSet: sysValue,
+					type: "Link",
+					collection: collection,
+					id: id.toString()
+				}
+			}],
+			undefined,
+			true,
+			false
+		);
+	}),
 	
 	"single cache with empty cache obj",
 	Test.getVar(
@@ -486,13 +596,13 @@ suite.addBatch( Test.getTests(
 		
 		var cache = new Cache( {}, link, date );
 		
-		return _prepareObjsTest(
-			[ { dingo: cache } ],
-			[ { dingo: _getPreparedCache( cache, {}, true ) } ]
+		return prepareObjsTest(
+			{ dingo: cache },
+			{ dingo: getPreparedCache( cache, {}, true ) }
 		);
-	} ),
+	}),
 	
-"single cache with immediate id as cache obj",
+	"single cache with immediate id as cache obj",
 	Test.getVar(
 	function( )
 	{
@@ -507,22 +617,66 @@ suite.addBatch( Test.getTests(
 		
 		var cache = new Cache( cachedId, link, date );
 		
-		return _prepareObjsTest(
-			[ { dingo: cache } ],
-			[ {
-					dingo: _getPreparedCache(
+		return prepareObjsTest(
+			{ dingo: cache },
+			{
+				dingo:
+					getPreparedCache(
 						cache,
 						{
-							"::type": "Id",
-							"::id": new _IdCont( cachedId.getBuffer() )
-						},
-						true
+							ourGlobeSysSet: sysValue,
+							type: "Id",
+							id: new IdCont( cachedId.toString() )
+						}
 					)
-			} ]
+			}
 		);
-	} ),
+	}),
 	
-	"single cache with no date func and nested cache obj",
+	"single cache without date funcs",
+	Test.getVar(
+	function( )
+	{
+		var id = new Id();
+		var collection = "DogyCollection";
+		
+		var link = new Link( collection, id );
+		
+		var date = new Date();
+		
+		var cache = new Cache( 42, link, date );
+		
+		return prepareObjsTest(
+			{ dingo: cache },
+			{ dingo: getPreparedCache( cache, 42, false ) },
+			undefined,
+			false
+		);
+	}),
+	
+	"single cache without date funcs nor id funcs",
+	Test.getVar(
+	function( )
+	{
+		var id = new Id();
+		var collection = "DogyCollection";
+		
+		var link = new Link( collection, id );
+		
+		var date = new Date();
+		
+		var cache = new Cache( 42, link, date );
+		
+		return prepareObjsTest(
+			{ dingo: cache },
+			{ dingo: getPreparedCache( cache, 42, false, false ) },
+			undefined,
+			false,
+			false
+		);
+	}),
+	
+	"single cache with no date funcs and nested cache obj",
 	Test.getVar(
 	function()
 	{
@@ -535,30 +689,26 @@ suite.addBatch( Test.getTests(
 		
 		var cacheObj =
 		{
-			"dingo": "DINGO",
-			"dango": "DANGO",
-			"dongo": "DONGO",
-			"dengo":
+			dingo: "DINGO",
+			dango: "DANGO",
+			dongo: "DONGO",
+			dengo:
 			[
 				[],
-				[
-					42,
-					43,
-					{ "dengo":[ "dingo", "dango", "dongo" ] },
-					42
-				],
+				[ 42, 43, { dengo:[ "dingo", "dango", "dongo" ] }, 42 ],
 				{}
 			]
 		};
 		
 		var cache = new Cache( cacheObj, link, date );
 		
-		return _prepareObjsTest(
-			[ { dingo: cache } ],
-			[ { dingo: _getPreparedCache( cache, cacheObj, false ) } ],
+		return prepareObjsTest(
+			{ dingo: cache },
+			{ dingo: getPreparedCache( cache, cacheObj, false ) },
+			undefined,
 			false
 		);
-	} ),
+	}),
 	
 	"nested obj with caches and ids nested in turn",
 	Test.getVar(
@@ -570,7 +720,8 @@ suite.addBatch( Test.getTests(
 		var dateOne = new Date();
 		var dateTwo = new Date();
 		
-		var cacheOne = new Cache(
+		var cacheOne =
+		new Cache(
 			{
 				dingo: "Dingo",
 				dango: "Dango",
@@ -581,47 +732,40 @@ suite.addBatch( Test.getTests(
 			dateTwo
 		);
 		
-		var cacheTwo = new Cache(
+		var cacheTwo =
+		new Cache(
 			{
 				dingi: new Link( "DingaWork", idTwo ),
 				dangi: "Dangi",
-				dongi:
-				[
-					42,
-					true,
-					null,
-					cacheOne
-				]
+				dongi: [ 42, true, null, cacheOne ]
 			},
 			new Link( "DingaWork", idTwo ),
 			dateOne
 		);
 		
-		return _prepareObjsTest(
-			[ {
-				"dingo":[ idOne, "dingi", cacheTwo, "dingo" ],
-				"dango": 2
-			} ],
-			[ {
-				"dingo":
+		return prepareObjsTest(
+			{
+				dingo:[ idOne, "dingi", cacheTwo, "dingo" ],
+				dango: 2
+			},
+			{
+				dingo:
 				[
 					{
-						"::type": "Id",
-						"::id": new _IdCont( idOne.getBuffer() )
+						ourGlobeSysSet: sysValue,
+						type: "Id",
+						id: new IdCont( idOne.toString() )
 					},
 					"dingi",
-					_getPreparedCache(
+					getPreparedCache(
 						cacheTwo,
 						{
 							dingi:
 							{
-								"::type": "Link",
-								"::collection": "DingaWork",
-								"::id":
-								{
-									"::type": "Id",
-									"::id": new _IdCont( idTwo.getBuffer() )
-								}
+								ourGlobeSysSet: sysValue,
+								type: "Link",
+								collection: "DingaWork",
+								id: new IdCont( idTwo.toString() )
 							},
 							dangi: "Dangi",
 							dongi:
@@ -629,20 +773,22 @@ suite.addBatch( Test.getTests(
 								42,
 								true,
 								null,
-								_getPreparedCache(
+								getPreparedCache(
 									cacheOne,
 									{
 										dingo: "Dingo",
 										dango: "Dango",
 										dongo:
 										{
-											"::type": "Id",
-											"::id": new _IdCont( idOne.getBuffer() )
+											ourGlobeSysSet: sysValue,
+											type: "Id",
+											id: new IdCont( idOne.toString() )
 										},
 										dengo:
 										{
-											"::type": "Date",
-											"::date": new _DateCont( dateTwo )
+											ourGlobeSysSet: sysValue,
+											type: "Date",
+											date: new DateCont( dateTwo )
 										}
 									}
 								)
@@ -652,9 +798,9 @@ suite.addBatch( Test.getTests(
 					"dingo"
 				],
 				"dango": 2
-			} ]
+			}
 		);
-	} ),
+	}),
 	
 	"id, binary, date and links combined and nested",
 	Test.getVar(
@@ -681,8 +827,8 @@ suite.addBatch( Test.getTests(
 		var linkOne = new Link( collectionOne, idLinkOne );
 		var linkTwo = new Link( collectionTwo, idLinkTwo );
 		
-		return _prepareObjsTest(
-			[ {
+		return prepareObjsTest(
+			{
 				idOne: idOne,
 				ids:[ 42, idTwo, "dingo" ],
 				dates:
@@ -703,19 +849,21 @@ suite.addBatch( Test.getTests(
 					{ binaryOne: binaryOne, date: dateOne },
 					binaryTwo
 				]
-			} ],
-			[ {
+			},
+			{
 				idOne:
 				{
-					"::type": "Id",
-					"::id": new _IdCont( idOne.getBuffer() )
+					ourGlobeSysSet: sysValue,
+					type: "Id",
+					id: new IdCont( idOne.toString() )
 				},
 				ids:
 				[
 					42,
 					{
-						"::type": "Id",
-						"::id": new _IdCont( idTwo.getBuffer() )
+						ourGlobeSysSet: sysValue,
+						type: "Id",
+						id: new IdCont( idTwo.toString() )
 					},
 					"dingo"
 				],
@@ -724,18 +872,21 @@ suite.addBatch( Test.getTests(
 					dingo: "dingo",
 					dateOne:
 					{
-						"::type": "Date",
-						"::date": new _DateCont( dateOne )
+						ourGlobeSysSet: sysValue,
+						type: "Date",
+						date: new DateCont( dateOne )
 					},
 					dates:
 					[
 						{
-							"::type": "Date",
-							"::date": new _DateCont( dateOne )
+							ourGlobeSysSet: sysValue,
+							type: "Date",
+							date: new DateCont( dateOne )
 						},
 						{
-							"::type": "Date",
-							"::date": new _DateCont( dateTwo )
+							ourGlobeSysSet: sysValue,
+							type: "Date",
+							date: new DateCont( dateTwo )
 						}
 					]
 				},
@@ -749,23 +900,17 @@ suite.addBatch( Test.getTests(
 						{
 							dango:
 							{
-								"::type": "Link",
-								"::collection": collectionOne,
-								"::id":
-								{
-									"::type": "Id",
-									"::id": new _IdCont( idLinkOne.getBuffer() )
-								}
+								ourGlobeSysSet: sysValue,
+								type: "Link",
+								collection: collectionOne,
+								id: new IdCont( idLinkOne.toString() )
 							},
 							dongo:
 							{
-								"::type": "Link",
-								"::collection": collectionTwo,
-								"::id":
-								{
-									"::type": "Id",
-									"::id": new _IdCont( idLinkTwo.getBuffer() )
-								}
+								ourGlobeSysSet: sysValue,
+								type: "Link",
+								collection: collectionTwo,
+								id: new IdCont( idLinkTwo.toString() )
 							}
 						}
 					]
@@ -775,29 +920,29 @@ suite.addBatch( Test.getTests(
 					{
 						binaryOne:
 						{
-							"::type": "Binary",
-							"::contentType": binaryOne.getContentType(),
-							"::content":
-								new _BinaryCont( binaryOne.getBuffer() )
+							ourGlobeSysSet: sysValue,
+							type: "Binary",
+							contentType: binaryOne.getContentType(),
+							binary: new BinaryCont( binaryOne.getBuffer() )
 						},
 						date:
 						{
-							"::type": "Date",
-							"::date": new _DateCont( dateOne )
+							ourGlobeSysSet: sysValue,
+							type: "Date",
+							date: new DateCont( dateOne )
 						}
 					},
 					{
-						"::type": "Binary",
-						"::contentType": binaryTwo.getContentType(),
-						"::content": new _BinaryCont( binaryTwo.getBuffer() )
+						ourGlobeSysSet: sysValue,
+						type: "Binary",
+						contentType: binaryTwo.getContentType(),
+						binary: new BinaryCont( binaryTwo.getBuffer() )
 					}
 				]
-			}]
+			}
 		)
-		
-	} )
-	
-) );
+	})
+));
 
 suite.run();
 

@@ -17,15 +17,15 @@ function()
 {
 	return(
 		new FuncVer( [
-			Cache.CACHE_OBJ_S,
+			Cache.CACHE_VAR_S,
 			mods.get( "link" ),
 			[ Date, "undef" ]
 		])
 	);
 },
-function( cacheObj, link, refreshedDate )
+function( cacheVar, link, refreshedDate )
 {
-	this.cacheObj = cacheObj;
+	this.cacheVar = cacheVar;
 	this.link = link;
 	this.refreshedDate =
 		refreshedDate !== undefined ?
@@ -34,7 +34,7 @@ function( cacheObj, link, refreshedDate )
 	;
 });
 
-Cache.CACHE_OBJ_S = "any";
+Cache.CACHE_VAR_S = { badTypes: "undef" };
 
 return Cache;
 
@@ -47,12 +47,23 @@ var FuncVer = ourglobe.FuncVer;
 
 var Link = mods.get( "./link" );
 
+Cache.verClusterVars =
+getF(
+new FuncVer( [ "any", "any" ] ).setReturn( "bool" ),
+function( cacheVar, refreshedDate )
+{
+	return(
+		cacheVar !== undefined &&
+		refreshedDate instanceof Date === true
+	);
+});
+
 Cache.prototype.getCache =
 getF(
-new FuncVer( undefined, Cache.CACHE_OBJ_S ),
+new FuncVer( undefined, Cache.CACHE_VAR_S ),
 function()
 {
-	return this.cacheObj;
+	return this.cacheVar;
 });
 
 Cache.prototype.getLink =

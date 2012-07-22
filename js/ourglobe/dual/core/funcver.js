@@ -62,7 +62,12 @@ FuncVer.prototype.setExtraArgs = function( extraArgsSchema )
 		ourglobe.assert.nrArgs( arguments, 1 );
 		
 		ourglobe.assert.argType(
-			"extraArgsSchema", extraArgsSchema, "obj", "arr", "str"
+			"extraArgsSchema",
+			extraArgsSchema,
+			"obj",
+			"arr",
+			"func",
+			"str"
 		);
 	}
 	
@@ -78,7 +83,12 @@ FuncVer.prototype.setReturn = function( returnSchema )
 		ourglobe.assert.nrArgs( arguments, 1 );
 		
 		ourglobe.assert.argType(
-			"returnSchema", returnSchema, "obj", "arr", "str"
+			"returnSchema",
+			returnSchema,
+			"obj",
+			"arr",
+			"func",
+			"str"
 		);
 	}
 	

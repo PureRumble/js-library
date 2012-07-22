@@ -43,20 +43,23 @@ suite.addBatch( Test.getTests(
 	},
 	"creating an id from a str",
 	{
-		topic: function()
+		topic:
+		function()
 		{
 			var idOne = new Id();
 			var idTwo = new Id( idOne.toString() );
 			
 			return { idOne:idOne, idTwo:idTwo };
 		},
-		"gives and id": function( ids )
+		"gives and id":
+		function( ids )
 		{
 			Test.errorCheckArgs( arguments );
 			
 			checkId( ids.idTwo );
 		},
-		"gives and id equal to the string": function( ids )
+		"gives and id equal to the string":
+		function( ids )
 		{
 			Test.errorCheckArgs( arguments );
 			
@@ -65,34 +68,8 @@ suite.addBatch( Test.getTests(
 				"The Id doesnt equal the string"
 			);
 		}
-	},
-	"creating and id from a buf",
-	{
-		topic: function()
-		{
-			var idOne = new Id();
-			var idTwo = new Id( idOne.getBuffer() );
-			
-			return { idOne:idOne, idTwo:idTwo };
-		},
-		"gives and id": function( ids )
-		{
-			Test.errorCheckArgs( arguments );
-			
-			checkId( ids.idTwo );
-		},
-		"gives and id equal to the buf": function( ids )
-		{
-			Test.errorCheckArgs( arguments );
-			
-			assert(
-				ids.idOne.toString() === ids.idTwo.toString(),
-				"The Id doesnt equal the buf"
-			);
-		}
 	}
-	
-) );
+));
 
 // id collision test
 suite.addBatch( Test.getTests(
@@ -127,10 +104,7 @@ suite.addBatch( Test.getTests(
 		{
 			Test.errorCheckArgs( arguments );
 			
-			assert(
-				topic === 0,
-				topic+" collisions occurred"
-			);
+			assert( topic === 0, topic+" collisions occurred" );
 		}
 	)
 	

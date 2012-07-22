@@ -27,9 +27,28 @@ function( mods, Binary )
 var getF = ourglobe.getF;
 var FuncVer = ourglobe.FuncVer;
 
+Binary.verClusterVars =
+getF(
+new FuncVer( [ "any", "any" ], "bool" ),
+function( buf, contentType )
+{
+// verClusterVars() can be used to verify contentType alone,
+// in which case contentType is the first arg
+	return(
+		(
+			arguments.length === 1 &&
+			buf === "jpg"
+		) ||
+		(
+			buf instanceof Buffer === true &&
+			contentType === "jpg"
+		)
+	);
+});
+
 Binary.prototype.getBuffer =
 getF(
-new FuncVer( undefined, Buffer ),
+new FuncVer().setReturn( Buffer ),
 function()
 {
 	return this.buf;
@@ -37,7 +56,7 @@ function()
 
 Binary.prototype.getContentType =
 getF(
-new FuncVer( undefined, Binary.CONTENT_TYPE_S ),
+new FuncVer().setReturn( Binary.CONTENT_TYPE_S ),
 function()
 {
 	return this.contentType;
