@@ -39,26 +39,15 @@ ourglobe.OurGlobeObject = OurGlobeObject;
 ourglobe.FuncVer = FuncVer;
 ourglobe.Schema = Schema;
 
-OurGlobeError.CONSTR_FV =
-new FuncVer(
-	[
-		OurGlobeError.MSG_S,
-		OurGlobeError.VAR_S,
-		OurGlobeError.CODE_S,
-		OurGlobeError.PLACE_S
-	]
-);
+OurGlobeError.prototype.__proto__ = Error.prototype;
+RuntimeError.prototype.__proto__ = OurGlobeError.prototype;
+sys.extend( SchemaError, RuntimeError );
+sys.extend( FuncVerError, RuntimeError );
 
 RuntimeError.MSG_S = OurGlobeError.MSG_S;
 RuntimeError.VAR_S = OurGlobeError.VAR_S;
 RuntimeError.CODE_S = OurGlobeError.CODE_S;
 RuntimeError.PLACE_S = OurGlobeError.PLACE_S;
-RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
-
-sys.extend( OurGlobeError, Error );
-sys.extend( RuntimeError, OurGlobeError );
-sys.extend( SchemaError, RuntimeError );
-sys.extend( FuncVerError, RuntimeError );
 
 FuncVer.PROPER_STR = Schema.PROPER_STR;
 FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;
@@ -70,6 +59,17 @@ FuncVer.NON_NEG_INT = Schema.NON_NEG_INT;
 FuncVer.R_NON_NEG_INT = Schema.R_NON_NEG_INT;
 FuncVer.POS_INT = Schema.POS_INT;
 FuncVer.R_POS_INT = Schema.R_POS_INT;
+
+OurGlobeError.CONSTR_FV =
+new FuncVer(
+	[
+		OurGlobeError.MSG_S,
+		OurGlobeError.VAR_S,
+		OurGlobeError.CODE_S,
+		OurGlobeError.PLACE_S
+	]
+);
+RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
 
 var returnVar = 
 {
