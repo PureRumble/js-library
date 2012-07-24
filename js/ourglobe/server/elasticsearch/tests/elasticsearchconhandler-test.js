@@ -292,6 +292,7 @@ function _insertQueryTest( objs, timeout )
 }
 
 var suite = vows.describe( "elasticsearchconhandler" );
+suite.options.error = false;
 
 // creating index and mapping type
 suite.addBatch( Testing.getTests(

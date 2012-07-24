@@ -12,11 +12,12 @@ var sys = ourglobe.sys;
 var getF = ourglobe.getF;
 
 var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+var Id = mods.get( "cluster" ).Id;
 
 var MongoConHandler =
 getF(
 new FuncVer( [
-	FuncVer.PROPER_STR_L,
+	ClusterConHandler.CLUSTER_NAME_S,
 	{
 		extraItems:
 		{
@@ -37,6 +38,14 @@ function( clusterName, conParams )
 });
 
 sys.extend( MongoConHandler, ClusterConHandler );
+
+MongoConHandler.NATIVE_QUERY_OBJ_S = FuncVer.PROPER_OBJ;
+
+MongoConHandler.QUERY_OBJ_S =
+{
+	types:[ "arr", Id, MongoConHandler.NATIVE_QUERY_OBJ_S ],
+	extraItems: Id
+};
 
 return MongoConHandler
 
@@ -65,74 +74,44 @@ var MongoDb = mods.get( "./mongodb");
 
 MongoConHandler.PREPARING_HANDLERS =
 {
-	Id:
+	prepareBinary:
 	getF(
-	new FuncVer( [ Id.ID_STR_S ], MongoDbBinary ),
-	function( id )
+	new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
+		.setReturn( MongoDbBinary ),
+	function( buf, contentType )
 	{
-		return new MongoDbBinary( new Buffer( id, "hex" ) );
-	}),
-	
-	Binary:
-	getF(
-	new FuncVer( [ Binary ], MongoDbBinary ),
-	function( binary )
-	{
-		return new MongoDbBinary( binary.getBuffer() );
+		return new MongoDbBinary( buf );
 	}) 
 };
 
 MongoConHandler.RESTORING_HANDLERS =
 {
-	Id:
+	restoreBinary:
 	getF(
-	new FuncVer( [ "any" ] ).setReturn( "any" ),
-	function( id )
+	new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
+	function( mongoDbBinary, contentType )
 	{
-		if( id instanceof MongoDbBinary === false )
+		if( mongoDbBinary instanceof MongoDbBinary === false )
 		{
 			throw new ClusterDataRuntimeError(
-				"An Id obj must contain a MongoDbBinary",
-				{ insteadOfMongoDbBinary: id }
+				"A MongoDbBinary from the cluster hasnt been provided "+
+				"as expected for restoring the Binary",
+				{ providedVar:mongoDbBinary }
 			);
 		}
 		
-		var idStr = undefined;
+		var returnVar = undefined
 		
 		try
 		{
-			idStr = id.read( 0 ).toString( "hex" );
+			returnVar = mongoDbBinary.read( 0 );
 		}
 		catch( e )
 		{
 			throw new ClusterDataRuntimeError(
-				"An error occurred while converting a MongoDbBinary "+
-				"to a hex str",
-				{ mongoDbBinary: id, err: e }
-			);
-		}
-		
-		return idStr;
-	}),
-	
-	Binary:
-	getF(
-	new FuncVer(
-		[ MongoDbBinary, Binary.CONTENT_TYPE_S ], Binary
-	),
-	function( content, contentType )
-	{
-		var returnVar = undefined;
-		
-		try
-		{
-			returnVar = new Binary( content.read( 0 ), contentType );
-		}
-		catch( e )
-		{
-			throw new ClusterDataRuntimeError(
-				"Valid content or content type hasnt been provided",
-				{ content:content, contentType:contentType }
+				"An error occurred while converting the MongoDbBinary "+
+				"to a Buffer",
+				{ mongoDbBinary: mongoDbBinary, err: e }
 			);
 		}
 		
@@ -140,12 +119,40 @@ MongoConHandler.RESTORING_HANDLERS =
 	})
 };
 
+MongoConHandler.prepareQueryObj =
+getF(
+new FuncVer( [ MongoConHandler.QUERY_OBJ_S ] )
+	.setReturn( MongoConHandler.NATIVE_QUERY_OBJ_S ),
+function( queryObj )
+{
+	if( queryObj instanceof Id === true )
+	{
+		queryObj = [ queryObj ];
+	}
+	
+	if( sys.hasType( queryObj, "arr" ) === true )
+	{
+		var ids = [];
+		
+		for( var item in queryObj )
+		{
+			ids.push( queryObj[ item ].toString() );
+		}
+		
+		queryObj = { _id:{ "$in": ids } };
+	}
+	
+	return queryObj;
+});
+
 MongoConHandler.prototype.getOpenCon =
 getF(
 new FuncVer( [
 	{
-		extraProps:false, props:{
-			host:FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT
+		extraProps: false,
+		props:
+		{
+			host: FuncVer.R_PROPER_STR, port: FuncVer.R_NON_NEG_INT
 		}
 	},
 	"func"
@@ -154,8 +161,9 @@ function( conParams, cb )
 {
 	var server = new Server( conParams.host, conParams.port, {} );
 	
-	var db = new Db(
-		MongoDb.getStandardDbName(), server, { strict:true }
+	var db =
+	new Db(
+		MongoDb.getStandardDbName(), server, { strict: true }
 	);
 	
 	db.open(
@@ -220,9 +228,9 @@ function( collectionName, objs, cb )
 				)
 			;
 			
-			for( var prop in objs )
+			for( var item in objs )
 			{
-				objs[ prop ]._id = objs[ prop ].id[ "::id" ];
+				objs[ item ]._id = objs[ item ].id.id;
 			}
 			
 			var coll = new Collection( db, collectionName );
@@ -235,9 +243,9 @@ function( collectionName, objs, cb )
 					.addArgs( [ "null/undef", "any" ] ),
 				function( err, insObjs )
 				{
-					for( var prop in objs )
+					for( var item in objs )
 					{
-						delete objs[ prop ]._id;
+						delete objs[ item ]._id;
 					}
 					
 					ClusterConHandler.restoreSet( restoreInfo );
@@ -258,33 +266,21 @@ MongoConHandler.prototype.query =
 getF(
 new FuncVer( [
 	ClusterConHandler.COLLECTION_NAME_S,
-	{ types:[ "arr", Id, FuncVer.PROPER_OBJ ], extraItems: Id },
+	MongoConHandler.QUERY_OBJ_S,
 	"func"
 ]),
-function( collectionName, query, cb )
+function( collectionName, queryObj, cb )
 {
-	if( query instanceof Id === true )
-	{
-		query = [ query ];
-	}
+	queryObj = MongoConHandler.prepareQueryObj( queryObj );
 	
-	if( sys.hasType( query, "arr" ) === true )
+	if(
+		sys.hasType( queryObj, "arr" ) === true &&
+		queryObj.length === 0
+	)
 	{
-		var ids = [];
+		cb( undefined, [] );
 		
-		for( var prop in query )
-		{
-			ids.push( new MongoDbBinary( query[ prop ].getBuffer() ) );
-		}
-		
-		if( ids.length === 0 )
-		{
-			cb( undefined );
-			
-			return;
-		}
-		
-		query = { _id:ids };
+		return;
 	}
 	
 	this.getCurrCon(
@@ -300,7 +296,7 @@ function( collectionName, query, cb )
 			var coll = new Collection( db, collectionName );
 			
 			coll.find(
-				query,
+				queryObj,
 				getF(
 				new FuncVer( [ Error ] )
 					.addArgs( [ "null/undef", Cursor ] ),
@@ -314,15 +310,7 @@ function( collectionName, query, cb )
 					cursor.toArray(
 						getF(
 						new FuncVer( [ Error ] )
-							.addArgs( [
-								"null/undef",
-								{
-									extraItems:
-									{
-										props: { _id:MongoDbBinary }
-									}
-								}
-							]),
+							.addArgs( [ "null/undef", "arr" ] ),
 						function( err, items )
 						{
 							if( sys.errorCheck( err, cb ) === true )
@@ -330,9 +318,12 @@ function( collectionName, query, cb )
 								return;
 							}
 							
-							for( var prop in items )
+							for( var item in items )
 							{
-								delete items[ prop ]._id;
+								if( "_id" in items[ item ] === true )
+								{
+									delete items[ item ]._id;
+								}
 							}
 							
 							ClusterConHandler.restoreSetFromCluster(
@@ -352,35 +343,21 @@ MongoConHandler.prototype.delete =
 getF(
 new FuncVer( [
 	ClusterConHandler.COLLECTION_NAME_S,
-	{
-		types:[ "arr", Id, FuncVer.PROPER_OBJ ], extraItems: Id
-	},
+	MongoConHandler.QUERY_OBJ_S,
 	"func"
 ]),
-function( collectionName, query, cb )
+function( collectionName, queryObj, cb )
 {
-	if( query instanceof Id === true )
-	{
-		query = [ query ];
-	}
+	queryObj = MongoConHandler.prepareQueryObj( queryObj );
 	
-	if( sys.hasType( query, "arr" ) === true )
+	if(
+		sys.hasType( queryObj, "arr" ) === true &&
+		queryObj.length === 0
+	)
 	{
-		var ids = [];
+		cb( undefined );
 		
-		for( var prop in query )
-		{
-			ids.push( new MongoDbBinary( query[ prop ].getBuffer() ) );
-		}
-		
-		if( ids.length === 0 )
-		{
-			cb( undefined );
-			
-			return;
-		}
-		
-		query = { _id:ids };
+		return;
 	}
 	
 	this.getCurrCon(
@@ -396,7 +373,7 @@ function( collectionName, query, cb )
 			var coll = new Collection( db, collectionName );
 			
 			coll.remove(
-				query,
+				queryObj,
 				{ safe:true },
 				getF(
 				new FuncVer( [ Error ] )

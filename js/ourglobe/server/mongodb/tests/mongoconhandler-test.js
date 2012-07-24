@@ -44,21 +44,22 @@ var Link = mods.get( "cluster" ).Link;
 var Binary = mods.get( "cluster" ).Binary;
 var Cache = mods.get( "cluster" ).Cache;
 
-var _MONGO_CON_HANDLER = new MongoConHandler(
-	"mongodb", [ { host:"localhost", port:27017 } ]
+var MONGO_CON_HANDLER =
+new MongoConHandler(
+	"mongodb", [ { host: "localhost", port: 27017 } ]
 );
 
-var _COLLECTION_NAME = "test";
+var COLLECTION_NAME = "test";
 
-var _CLUSTER_MAPPING = [];
-_CLUSTER_MAPPING[ _COLLECTION_NAME ] = 0;
-var _CLUSTER_MAPPER = new ClusterMapper(
-		[ _MONGO_CON_HANDLER ], _CLUSTER_MAPPING
-);
+var CLUSTER_MAPPING = [];
+CLUSTER_MAPPING[ COLLECTION_NAME ] = 0;
+var CLUSTER_MAPPER =
+	new ClusterMapper( [ MONGO_CON_HANDLER ], CLUSTER_MAPPING )
+;
 
 var objS = { props:{ id:{ req: true, types: Id } } };
 
-var _insertQueryTest =
+var insertQueryTest =
 getF(
 new FuncVer( [
 	{ types:[ "arr", objS ], extraItems: objS },
@@ -69,56 +70,49 @@ function( objs, timeout )
 {
 	timeout = timeout !== undefined ? timeout : 1000;
 	
-	var clone = Test.clone( objs ); 
+	var objsToInsert = Test.clone( objs ); 
+	var ids = undefined;
 	
-	var objsToInsert = clone;
-	
-	if( sys.hasType( objsToInsert, "arr" ) === false )
+	if( sys.hasType( objsToInsert, "arr" ) === true )
 	{
-		objsToInsert = [ objsToInsert ];
+		ids = [];
+		
+		for( var item in objsToInsert )
+		{
+			ids.push( objsToInsert[ item ].id );
+		}
+	}
+	else
+	{
+		ids = objsToInsert.id;
 	}
 	
-	var ids = [];
-	
-	for( var pos in objsToInsert )
-	{
-		ids.push( objsToInsert[ pos ].id );
-	}
-	
-	var idBinaries = [];
-	
-	for( var pos in ids )
-	{
-		idBinaries[ pos ] =
-			new MongoDbBinary( ids[ pos ].getBuffer() )
-		;
-	}
-	
-	var returnVar = Test.getTests(
+	var returnVar =
+	Test.getTests(
 		
 		"topic",
 		function()
 		{
-			_CLUSTER_MAPPER
-				.getConHandler( _COLLECTION_NAME )
-				.insert( _COLLECTION_NAME, objs, this.callback )
+			CLUSTER_MAPPER
+				.getConHandler( COLLECTION_NAME )
+				.insert( COLLECTION_NAME, objsToInsert, this.callback )
 			;
 		},
 		
 		"objs are as they were before insertion",
 		getF(
-		new FuncVer( [ [ Error, "undef/null" ] ] ),
+		new FuncVer( [ [ Error, "undef" ] ] ),
 		function( err )
 		{
 			Test.errorCheckArgs( arguments );
 			
-			var diff = Test.compare( clone, objs );
+			var diff = Test.compare( objs, objsToInsert );
 			
 			if( diff !== undefined )
 			{
 				throw new RuntimeError(
 					"Objs are not as they were before insertion",
-					{ beforeIns:clone, afterIns:objs, diff: diff }
+					{ beforeIns: objs, afterIns: objsToInsert, diff: diff }
 				);
 			}
 		}),
@@ -134,13 +128,9 @@ function( objs, timeout )
 				timers.setTimeout(
 					function()
 					{
-						_CLUSTER_MAPPER
-							.getConHandler( _COLLECTION_NAME )
-							.query(
-								_COLLECTION_NAME,
-								{ _id:{ "$in": idBinaries } },
-								outerThis.callback
-							)
+						CLUSTER_MAPPER
+							.getConHandler( COLLECTION_NAME )
+							.query( COLLECTION_NAME, ids, outerThis.callback )
 						;
 					},
 					timeout
@@ -152,15 +142,14 @@ function( objs, timeout )
 			new FuncVer()
 				.addArgs( [ Error ] )
 				.addArgs( [
-					"null/undef",
+					"undef",
 					{
 						denseItems: true,
 						extraItems:
 						{
 							props:
 							{
-								id:{ req: true, types: Id },
-								_id:{ badTypes:{} }
+								id:{ req: true, types: Id }, _id:{ badTypes:{} }
 							}
 						}
 					}
@@ -171,19 +160,26 @@ function( objs, timeout )
 				
 				var resById = [];
 				
-				for( var pos in res )
+				for( var item in res )
 				{
-					var currObj = res[ pos ];
+					var currObj = res[ item ];
 					var currId = currObj.id.toString();
 					
 					resById[ currId ] = currObj;
 				}
 				
+				var arr = objs;
+				
+				if( sys.hasType( arr, "arr" ) === false )
+				{
+					arr = [ arr ];
+				}
+				
 				var objsById = [];
 				
-				for( var pos in objsToInsert )
+				for( var item in arr )
 				{
-					var currObj = objsToInsert[ pos ];
+					var currObj = arr[ item ];
 					var currId = currObj.id.toString();
 					
 					objsById[ currId ] = currObj;
@@ -197,9 +193,7 @@ function( objs, timeout )
 						"Resulting objs from the query dont equal the "+
 						"original objs that were inserted",
 						{
-							original: objsById,
-							resulting: resById,
-							diff: diff
+							original: objsById, resulting: resById, diff: diff
 						}
 					);
 				}
@@ -211,26 +205,15 @@ function( objs, timeout )
 				"topic",
 				function()
 				{
-					var idsToDelete = ids;
-					
-					if( idsToDelete.length === 1 )
-					{
-						idsToDelete = idsToDelete[ 0 ];
-					}
-					
-					_CLUSTER_MAPPER
-						.getConHandler( _COLLECTION_NAME )
-						.delete(
-							_COLLECTION_NAME,
-							idsToDelete,
-							this.callback
-						)
+					CLUSTER_MAPPER
+						.getConHandler( COLLECTION_NAME )
+						.delete( COLLECTION_NAME, ids, this.callback )
 					;
 				},
 				
 				"turns out OK",
 				getF(
-				new FuncVer( [ [ Error, "undef/null" ] ] ),
+				new FuncVer( [ [ Error, "undef" ] ] ),
 				function( err )
 				{
 					Test.errorCheckArgs( arguments );
@@ -247,12 +230,10 @@ function( objs, timeout )
 						timers.setTimeout(
 							function()
 							{
-								_CLUSTER_MAPPER
-								.getConHandler( _COLLECTION_NAME )
+								CLUSTER_MAPPER
+								.getConHandler( COLLECTION_NAME )
 								.query(
-									_COLLECTION_NAME,
-									{ ids:idBinaries },
-									outerThis.callback
+									COLLECTION_NAME, ids, outerThis.callback
 								);
 							},
 							timeout
@@ -263,7 +244,7 @@ function( objs, timeout )
 					getF(
 					new FuncVer()
 						.addArgs( [ Error ] )
-						.addArgs( [ "null/undef", "arr" ] ),
+						.addArgs( [ "undef", "arr" ] ),
 					function( err, res )
 					{
 						Test.errorCheckArgs( arguments );
@@ -289,68 +270,74 @@ suite.options.error = false;
 suite.addBatch( Test.getTests(
 	
 	"no objs",
-	_insertQueryTest( [] ),
+	insertQueryTest( [] ),
 	
 	"one empty obj",
-	_insertQueryTest( { id:new Id() } ),
+	insertQueryTest( { id: new Id() } ),
 	
 	"two empty objs",
-	_insertQueryTest( [ { id:new Id() }, { id:new Id() } ] ),
+	insertQueryTest( [ { id: new Id() }, { id: new Id() } ] ),
 	"objs with basic types",
-	_insertQueryTest( [
-		{ id:new Id(), dingo:42, dango:"dango", dongo:true },
-		{ id:new Id(), dingi:42.22, dangi:"", dongi:null }
-	] ),
+	insertQueryTest( [
+		{ id: new Id(), dingo: 42, dango: "dango", dongo: true },
+		{ id: new Id(), dingi: 42.22, dangi: "", dongi: null }
+	]),
 	
 	"objs with recursive objs and arrs with basic types",
-	_insertQueryTest( [
+	insertQueryTest( [
 		{
-			id:new Id(),
-			dingo:42,
+			id: new Id(),
+			dingo: 42,
 			dango:[],
-			dongo:true,
+			dongo: true,
 			dengo:
 			{
-				dingi:"dingi",
+				dingi: "dingi",
 				dangi:[ true, false, true ],
 				dongi:[ 42.3, 42.4, 42.5 ],
 				dengi:[]
 			}
 		}
-	] )
-	
-) );
+	])
+));
 
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"obj with nested id objs",
-	_insertQueryTest(
-		{ id:new Id(), secondId:new Id(), innerId:{ id:new Id() } }
+	insertQueryTest(
+		{
+			id: new Id(),
+			secondId: new Id(),
+			innerId:{ id: new Id() }
+		}
 	),
 	
 	"obj with nested link objs and ids",
-	_insertQueryTest(
+	insertQueryTest(
 		{
-			id:new Id(),
-			link:new Link( "DingyWork", new Id() ),
+			id: new Id(),
+			link: new Link( "DingyWork", new Id() ),
 			obj:
 			{
-				setOfIds:{ idOne:new Id(), idTwo:new Id() },
-				anotherLink:new Link( "DingaWork", new Id() )
+				setOfIds:{ idOne: new Id(), idTwo: new Id() },
+				anotherLink: new Link( "DingaWork", new Id() )
 			}
 		}
 	),
 	
 	"obj with nested binaries",
-	Test.getVar( function()
+	Test.getVar(
+	function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 256 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
 		var bufThree = new Buffer( crypto.randomBytes(128 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
+				id: new Id(),
 				binaryOne: new Binary( bufOne, "jpg" ),
 				binaries:
 				{
@@ -363,29 +350,29 @@ suite.addBatch( Test.getTests(
 						new Binary( bufTwo, "jpg" ),
 						new Binary( bufThree, "jpg" ),
 						{
-							dingo:"dingo",
-							dango:"dango",
-							dongo:false
+							dingo: "dingo",
+							dango: "dango",
+							dongo: false
 						}
 					]
 				}
 			}
-		)
-	} ),
+		));
+	}),
 	
 	"obj with nested date objs",
-	_insertQueryTest(
+	insertQueryTest(
 		{
-			id:new Id(),
-			dateOne:new Date(),
-			dateTwo:new Date(),
-			someBool:false,
+			id: new Id(),
+			dateOne: new Date(),
+			dateTwo: new Date(),
+			someBool: false,
 			moreDates:
 			{
-				firstDate:new Date(),
-				secondDate:new Date(),
-				thirdDate:new Date(),
-				fourthDate:new Date(),
+				firstDate: new Date(),
+				secondDate: new Date(),
+				thirdDate: new Date(),
+				fourthDate: new Date(),
 				extraDates:
 					[ new Date(), new Date(), new Date(), "dingo" ]
 			},
@@ -395,42 +382,46 @@ suite.addBatch( Test.getTests(
 	
 	"obj with nested cache obj containing ids, links, binaries "+
 	"and dates",
-	Test.getVar( function()
+	Test.getVar(
+	function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 1024 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
-				dingoCache:new Cache(
+				id: new Id(),
+				dingoCache: new Cache(
 					{
-						id:new Id(),
-						link:new Link( "DinkoWork", new Id() ),
+						id: new Id(),
+						link: new Link( "DinkoWork", new Id() ),
 						arr:[ 42, 43, 44, 45, 46 ],
 						obj:
 						{
-							dingo:"dingo",
-							dango:"dango",
-							dongo:new Binary( bufOne, "jpg" ),
-							dingi:new Date(),
-							dangi:new Date()
+							dingo: "dingo",
+							dango: "dango",
+							dongo: new Binary( bufOne, "jpg" ),
+							dingi: new Date(),
+							dangi: new Date()
 						}
 					},
 					new Link( "DinkaWork", new Id() )
 				)
 			}
-		);
-	} ),
+		));
+	}),
 	
 	"obj with all kind of class objs",
-	Test.getVar( function()
+	Test.getVar(
+	function()
 	{ 
 		var bufOne = new Buffer( crypto.randomBytes( 512 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
+				id: new Id(),
 				idOne: new Id(),
 				linkOne: new Link( "DinkaWork", new Id() ),
 				idTwo: new Id(),
@@ -439,31 +430,31 @@ suite.addBatch( Test.getTests(
 				dateOne: new Date(),
 				obj:{
 					dateTwo: new Date(),
-					cacheOne:new Cache(
+					cacheOne:
+					new Cache(
 						{
 							dateThree: new Date(),
-							innerCache:new Cache(
+							innerCache: new Cache(
 								{
-									dinga:"dinga",
-									binaryOne:new Binary( bufOne, "jpg" ),
+									dinga: "dinga",
+									binaryOne: new Binary( bufOne, "jpg" ),
 									dateFour: new Date(),
-									dingo:true
+									dingo: true
 								},
 								new Link( "DinkeWork", new Id() )
 							)
 						},
 						new Link( "DinkoWork", new Id() )
 					),
-					binary:new Binary( bufTwo, "jpg" )
+					binary: new Binary( bufTwo, "jpg" )
 				}
 			}
-		);
-		
-	} )
-	
-) );
+		));
+	})
+));
 
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"deleting the test collection",
 	Test.getTests(
@@ -474,7 +465,7 @@ suite.addBatch( Test.getTests(
 			var outerThis = this;
 			
 			var conHandler = 
-				_CLUSTER_MAPPER.getConHandler( _COLLECTION_NAME )
+				CLUSTER_MAPPER.getConHandler( COLLECTION_NAME )
 			;
 			
 			conHandler.getCurrCon(
@@ -501,14 +492,14 @@ suite.addBatch( Test.getTests(
 						{
 							Test.errorCheckArgs( arguments );
 							
-							for( var prop in collNames )
+							for( var item in collNames )
 							{
-								var currColl = collNames[ prop ].name;
+								var currColl = collNames[ item ].name;
 								
 								var dbName =
 									MongoDb.getStandardDbName()+
 									"."+
-									_COLLECTION_NAME
+									COLLECTION_NAME
 								;
 								
 								if( currColl === dbName )
@@ -543,7 +534,7 @@ suite.addBatch( Test.getTests(
 				var outerThis = this;
 				
 				var conHandler = 
-					_CLUSTER_MAPPER.getConHandler( _COLLECTION_NAME )
+					CLUSTER_MAPPER.getConHandler( COLLECTION_NAME )
 				;
 			
 				conHandler.getCurrCon(

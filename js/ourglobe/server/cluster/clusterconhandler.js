@@ -13,10 +13,12 @@ function( mods )
 var getF = ourglobe.getF;
 var FuncVer = ourglobe.FuncVer;
 
+var clusterNameS = FuncVer.PROPER_STR_L;
+
 var ClusterConHandler =
 getF(
 new FuncVer( [
-	FuncVer.R_PROPER_STR_L,
+	clusterNameS,
 	{
 		extraItems:
 		{
@@ -26,7 +28,7 @@ new FuncVer( [
 				{ host:FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT }
 		}
 	}
-] ),
+]),
 function ClusterConHandler( clusterName, conParams )
 {
 	this.clusterName = clusterName;
@@ -44,6 +46,7 @@ function ClusterConHandler( clusterName, conParams )
 	this.randCurrCon();
 });
 
+ClusterConHandler.CLUSTER_NAME_S = FuncVer.PROPER_STR_L;
 ClusterConHandler.COLLECTION_NAME_S = FuncVer.PROPER_STR_L;
 ClusterConHandler.OUR_GLOBE_SYS_KEY = "ourGlobeSysSet";
 ClusterConHandler.OUR_GLOBE_SYS_VALUE =

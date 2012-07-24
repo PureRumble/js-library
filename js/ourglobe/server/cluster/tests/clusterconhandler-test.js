@@ -364,6 +364,7 @@ function(
 });
 
 var suite = vows.describe( "clusterconhandler" );
+suite.options.error = false;
 
 // Preparing and restoring simple objs and ars
 suite.addBatch( Test.getTests(
