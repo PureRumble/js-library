@@ -46,8 +46,42 @@ function ClusterConHandler( clusterName, conParams )
 	this.randCurrCon();
 });
 
-ClusterConHandler.CLUSTER_NAME_S = FuncVer.PROPER_STR_L;
+ClusterConHandler.CLUSTER_NAME_S = clusterNameS;
 ClusterConHandler.COLLECTION_NAME_S = FuncVer.PROPER_STR_L;
+
+// CONSTR_FV is made for subclasses of ClusterConHandler. Note
+// that the FuncVer of the constructor of ClusterConHandler
+// does allow for more props in the items of conParams, while
+// CONSTR_FV doesnt
+ClusterConHandler.CONSTR_FV =
+new FuncVer( [
+	ClusterConHandler.CLUSTER_NAME_S,
+	{
+		extraItems:
+		{
+			req: true,
+			extraProps: false,
+			props:
+			{
+				host:FuncVer.R_PROPER_STR,
+				port:FuncVer.R_NON_NEG_INT
+			}
+		}
+	}
+]);
+
+ClusterConHandler.GET_OPEN_CON_FV =
+new FuncVer( [
+	{
+		extraProps: false,
+		props:
+		{
+			host: FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT
+		}
+	},
+	"func"
+]);
+
 ClusterConHandler.OUR_GLOBE_SYS_KEY = "ourGlobeSysSet";
 ClusterConHandler.OUR_GLOBE_SYS_VALUE =
 	"={F|6yOA&,3J)d,{b+$~7q__=W&>{Z7]*5;J^1'730O3#3l1814_D13{S7hL"

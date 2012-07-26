@@ -16,20 +16,7 @@ var Id = mods.get( "cluster" ).Id;
 
 var MongoConHandler =
 getF(
-new FuncVer( [
-	ClusterConHandler.CLUSTER_NAME_S,
-	{
-		extraItems:
-		{
-			req: true,
-			extraProps: false,
-			props:
-			{
-				host: FuncVer.R_PROPER_STR, port: FuncVer.R_NON_NEG_INT
-			}
-		}
-	}
-]),
+ClusterConHandler.CONSTR_FV,
 function( clusterName, conParams )
 {
 	MongoConHandler.ourGlobeSuper.call(
@@ -147,16 +134,7 @@ function( queryObj )
 
 MongoConHandler.prototype.getOpenCon =
 getF(
-new FuncVer( [
-	{
-		extraProps: false,
-		props:
-		{
-			host: FuncVer.R_PROPER_STR, port: FuncVer.R_NON_NEG_INT
-		}
-	},
-	"func"
-]),
+ClusterConHandler.GET_OPEN_CON_FV,
 function( conParams, cb )
 {
 	var server = new Server( conParams.host, conParams.port, {} );
