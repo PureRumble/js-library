@@ -1,52 +1,66 @@
-var url = require("url");
-
-var conf = require("ourglobe").conf;
-var sys = require("ourglobe").sys;
-var FuncVer = require("ourglobe").FuncVer;
-var MoreObject = require("ourglobe/utils").MoreObject;
-
-var MoreHttp = require("ourglobe/utils").MoreHttp;
-
-function EsCon( host, port )
+ourglobe.define(
+[
+	"url",
+	"ourglobe/server/morehttp",
+	"./elasticsearcherror"
+],
+function( mods )
 {
-	if( conf.doVer() === true )
-	{
-		new FuncVer( [ FuncVer.PROPER_STR, FuncVer.NON_NEG_INT ] )
-			.verArgs( arguments )
-		;
-	}
-	
+
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
+
+var ElasticsearchConnection =
+getF(
+new FuncVer( [ FuncVer.PROPER_STR, FuncVer.NON_NEG_INT ] ),
+function( host, port )
+{
 	this.host = host;
 	this.port = port;
-}
+});
 
-EsCon.prototype.request = function( method, path, opts, cb )
+return ElasticsearchConnection;
+
+},
+function( mods, ElasticsearchConnection )
 {
-	if( conf.doVer() === true )
-	{
-		var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
-		
-		new FuncVer()
-			.addArgs( [
-				methodS,
-				FuncVer.PROPER_STR,
+
+var url = mods.get( "url" );
+
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
+
+var MoreHttp = mods.get( "morehttp" ).MoreHttp;
+var ElasticsearchError = mods.get( "elasticsearcherror" );
+
+var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
+
+ElasticsearchConnection.prototype.request =
+getF(
+new FuncVer()
+	.addArgs( [
+		methodS,
+		FuncVer.PROPER_STR,
+		{
+			types: "obj/undef",
+			extraProps: false,
+			props:
+			{
+				params: "obj/undef",
+				data:
 				{
-					types:"obj/undef", extraProps:false, props:{
-						params:"obj/undef",
-						data:{
-							types:"obj/arr/undef",
-							denseItems:true,
-							extraItems:"+obj"
-						}
-					}
-				},
-				"func"
-			] )
-			.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] )
-			.verArgs( arguments )
-		;
-	}
-	
+					types: "obj/arr/undef",
+					denseItems: true,
+					extraItems: "+obj"
+				}
+			}
+		},
+		"func"
+	])
+	.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] ),
+function( method, path, opts, cb )
+{
 	if( sys.hasType( opts, "func" ) === true )
 	{
 		cb = opts;
@@ -86,14 +100,15 @@ EsCon.prototype.request = function( method, path, opts, cb )
 	
 	var headers =
 		jsonData !== undefined ?
-		{
-			"Content-Length": jsonData.length,
-			"Content-Type": "application/x-www-form-urlencoded"
-		} :
-		undefined
+			{
+				"Content-Length": jsonData.length,
+				"Content-Type": "application/x-www-form-urlencoded"
+			} :
+			undefined
 	;
 	
-	var reqOpts = {
+	var reqOpts =
+	{
 		method: method,
 		port: this.port,
 		path: path,
@@ -105,19 +120,15 @@ EsCon.prototype.request = function( method, path, opts, cb )
 	var outerThis = this;
 	
 	MoreHttp.request(
-		this.host, reqOpts, function( err, status, resBuf )
+		this.host,
+		reqOpts,
+		getF(
+		new FuncVer( [ Error ] )
+			.addArgs( [
+				"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
+			]),
+		function( err, status, resBuf )
 		{
-			if( conf.doVer() === true )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [
-						"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
-					] )
-					.verArgs( arguments )
-				;
-			}
-			
 			if( sys.errorCheck( err, cb ) === true ) { return; }
 			
 			var res = undefined;
@@ -142,12 +153,10 @@ EsCon.prototype.request = function( method, path, opts, cb )
 			
 			if( parseFailed === true )
 			{
-				err = new ElasticsearchError(
+				err =
+				new ElasticsearchError(
 					"The received response data isnt a valid JSON "+
-					"object. The response data and request are: "+
-					MoreObject.getPrettyStr(
-						{ response:jsonRes, request:reqOpts }
-					),
+					"object",
 					{ host:outerThis.host, opts:reqOpts },
 					{ res:jsonRes, status:status }
 				);
@@ -156,12 +165,9 @@ EsCon.prototype.request = function( method, path, opts, cb )
 				new RegExp( /2\d\d|404/ ).test( ""+status ) === false
 			)
 			{
-				err = new ElasticsearchError(
-					"Response status code isnt expected."+
-					"The status code, data and request are: "+
-					MoreObject.getPrettyStr( {
-						status:status, response:jsonRes, request:reqOpts
-					} ),
+				err =
+				new ElasticsearchError(
+					"Response status code isnt expected",
 					{ host:outerThis.host, opts:reqOpts },
 					{ res:jsonRes, status:status }
 				);
@@ -200,12 +206,9 @@ EsCon.prototype.request = function( method, path, opts, cb )
 				
 				if( errorOccured === true )
 				{
-					err = new ElasticsearchError(
-						"Response data indicates an error occured."+
-						"The response data and request are:"+
-						MoreObject.getPrettyStr(
-							{ response:jsonRes, request:reqOpts }
-						),
+					err =
+					new ElasticsearchError(
+						"Response data indicates an error occured",
 						{ host:outerThis.host, opts:reqOpts },
 						{ res:jsonRes, status:status }
 					);
@@ -220,10 +223,8 @@ EsCon.prototype.request = function( method, path, opts, cb )
 			{
 				cb( undefined, res );
 			}
-		}
+		})
 	);
-}
+});
 
-exports.EsCon = EsCon;
-
-var ElasticsearchError = require("./errors").ElasticsearchError;
+});

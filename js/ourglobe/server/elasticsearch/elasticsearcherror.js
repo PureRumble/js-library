@@ -1,43 +1,56 @@
-var OurGlobeError = require("ourglobe").OurGlobeError;
+ourglobe.define(
+function( mods )
+{
 
-var conf = require("ourglobe").conf;
-var sys = require("ourglobe").sys;
-var FuncVer = require("ourglobe").FuncVer;
+var OurGlobeError = ourglobe.OurGlobeError;
 
-function ElasticsearchError(
-	message, request, response, caller
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
+
+var ElasticsearchError =
+getF(
+new FuncVer( [
+	OurGlobeError.MSG_S,
+	{
+		extraProps: false,
+		props:
+		{
+			host: FuncVer.R_PROPER_STR, opts: FuncVer.R_PROPER_OBJ
+		}
+	},
+	{
+		extraProps: false,
+		props: { res: "str", status: FuncVer.NON_NEG_INT }
+	},
+	OurGlobeError.VAR_S,
+	OurGlobeError.CODE_S,
+	OurGlobeError.PLACE_S
+]),
+function(
+	message, request, response, errorVar, errorCode, errorPlace
 )
 {
-	if( conf.doVer() === true )
+	if( errorPlace === undefined )
 	{
-		new FuncVer(
-			[
-				FuncVer.PROPER_STR,
-				{
-					extraProps:false, props:{
-						host:FuncVer.R_PROPER_STR, opts:FuncVer.R_PROPER_OBJ
-					}
-				},
-				{
-					extraProps:false, props:{
-						res:"str", status:FuncVer.NON_NEG_INT
-					}
-				},
-				"func/undef"
-			]
-		)
-			.verArgs( arguments)
-		;
+		errorPlace = ElasticsearchError;
 	}
 	
-	this.request = request;
-	this.response = response;
+	if( errorVar === undefined )
+	{
+		errorVar = {};
+	}
 	
-	caller = caller !== undefined ? caller : ElasticsearchError;
+	errorVar.request = request;
+	errorVar.response = response;
 	
-	ElasticsearchError.super_.call( this, message, caller );
-}
+	ElasticsearchError.ourGlobeSuper.call(
+		this, message, errorVar, errorCode, errorPlace
+	);
+});
 
-sys.inherits( ElasticsearchError, OurGlobeError );
+sys.extend( ElasticsearchError, OurGlobeError );
 
-exports.ElasticsearchError = ElasticsearchError;
+return ElasticsearchError;
+
+});

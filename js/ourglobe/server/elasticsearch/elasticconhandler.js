@@ -1,283 +1,214 @@
-var conf = require("ourglobe").conf;
-var sys = require("ourglobe").sys;
-var FuncVer = require("ourglobe").FuncVer;
-
-var ClusterConHandler =
-	require("ourglobe/clusterconhandler").ClusterConHandler
-;
-
-var ClusterDataRuntimeError =
-	require("ourglobe/clusterconhandler").ClusterDataRuntimeError
-;
-
-var Id = require("ourglobe/clusterconhandler").Id;
-var Binary = require("ourglobe/clusterconhandler").Binary;
-
-var _preparingHandlers =
+ourglobe.define(
+[
+	"ourglobe/server/cluster",
+	"./elasticsearchconnection"
+],
+function( mods )
 {
-	Id:function( id )
-	{
-		if( conf.doVer() === true )
-		{
-			var fv =
-				new FuncVer( [ Id ], Id.ID_STR_S ).verArgs( arguments )
-			;
-		}
-		
-		var returnVar = id.toString();
-		
-		if( conf.doVer() === true )
-		{
-			fv.verReturn( returnVar );
-		}
-		
-		return returnVar;
-	},
-	
-	Binary:function( binary )
-	{
-		if( conf.doVer() === true )
-		{
-			var fv =
-				new FuncVer( [ Binary ], "str" ).verArgs( arguments )
-			;
-		}
-		
-		var returnVar = binary.getBuffer().toString( "base64" );
-		
-		if( conf.doVer() === true )
-		{
-			fv.verReturn( returnVar );
-		}
-		
-		return returnVar;
-	},
-	
-	Date:function( date )
-	{
-		if( conf.doVer() === true )
-		{
-			new FuncVer( [ Date ], FuncVer.PROPER_STR )
-				.verArgs( arguments )
-			;
-		}
-		
-// Using ISO string representation to preserve millisecond
-// precision in elasticsearch
-		
-		return date.toISOString();
-	} 
-};
 
-var _restoringHandlers =
-{
-	Id:function( idStr )
-	{
-		if( conf.doVer() === true )
-		{
-			var fv =
-				new FuncVer( [ "any" ], Id ).verArgs( arguments )
-			;
-		}
-		
-		var returnVar = undefined;
-		
-		try
-		{
-			returnVar = new Id( idStr );
-		}
-		catch( e )
-		{
-			throw new ClusterDataRuntimeError(
-				"'"+idStr+"' isnt a valid Id str", idStr
-			);
-		}
-		
-		return returnVar;
-	},
-	
-	Binary:function( content, contentType )
-	{
-		if( conf.doVer() === true )
-		{
-			var fv =
-				new FuncVer( [ "str", Binary.CONTENT_TYPE_S ], Binary )
-					.verArgs( arguments )
-			;
-		}
-		
-		var returnVar = undefined;
-		
-		try
-		{
-			returnVar = new Binary(
-				new Buffer( content, "base64" ), contentType
-			);
-		}
-		catch( e )
-		{
-			throw new ClusterDataRuntimeError(
-				"Valid content or content type hasnt been provided",
-				{ content:content, contentType:contentType }
-			);
-		}
-		
-		return returnVar;
-	},
-	
-	Date:function( date )
-	{
-		if( conf.doVer() === true )
-		{
-			new FuncVer( [ "any" ], Date ).verArgs( arguments );
-		}
-		
-		var returnVar = new Date( date );
-		
-		if( returnVar.toString() === "Invalid Date" )
-		{
-			throw new ClusterDataRuntimeError(
-				"'"+date+"' isnt a valid date", date
-			);
-		}
-		
-		return returnVar;
-	}
-};
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
-function ElasticsearchConHandler( clusterName, conParams )
+var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+
+var ElasticConHandler =
+getF(
+ClusterConHandler.CONSTR_FV,
+function( clusterName, conParams )
 {
-	if( conf.doVer() === true )
-	{
-		new FuncVer( [
-			FuncVer.PROPER_STR_L,
-			{
-				extraItems:{
-					req:true, extraProps:false, props:{
-						host:FuncVer.R_PROPER_STR,
-						port:FuncVer.R_NON_NEG_INT
-					}
-				}
-			}
-		] )
-			.verArgs( arguments )
-		;
-	}
-	
-	ElasticsearchConHandler.super_.call(
+	ElasticConHandler.ourGlobeSuper.call(
 		this, clusterName, conParams
 	);
-}
-sys.inherits( ElasticsearchConHandler, ClusterConHandler );
+});
+sys.extend( ElasticConHandler, ClusterConHandler );
 
-ElasticsearchConHandler.prototype.getOpenCon = function(
-	params, cb
-)
-{
-	if( conf.doVer() === true )
-	{
-		new FuncVer( [
-			{
-				extraProps:false, props:{
-					host:FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT
-				}
-			},
-			"func"
-		] )
-			.verArgs( arguments )
-		;
-	}
-	
-	cb( undefined, new EsCon( params.host, params.port ) );
-}
+return ElasticConHandler;
 
-ElasticsearchConHandler.prototype.request = function(
-	method, path, opts, cb
-)
+},
+function( mods, ElasticConHandler )
 {
-	if( conf.doVer() === true )
+
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
+
+var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+
+var ClusterDataRuntimeError =
+	mods.get( "cluster" ).ClusterDataRuntimeError
+;
+
+var Id = mods.get( "cluster" ).Id;
+var Binary = mods.get( "cluster" ).Binary;
+
+var ElasticsearchConnection =
+	mods.get( "elasticsearchconnection" )
+;
+
+ElasticConHandler.PREPARING_HANDLERS =
+{
+	prepareBinary:
+	getF(
+	new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
+		.setReturn( "str" ),
+	function( buf )
 	{
-		var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
-		
-		var optsS = {
-			types:"obj/undef",
-			props:{
-				params:"obj/undef",
-				data:{ types:"obj/arr/undef", extraItems:"+obj" }
-			},
-			extraProps: false
-		};
-		
-		new FuncVer()
-			.addArgs( [ methodS, FuncVer.PROPER_STR, optsS, "func" ] )
-			.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] )
-			.verArgs( arguments )
-		;
-	}
+		return buf.toString( "base64" );
+	}),
 	
+	prepareDate:
+	getF(
+	new FuncVer( [ Date ] ).setReturn( "str" ),
+	function( date )
+	{
+// Using ISO string representation to preserve millisecond
+// precision in elasticsearch
+		return date.toISOString();
+	})
+};
+
+ElasticConHandler.RESTORING_HANDLERS =
+{
+	restoreBinary:
+	getF(
+	new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
+	function( binaryStr, contentType )
+	{
+		var returnVar = undefined;
+		
+		try
+		{
+			returnVar = new Buffer( binaryStr, "base64" );
+		}
+		catch( e )
+		{
+			throw new ClusterDataRuntimeError(
+				"A valid binary string in base-64 representation wasnt"+
+				"provided when restoring a Binary",
+				{ providedVar: binaryStr }
+			);
+		}
+		
+		return returnVar;
+	}),
+	
+	restoreDate:
+	getF(
+	new FuncVer( [ "any" ] ).setReturn( Date ),
+	function( date )
+	{
+		var returnVar = undefined;
+		
+		try
+		{
+			returnVar = new Date( date );
+		}
+		catch( e )
+		{
+			returnVar = undefined;
+		}
+		
+		if(
+			sys.hasType( date, "str" ) === false ||
+			date.length !== 24 ||
+			returnVar === undefined ||
+			returnVar.toString() === "Invalid Date"
+		)
+		{
+			throw new ClusterDataRuntimeError(
+				"A string representing a date in a correct form wasnt "+
+				"provided when restoring a Date",
+				{ providedVar: date }
+			);
+		}
+		
+		return returnVar;
+	})
+};
+
+ElasticConHandler.prototype.getOpenCon =
+getF(
+ClusterConHandler.GET_OPEN_CON_FV,
+function( params, cb )
+{
+	cb(
+		undefined,
+		new ElasticsearchConnection( params.host, params.port )
+	);
+});
+
+var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
+
+var optsS =
+{
+	types: "obj/undef",
+	props:
+	{
+		params: "obj/undef",
+		data:{ types: "obj/arr/undef", extraItems: "+obj" }
+	},
+	extraProps: false
+};
+
+ElasticConHandler.prototype.request =
+getF(
+new FuncVer()
+	.addArgs( [ methodS, FuncVer.PROPER_STR, optsS, "func" ] )
+	.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] ),
+function( method, path, opts, cb )
+{
 	if( sys.hasType( opts, "func" ) === true )
 	{
 		cb = opts;
 		opts = undefined;
 	}
 	
-	this.getCurrCon( function( err, esCon )
-	{
-		if( conf.doVer() === true )
+	this.getCurrCon(
+		getF(
+		new FuncVer( [ Error ] )
+			.addArgs( [ "undef", ElasticsearchConnection ] ),
+		function( err, elasticsearchCon )
 		{
-			new FuncVer()
-				.addArgs( [ Error ] )
-				.addArgs( [ "undef", EsCon ] )
-				.verArgs( arguments )
-			;
-		}
-		
-		if( sys.errorCheck( err, cb ) === true )
-		{
-			return;
-		}
-		
-		esCon.request( method, path, opts, function( err, response )
-		{
-			if( conf.doVer() === true )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "undef", "obj/undef" ] )
-					.verArgs( arguments )
-				;
-			}
-			
 			if( sys.errorCheck( err, cb ) === true )
 			{
 				return;
 			}
-			else
-			{
-				cb( undefined, response );
-			}
-		} );
-	} );
-}
+			
+			elasticsearchCon.request(
+				method,
+				path,
+				opts,
+				getF(
+				new FuncVer( [ Error ] )
+					.addArgs( [ "undef", "obj/undef" ] ),
+				function( err, response )
+				{
+					if( sys.errorCheck( err, cb ) === true )
+					{
+						return;
+					}
+					else
+					{
+						cb( undefined, response );
+					}
+				})
+			);
+		})
+	);
+});
 
-ElasticsearchConHandler.prototype.insert = function(
-	indexName, objs, cb
-)
+var objsS = { props:{ id:{ req: true, types: Id } } };
+
+ElasticConHandler.prototype.insert =
+getF(
+new FuncVer( [
+	ClusterConHandler.COLLECTION_NAME_S,
+	{ types:[ objsS, "arr" ], extraItems: objsS },
+	"func"
+]),
+function( indexName, objs, cb )
 {
-	if( conf.doVer() === true )
-	{
-		var objsS = { props:{ id:{ req:true, types:Id } } };
-		
-		new FuncVer()
-			.addArgs( [
-				ClusterConHandler.COLLECTION_NAME_S,
-				{ types:[ objsS, "arr" ], extraItems:objsS },
-				"func"
-			] )
-			.verArgs( arguments )
-		;
-	}
-	
 	if( sys.hasType( objs, "arr" ) === false )
 	{
 		objs = [ objs ];
@@ -290,19 +221,19 @@ ElasticsearchConHandler.prototype.insert = function(
 		finalObjs.push(
 			{ index:{ _id: objs[ prop ].id.toString() } }
 		);
+		
 		finalObjs.push( objs[ prop ] );
 	}
 	
 	if( finalObjs.length === 0 )
 	{
 		cb( undefined );
-		
 		return;
 	}
 	
 	var restoreInfo =
 		ClusterConHandler.prepareSetForCluster(
-			objs, _preparingHandlers
+			objs, ElasticConHandler.PREPARING_HANDLERS
 		)
 	;
 	
@@ -310,50 +241,39 @@ ElasticsearchConHandler.prototype.insert = function(
 	
 	var path = "/"+indexName+"/"+indexName+"/_bulk";
 	
-	var reqOpts = { data:finalObjs };
+	var reqOpts = { data: finalObjs };
 	
-	this.request( method, path, reqOpts, function( err, res )
-	{
-		if( conf.doVer() === true )
+	this.request(
+		method,
+		path,
+		reqOpts,
+		getF(
+		new FuncVer( [ Error ] ).addArgs( [ "undef", "any" ] ),
+		function( err, res )
 		{
-			new FuncVer()
-				.addArgs( [ Error ] )
-				.addArgs( [ "undef", "any" ] )
-				.verArgs( arguments )
-			;
-		}
-		
-		ClusterConHandler.restoreSet( restoreInfo );
-		
-		if( sys.errorCheck( err, cb ) === true )
-		{
-			return;
-		}
-		else
-		{
-			cb( undefined );
-		}
-	});
-}
+			ClusterConHandler.restoreSet( restoreInfo );
+			
+			if( sys.errorCheck( err, cb ) === true )
+			{
+				return;
+			}
+			else
+			{
+				cb( undefined );
+			}
+		})
+	);
+});
 
-ElasticsearchConHandler.prototype.delete = function(
-	indexName, query, cb
-)
+ElasticConHandler.prototype.delete =
+getF(
+new FuncVer( [
+	ClusterConHandler.COLLECTION_NAME_S,
+	{ types:[ "arr", Id, FuncVer.PROPER_OBJ ], extraItems: Id },
+	"func"
+]),
+function( indexName, query, cb )
 {
-	if( conf.doVer() === true )
-	{
-		new FuncVer()
-			.addArgs( [
-				ClusterConHandler.COLLECTION_NAME_S,
-				{
-					types:[ "arr", Id, FuncVer.PROPER_OBJ ], extraItems:Id
-				},
-				"func"
-			] )
-			.verArgs( arguments )
-		;
-	}
-	
 	if( query instanceof Id === true )
 	{
 		query = [ query ];
@@ -372,7 +292,7 @@ ElasticsearchConHandler.prototype.delete = function(
 		for( var prop in query )
 		{
 			finalQuery.push(
-				{ "delete":{ _id:query[ prop ].toString() } }
+				{ "delete":{ _id: query[ prop ].toString() } }
 			);
 		}
 		
@@ -394,48 +314,30 @@ ElasticsearchConHandler.prototype.delete = function(
 	this.request(
 		method,
 		path,
-		{ data:finalQuery },
+		{ data: finalQuery },
+		getF(
+		new FuncVer( [ Error ] ).addArgs( [ "undef", "any" ] ),
 		function( err, res )
 		{
-			if( conf.doVer() === true )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "undef", "any" ] )
-					.verArgs( arguments )
-				;
-			}
-			
 			if( sys.errorCheck( err, cb ) === true )
 			{
 				return;
 			}
 			
 			cb( undefined );
-		}
+		})
 	);
-}
+});
 
-ElasticsearchConHandler.prototype.query = function(
-	indexName, query, cb
-)
+ElasticConHandler.prototype.query =
+getF(
+new FuncVer( [
+	ClusterConHandler.COLLECTION_NAME_S,
+	{ types:[ Id, "arr", FuncVer.PROPER_OBJ ], extraItems: Id },
+	"func"
+]),
+function( indexName, query, cb )
 {
-	if( conf.doVer() === true )
-	{
-// Performing a query with an empty queryObj would be most odd.
-// Therefore queryObj is required to be a proper obj
-		new FuncVer()
-			.addArgs( [
-				ClusterConHandler.COLLECTION_NAME_S,
-				{
-					types:[ Id, "arr", FuncVer.PROPER_OBJ ], extraItems:Id
-				},
-				"func"
-			] )
-			.verArgs( arguments )
-		;
-	}
-	
 	if( query instanceof Id === true )
 	{
 		query = [ query ];
@@ -453,64 +355,67 @@ ElasticsearchConHandler.prototype.query = function(
 		if( idStrs.length === 0 )
 		{
 			cb( undefined, [] );
+			
+			return;
 		}
 		
-		query = { ids:{ values:idStrs } };
+		query = { query:{ ids:{ values: idStrs } } };
 	}
 	
 	var method = "GET";
-	var path = "/" + indexName + "/" + indexName + "/_search";
+	var path = "/"+indexName+"/"+indexName +"/_search";
 	
 	var opts = { data: query };
 	
-	this.request( method, path, opts, function( err, res )
-	{
-		if( conf.doVer() === true )
-		{
-			new FuncVer()
-				.addArgs( [ Error ] )
-				.addArgs( [
-					"undef",
+	this.request(
+		method,
+		path,
+		opts,
+		getF(
+		new FuncVer( [ Error ] )
+			.addArgs( [
+				"undef",
+				{
+					props:
 					{
-						props: {
-							hits: {
-								req:true,
-								props: {
-									hits: {
-										req:true,
-										extraItems:{ props:{ _source:"+obj" } }
-									}
+						hits:
+						{
+							req: true,
+							props:
+							{
+								hits:
+								{
+									req: true,
+									extraItems:{ props:{ _source: "+obj" } }
 								}
 							}
 						}
 					}
-				] )
-				.verArgs( arguments )
-			;
-		}
-		
-		if( sys.errorCheck( err, cb ) === true )
+				}
+			]),
+		function( err, res )
 		{
-			return;
-		}
-		
-		var resHits = res.hits.hits;
-		var hits = [];
-		
-		for( var pos in resHits )
-		{
-			hits[ pos ] = resHits[ pos ]._source;
-		}
-		
-		ClusterConHandler.restoreSetFromCluster(
-			hits, _restoringHandlers
-		);
-		
-		cb( undefined, hits );
-	});
-}
+			
+			if( sys.errorCheck( err, cb ) === true )
+			{
+				return;
+			}
+			
+			var resHits = res.hits.hits;
+			var hits = [];
+			
+			for( var pos in resHits )
+			{
+				hits[ pos ] = resHits[ pos ]._source;
+			}
+			
+			ClusterConHandler.restoreSetFromCluster(
+				hits, ElasticConHandler.RESTORING_HANDLERS
+			);
+			
+			cb( undefined, hits );
+		})
+	);
+});
 
-exports.ElasticsearchConHandler = ElasticsearchConHandler;
-
-var EsCon = require("./escon").EsCon;
-var Elasticsearch = require("./elasticsearch").Elasticsearch;
+});

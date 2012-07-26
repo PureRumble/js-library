@@ -1,133 +1,122 @@
-var vows = require("vows");
-
-var timers = require("timers");
-var crypto = require("crypto");
-
-var Testing = require("ourglobe/testing").Testing;
-
-var RuntimeError = require("ourglobe").RuntimeError;
-
-var assert = require("ourglobe").assert;
-var FuncVer = require("ourglobe").FuncVer;
-
-var sys = require("ourglobe").sys;
-
-var MoreHttp = require("ourglobe/utils").MoreHttp;
-
-var Elasticsearch =
-	require("ourglobe/elasticsearch").Elasticsearch
-;
-var ElasticsearchConHandler =
-	require("ourglobe/elasticsearch").ElasticsearchConHandler
-;
-var EsCon = require("ourglobe/elasticsearch/escon").EsCon;
-
-var ClusterMapper =
-	require("ourglobe/clusterconhandler").ClusterMapper
-;
-
-var Id = require("ourglobe/clusterconhandler").Id;
-var Link = require("ourglobe/clusterconhandler").Link;
-var Binary = require("ourglobe/clusterconhandler").Binary;
-var Cache = require("ourglobe/clusterconhandler").Cache;
-
-var _ELASTICSEARCH_CON_HANDLER = new ElasticsearchConHandler(
-	"elasticsearch", [ { host:"127.0.1.1", port:9200 } ]
-);
-
-var _INDEX_NAME = "test";
-
-var _CLUSTER_MAPPING = [];
-_CLUSTER_MAPPING[ _INDEX_NAME ] = 0;
-var _CLUSTER_MAPPER = new ClusterMapper(
-		[ _ELASTICSEARCH_CON_HANDLER ], _CLUSTER_MAPPING
-);
-
-function _insertQueryTest( objs, timeout )
+ourglobe.require(
+[
+	"timers",
+	"crypto",
+	"ourglobe/lib/server/vows",
+	"ourglobe/dual/testing",
+	"ourglobe/server/morehttp",
+	"ourglobe/server/cluster",
+	"ourglobe/server/elasticsearch",
+	"ourglobe/server/elasticsearch/elasticsearchconnection",
+],
+function( mods )
 {
-	var objS = { props:{ id:{ req:true, types:Id } } };
-	
-	new FuncVer(
-		[
-			{ types:[ "arr", objS ], extraItems:objS },
-			[ FuncVer.NON_NEG_INT, "undef" ]
-		],
-		"obj"
-	)
-		.verArgs( arguments )
-	;
-	
+
+debugger;
+
+var vows = mods.get("vows");
+
+var timers = mods.get( "timers" );
+var crypto = mods.get( "crypto" );
+
+var Test = mods.get( "testing" ).Test;
+
+var assert = ourglobe.assert;
+var FuncVer = ourglobe.FuncVer;
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+
+var MoreHttp = mods.get( "morehttp" ).MoreHttp;
+
+var ElasticConHandler =
+	mods.get( "elasticsearch" ).ElasticConHandler
+;
+var ElasticsearchConnection =
+	mods.get( "elasticsearchconnection" )
+;
+
+var ClusterMapper = mods.get( "cluster" ).ClusterMapper;
+
+var Id = mods.get( "cluster" ).Id;
+var Link = mods.get( "cluster" ).Link;
+var Binary = mods.get( "cluster" ).Binary;
+var Cache = mods.get( "cluster" ).Cache;
+
+var ELASTICSEARCH_CON_HANDLER =
+new ElasticConHandler(
+	"elasticsearch", [ { host: "127.0.1.1", port: 9200 } ]
+);
+
+var INDEX_NAME = "test";
+
+var CLUSTER_MAPPING = [];
+CLUSTER_MAPPING[ INDEX_NAME ] = 0;
+
+var CLUSTER_MAPPER =
+new ClusterMapper(
+	[ ELASTICSEARCH_CON_HANDLER ], CLUSTER_MAPPING
+);
+
+var objS = { props:{ id:{ req: true, types: Id } } };
+
+var insertQueryTest =
+getF(
+new FuncVer( [
+	{ types:[ "arr", objS ], extraItems: objS },
+	[ FuncVer.NON_NEG_INT, "undef" ]
+])
+	.setReturn( "obj" ),
+function( objs, timeout )
+{
 	timeout = timeout !== undefined ? timeout : 1000;
 	
-	var clone = Testing.clone( objs ); 
-	
-	var objsToInsert = clone;
+	var objsToInsert = Test.clone( objs ); 
+	var ids = undefined;
 	
 	if( sys.hasType( objsToInsert, "arr" ) === false )
 	{
-		objsToInsert = [ objsToInsert ];
+		ids = objsToInsert.id;
 	}
-	
-	var ids = [];
-	
-	for( var pos in objsToInsert )
+	else
 	{
-		ids.push( objsToInsert[ pos ].id );
+		ids = [];
+		
+		for( var item in objsToInsert )
+		{
+			ids.push( objsToInsert[ item ].id );
+		}
 	}
 	
-// In order for the test process to be the same even if no objs
-// were inserted, a random id is added for the query to be valid
-	
-	if( ids.length === 0 )
-	{
-		ids.push( new Id() );
-	}
-	
-	var idStrs = [];
-	
-	for( var pos in ids )
-	{
-		idStrs[ pos ] = ids[ pos ].toString();
-	}
-	
-	var returnVar = Testing.getTests(
+	return(
+	Test.getTests(
 		
 		"topic",
 		function()
 		{
-			_CLUSTER_MAPPER
-				.getConHandler( _INDEX_NAME )
-				.insert( _INDEX_NAME, objs, this.callback )
+			CLUSTER_MAPPER
+				.getConHandler( INDEX_NAME )
+				.insert( INDEX_NAME, objsToInsert, this.callback )
 			;
 		},
 		
 		"objs are as they were before insertion",
+		getF(
+		new FuncVer( [ [ Error, "undef/null" ] ] ),
 		function( err )
 		{
-			new FuncVer( [ [ Error, "undef/null" ] ] )
-				.verArgs( arguments )
-			;
+			Test.errorCheckArgs( arguments );
 			
-			Testing.errorCheckArgs( arguments );
+			var diff = Test.compare( objsToInsert, objs );
 			
-			var diff = Testing.compare( clone, objs );
-			
-			if( diff !== undefined )
-			{
-				throw new RuntimeError(
-					"Objs are not as they were before insertion. The "+
-					"objs before and after insertion and their diff are: "+
-					Testing.getPrettyStr( {
-						before:clone,
-						after:objs,
-						diff: diff
-					} )
-				);
-			}
-		},
+			assert(
+				diff === undefined,
+				"Objs are not as they were before insertion",
+				{ before: objs, after: objsToInsert, diff: diff }
+			);
+		}),
 		
 		"and querying the objs",
-		Testing.getTests(
+		Test.getTests(
 			
 			"topic",
 			function()
@@ -137,13 +126,9 @@ function _insertQueryTest( objs, timeout )
 				timers.setTimeout(
 					function()
 					{
-						_CLUSTER_MAPPER
-							.getConHandler( _INDEX_NAME )
-							.query(
-								_INDEX_NAME,
-								{ query: { ids:{ values:idStrs } } },
-								outerThis.callback
-							)
+						CLUSTER_MAPPER
+							.getConHandler( INDEX_NAME )
+							.query( INDEX_NAME, ids, outerThis.callback )
 						;
 					},
 					timeout
@@ -151,99 +136,85 @@ function _insertQueryTest( objs, timeout )
 			},
 			
 			"yields all objs as they were before insertion",
+			getF(
+			new FuncVer( [ Error ] )
+				.addArgs( [ 
+					"null/undef",
+					{
+						denseItems: true,
+						extraItems:
+						{
+							props:
+							{
+								id:{ req: true, types: Id },
+								_id:{ badTypes:{} }
+							}
+						}
+					}
+				]),
 			function( err, res )
 			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ 
-						"null/undef",
-						[
-							Error,
-							{
-								denseItems:true,
-								extraItems:
-								{
-									props:{
-										id:{ req:true, types:Id },
-										_id:{ badTypes:{} }
-									}
-								}
-							}
-						]
-					] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
+				Test.errorCheckArgs( arguments );
 				
 				var resById = [];
 				
-				for( var pos in res )
+				for( var item in res )
 				{
-					var currObj = res[ pos ];
+					var currObj = res[ item ];
 					var currId = currObj.id.toString();
 					
 					resById[ currId ] = currObj;
 				}
 				
+				var arr = objs;
+				
+				if( sys.hasType( arr, "arr" ) === false )
+				{
+					arr = [ arr ];
+				}
+				
 				var objsById = [];
 				
-				for( var pos in objsToInsert )
+				for( var item in arr )
 				{
-					var currObj = objsToInsert[ pos ];
+					var currObj = arr[ item ];
 					var currId = currObj.id.toString();
 					
 					objsById[ currId ] = currObj;
 				}
 				
-				var diff = Testing.compare( objsById, resById );
+				var diff = Test.compare( objsById, resById );
 				
-				if( diff !== undefined )
-				{
-					throw new RuntimeError(
-						"Resulting objs from the query dont equal the "+
-						"original objs that were inserted. Resulting and "+
-						"original objs and their difference are: "+
-						Testing.getPrettyStr( {
-							original:objsById,
-							resulting:resById,
-							diff: diff
-						} )
-					);
-				}
-			},
+				assert(
+					diff === undefined,
+					"Resulting objs from the query dont equal the "+
+					"original objs that were inserted",
+					{ original: objsById, resulting: resById, diff: diff }
+				);
+			}),
 			
 			"and then deleting the inserted objs",
-			Testing.getTests(
+			Test.getTests(
 				
 				"topic",
 				function()
 				{
-					var idsToDelete = ids;
-					
-					if( idsToDelete.length === 1 )
-					{
-						idsToDelete = idsToDelete[ 0 ];
-					}
-					
-					_CLUSTER_MAPPER
-						.getConHandler( _INDEX_NAME )
-						.delete( _INDEX_NAME, idsToDelete, this.callback )
+					CLUSTER_MAPPER
+						.getConHandler( INDEX_NAME )
+						.delete( INDEX_NAME, ids, this.callback )
 					;
 				},
 				
 				"turns out OK",
+				getF(
+				new FuncVer( [ [ Error, "undef/null" ] ] ),
 				function( err )
 				{
-					new FuncVer( [ [ Error, "undef/null" ] ] )
-						.verArgs( arguments )
-					;
-					
-					Testing.errorCheckArgs( arguments );
-				},
+					Test.errorCheckArgs( arguments );
+				}),
 				
 				"and making sure there's nothing left",
-				Testing.getTests(
+				Test.getTests(
 					
 					"topic",
 					function()
@@ -253,200 +224,184 @@ function _insertQueryTest( objs, timeout )
 						timers.setTimeout(
 							function()
 							{
-								_CLUSTER_MAPPER
-								.getConHandler( _INDEX_NAME )
-								.query(
-									_INDEX_NAME,
-									{ query:{ ids:{ values:idStrs } } },
-									outerThis.callback
-								);
+								CLUSTER_MAPPER
+									.getConHandler( INDEX_NAME )
+									.query( INDEX_NAME, ids, outerThis.callback )
+								;
 							},
 							timeout
 						);
 					},
 					
 					"turns out to be true",
+					getF(
+					new FuncVer( [ Error ] )
+						.addArgs( [ "null/undef", "arr" ] ),
 					function( err, res )
 					{
-						new FuncVer()
-							.addArgs( [ Error ] )
-							.addArgs( [ "null/undef", [ Error, "arr" ] ] )
-							.verArgs( arguments )
-						;
+						Test.errorCheckArgs( arguments );
 						
-						Testing.errorCheckArgs( arguments );
-						
-						if( res.length !== 0 )
-						{
-							throw new RuntimeError(
-								"No objs should be left after deletion"
-							);
-						}
-					}
+						assert(
+							res.length === 0,
+							"No objs should be left after deleting them all"
+						);
+					})
 				)
 			)
 		)
-	);
-	
-	return returnVar;
-}
+	));
+});
 
 var suite = vows.describe( "elasticsearchconhandler" );
 suite.options.error = false;
 
 // creating index and mapping type
-suite.addBatch( Testing.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"creating a test index",
-	Testing.getTests(
+	Test.getTests(
 		
 		"topic",
 		function()
 		{
 			var outerThis = this;
 			
-			_ELASTICSEARCH_CON_HANDLER.getCurrCon(
-			function( err, esCon )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "undef", EsCon ] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
-				
-				esCon.request(
-					"PUT", "/"+_INDEX_NAME, outerThis.callback
-				);
-			});
+			ELASTICSEARCH_CON_HANDLER.getCurrCon(
+				getF(
+				new FuncVer( [ Error ] )
+					.addArgs( [ "undef", ElasticsearchConnection ] ),
+				function( err, elasticsearchCon )
+				{
+					Test.errorCheckArgs( arguments );
+					
+					elasticsearchCon.request(
+						"PUT", "/"+INDEX_NAME, outerThis.callback
+					);
+				})
+			);
 		},
 		
 		"is OK",
+		getF(
+		new FuncVer( [ Error ] ).addArgs( [ "null/undef", "obj" ] ),
 		function( err, res )
 		{
-			new FuncVer()
-				.addArgs( [ Error ] )
-				.addArgs( [ "null/undef", [ Error, "obj" ] ] )
-				.verArgs( arguments )
-			;
-			
-			Testing.errorCheckArgs( arguments );
-		},
+			Test.errorCheckArgs( arguments );
+		}),
 		
 		"and then a test mappingtype",
-		Testing.getTests(
+		Test.getTests(
 			
 			"topic",
 			function()
 			{
 				var outerThis = this;
 				
-				_ELASTICSEARCH_CON_HANDLER.getCurrCon(
-				function( err, esCon )
-				{
-					new FuncVer()
-						.addArgs( [ Error ] )
-						.addArgs( [ "undef", EsCon ] )
-						.verArgs( arguments )
-					;
-					
-					Testing.errorCheckArgs( arguments );
-					
-					esCon.request(
-						"PUT",
-						"/"+_INDEX_NAME+"/"+_INDEX_NAME+"/_mapping",
-						{ data: { test: { } } },
-						outerThis.callback
-					);
-				} );
+				ELASTICSEARCH_CON_HANDLER.getCurrCon(
+					getF(
+					new FuncVer( [ Error ] )
+						.addArgs( [ "undef", ElasticsearchConnection ] ),
+					function( err, elasticsearchCon )
+					{
+						Test.errorCheckArgs( arguments );
+						
+						elasticsearchCon.request(
+							"PUT",
+							"/"+INDEX_NAME+"/"+INDEX_NAME+"/_mapping",
+							{ data:{ test:{} } },
+							outerThis.callback
+						);
+					})
+				);
 			},
 			
 			"is OK",
+			getF(
+			new FuncVer( [ Error ] )
+				.addArgs( [ "null/undef", "obj" ] ),
 			function( err, res )
 			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "null/undef", [ Error, "obj" ] ] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
-			}
+				Test.errorCheckArgs( arguments );
+			})
 		)
 	)
-	
-) );
+));
 
 // inserting simple objs
-suite.addBatch( Testing.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"no objs",
-	_insertQueryTest( [] ),
+	insertQueryTest( [] ),
 	
 	"one empty obj",
-	_insertQueryTest( { id:new Id() } ),
+	insertQueryTest( { id: new Id() } ),
 	
 	"two empty objs",
-	_insertQueryTest( [ { id:new Id() }, { id:new Id() } ] ),
+	insertQueryTest( [ { id: new Id() }, { id: new Id() } ] ),
 	
 	"objs with basic types",
-	_insertQueryTest( [
-		{ id:new Id(), dingo:42, dango:"dango", dongo:true },
-		{ id:new Id(), dingi:42.22, dangi:"", dongi:null }
-	] ),
+	insertQueryTest( [
+		{ id: new Id(), dingo: 42, dango: "dango", dongo: true },
+		{ id: new Id(), dingi: 42.22, dangi: "", dongi: null }
+	]),
 
 	"objs with recursive objs and arrs with basic types",
-	_insertQueryTest( [
+	insertQueryTest( [
 		{
-			id:new Id(),
-			dingo:42,
+			id: new Id(),
+			dingo: 42,
 			dango:[],
-			dongo:true,
+			dongo: true,
 			dengo:
 			{
-				dingi:"dingi",
+				dingi: "dingi",
 				dangi:[ true, false, true ],
 				dongi:[ 42.3, 42.4, 42.5 ],
 				dengi:[]
 			}
 		}
-		
-	] )
-	
-) );
+	])
+));
 
 // inserting and querying class objs and dates
-suite.addBatch( Testing.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"obj with nested id objs",
-	_insertQueryTest(
-		{ id:new Id(), secondId:new Id(), innerId:{ id:new Id() } }
+	insertQueryTest(
+		{
+			id: new Id(),
+			secondId: new Id(),
+			innerId:{ id: new Id() }
+		}
 	),
 	
 	"obj with nested link objs and ids",
-	_insertQueryTest(
+	insertQueryTest(
 		{
-			id:new Id(),
-			link:new Link( "DingyWork", new Id() ),
+			id: new Id(),
+			link: new Link( "DingyWork", new Id() ),
 			obj:
 			{
-				setOfIds:{ idOne:new Id(), idTwo:new Id() },
-				anotherLink:new Link( "DingaWork", new Id() )
+				setOfIds:{ idOne: new Id(), idTwo: new Id() },
+				anotherLink: new Link( "DingaWork", new Id() )
 			}
 		}
 	),
 	
 	"obj with nested binaries",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 256 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
 		var bufThree = new Buffer( crypto.randomBytes(128 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
+				id: new Id(),
 				binaryOne: new Binary( bufOne, "jpg" ),
 				binaries:
 				{
@@ -455,64 +410,68 @@ suite.addBatch( Testing.getTests(
 					strs:[ "dingo", "dango", "dongo" ]
 				}
 			}
-		)
-	} ),
+		));
+	}),
 	
 	"obj with nested date objs",
-	_insertQueryTest(
+	insertQueryTest(
 		{
-			id:new Id(),
-			dateOne:new Date(),
-			dateTwo:new Date(),
-			someBool:false,
+			id: new Id(),
+			dateOne: new Date(),
+			dateTwo: new Date(),
+			someBool: false,
 			moreDates:
 			{
-				firstDate:new Date(),
-				secondDate:new Date(),
-				thirdDate:new Date(),
-				fourthDate:new Date()
+				firstDate: new Date(),
+				secondDate: new Date(),
+				thirdDate: new Date(),
+				fourthDate: new Date()
 			}
 		}
 	),
 	
 	"obj with nested cache obj containing ids, links, binaries "+
 	"and dates",
-	Testing.getVar( function()
+	Test.getVar(
+	function()
 	{
 		var bufOne = new Buffer( crypto.randomBytes( 1024 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
-				dingoCache:new Cache(
-					{
-						id:new Id(),
-						link:new Link( "DinkoWork", new Id() ),
-						arr:[ 42, 43, 44, 45, 46 ],
-						obj:
+				id: new Id(),
+				dingoCache:
+					new Cache(
 						{
-							dingo:"dingo",
-							dango:"dango",
-							dongo:new Binary( bufOne, "jpg" ),
-							dingi:new Date(),
-							dangi:new Date()
-						}
-					},
-					new Link( "DinkaWork", new Id() )
-				)
+							id: new Id(),
+							link: new Link( "DinkoWork", new Id() ),
+							arr:[ 42, 43, 44, 45, 46 ],
+							obj:
+							{
+								dingo: "dingo",
+								dango: "dango",
+								dongo: new Binary( bufOne, "jpg" ),
+								dingi: new Date(),
+								dangi: new Date()
+							}
+						},
+						new Link( "DinkaWork", new Id() )
+					)
 			}
-		);
-	} ),
+		));
+	}),
 	
 	"obj with all kind of class objs",
-	Testing.getVar( function()
+	Test.getVar( function()
 	{ 
 		var bufOne = new Buffer( crypto.randomBytes( 512 ) );
 		var bufTwo = new Buffer( crypto.randomBytes( 512 ) );
 		
-		return _insertQueryTest(
+		return(
+		insertQueryTest(
 			{
-				id:new Id(),
+				id: new Id(),
 				idOne: new Id(),
 				linkOne: new Link( "DinkaWork", new Id() ),
 				idTwo: new Id(),
@@ -521,72 +480,67 @@ suite.addBatch( Testing.getTests(
 				dateOne: new Date(),
 				obj:{
 					dateTwo: new Date(),
-					cacheOne:new Cache(
-						{
-							dateThree: new Date(),
-							innerCache:new Cache(
-								{
-									dinga:"dinga",
-									binaryOne:new Binary( bufOne, "jpg" ),
-									dateFour: new Date(),
-									dingo:true
-								},
-								new Link( "DinkeWork", new Id() )
-							)
-						},
-						new Link( "DinkoWork", new Id() )
-					),
-					binary:new Binary( bufTwo, "jpg" )
+					cacheOne:
+						new Cache(
+							{
+								dateThree: new Date(),
+								innerCache:
+									new Cache(
+										{
+											dinga: "dinga",
+											binaryOne: new Binary( bufOne, "jpg" ),
+											dateFour: new Date(),
+											dingo: true
+										},
+										new Link( "DinkeWork", new Id() )
+									)
+							},
+							new Link( "DinkoWork", new Id() )
+						),
+					binary: new Binary( bufTwo, "jpg" )
 				}
 			}
-		);
-		
-	} )
-	
-) );
+		));
+	})
+));
 
 // deleting index
-suite.addBatch( Testing.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"deleting the test index",
-	Testing.getTests(
+	Test.getTests(
 		
 		"topic",
 		function()
 		{
 			var outerThis = this;
 			
-			_ELASTICSEARCH_CON_HANDLER.getCurrCon(
-			function( err, esCon )
-			{
-				new FuncVer()
-					.addArgs( [ Error ] )
-					.addArgs( [ "undefined", EsCon ] )
-					.verArgs( arguments )
-				;
-				
-				Testing.errorCheckArgs( arguments );
-				
-				esCon.request(
-					"DELETE", "/"+_INDEX_NAME, outerThis.callback
-				);
-			});
+			ELASTICSEARCH_CON_HANDLER.getCurrCon(
+				getF(
+				new FuncVer( [ Error ] )
+					.addArgs( [ "undefined", ElasticsearchConnection ] ),
+				function( err, elasticsearchCon )
+				{
+					Test.errorCheckArgs( arguments );
+					
+					elasticsearchCon.request(
+						"DELETE", "/"+INDEX_NAME, outerThis.callback
+					);
+				})
+			);
 		},
 		
 		"is OK",
+		getF(
+		new FuncVer( [ Error ] ).addArgs( [ "null/undef", "obj" ] ),
 		function( err, res )
 		{
-			new FuncVer()
-				.addArgs( [ Error ] )
-				.addArgs( [ "null/undef", [ Error, "obj" ] ] )
-				.verArgs( arguments )
-			;
-			
-			Testing.errorCheckArgs( arguments );
-		}
-		
+			Test.errorCheckArgs( arguments );
+		})
 	)
-	
-) );
+));
 
-suite.export( module );
+suite.run();
+
+});
