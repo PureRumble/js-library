@@ -3,7 +3,7 @@ var jsFilePath = process.argv[ 2 ];
 var requirejs =
 require(
 	"/home/work-purerumble/files/projects/ourglobe/js/"+
-	"ourglobe/l/d/requirejs/r.js"
+	"ourglobe/lib/dual/requirejs/r.js"
 );
 
 requirejs.config({
