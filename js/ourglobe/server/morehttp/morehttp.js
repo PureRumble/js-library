@@ -119,7 +119,7 @@ function( hostname, opts, cb )
 	reqOpts,
 	
 	getF(
-	new FuncVer( [ "obj" ] ),
+	new FuncVer( [ "inst" ] ),
 	function( res )
 	{
 		var statusCode = res.statusCode;
