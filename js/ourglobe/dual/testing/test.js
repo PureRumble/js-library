@@ -9,6 +9,10 @@ Test.getTests = function()
 	var tests = Array.prototype.slice.call( arguments );
 	var testObj = {};
 	
+	var topicFound = false;
+	var testFound = false;
+	var nestedTestObjFound = false;
+	
 	for( var pos = 0; pos < tests.length; pos += 2 )
 	{
 		var testName = tests[ pos ];
@@ -39,7 +43,53 @@ Test.getTests = function()
 			);
 		}
 		
+		if( testName === "topic" )
+		{
+			if( pos !== 0 )
+			{
+				throw new Error(
+					"The topic must be placed before the tests and "+
+					"nested test objs"
+				);
+			}
+			
+			if( typeof( test ) !== "function" )
+			{
+				throw new Error( "The topic must be a function" );
+			}
+			
+			topicFound = true;
+		}
+		else if( typeof( test ) === "object" )
+		{
+			nestedTestObjFound = true;
+		}
+		else if( typeof( test ) === "function" )
+		{
+			if( topicFound === false )
+			{
+				throw new Error(
+					"Tests must have a topic and be placed after their "+
+					"topic"
+				);
+			}
+			
+			if( nestedTestObjFound === true )
+			{
+				throw new Error(
+					"Tests must be placed before nested test objs"
+				);
+			}
+			
+			testFound = true;
+		}
+		
 		testObj[ testName ] = test;
+	}
+	
+	if( topicFound !== testFound )
+	{
+		throw new Error( "A topic must have accompanying tests" );
 	}
 	
 	return testObj;
@@ -134,15 +184,12 @@ Test.compare = function( objOne, objTwo )
 		typeof( objTwo ) === "object"
 	)
 	{
-		if(
-			objOne.constructor !== objTwo.constructor ||
-			objOne.__proto__ !== objTwo.__proto__
-		)
+		if( objOne.__proto__ !== objTwo.__proto__ )
 		{
 			return "< different constructors or proto chains >";
 		}
 		
-		if( objOne.constructor === Buffer )
+		if( objOne.__proto__ === Buffer.prototype )
 		{
 			if( objOne.length !== objTwo.length )
 			{
@@ -171,7 +218,7 @@ Test.compare = function( objOne, objTwo )
 			
 			return undefined;
 		}
-		else if( objOne.constructor === Date )
+		else if( objOne.__proto__ === Date.prototype )
 		{
 			if( objOne.getTime() !== objTwo.getTime() )
 			{
@@ -291,7 +338,10 @@ Test.clone = function( source )
 		clone[ key ] =
 			typeof( sourceVar ) !== "object" ||
 			sourceVar === null ||
-			( source.constructor === Buffer && key === "parent" ) ?
+			(
+				source.__proto__ === Buffer.prototype &&
+				key === "parent"
+			) ?
 				sourceVar :
 				Test.clone( sourceVar )
 		;
