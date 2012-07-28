@@ -87,9 +87,18 @@ Test.getTests = function()
 		testObj[ testName ] = test;
 	}
 	
-	if( topicFound !== testFound )
+// The conditions in the loop above already make sure that there
+// cant be tests without an accompanying topic
+	
+	if(
+		topicFound === true &&
+		testFound === false &&
+		nestedTestObjFound === false
+	)
 	{
-		throw new Error( "A topic must have accompanying tests" );
+		throw new Error(
+			"A topic must be accompanied by tests or nested test objs"
+		);
 	}
 	
 	return testObj;
