@@ -36,7 +36,7 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 	this.ourGlobePlace = errorPlace;
 	
 	Error.captureStackTrace( this, errorPlace );
-}
+};
 
 OurGlobeError.verArgs =
 function verArgs( msg, errorVar, errorCode, errorPlace )
@@ -95,13 +95,22 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 			verArgs
 		);
 	}
-}
+};
 
 OurGlobeError.prototype.toString =
 function()
 {
-	return util.inspect( this, false, null );
-}
+	return util.inspect(
+		{
+			name: this.name,
+			message: this.message,
+			ourGlobeVar: this.ourGlobeVar,
+			ourGlobeCode: this.ourGlobeCode
+		},
+		false,
+		null
+	);
+};
 
 // Do not use these vars in core modules, instead use
 // OurGlobeError.verArgs() where applicable

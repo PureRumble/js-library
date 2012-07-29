@@ -47,6 +47,9 @@ RuntimeError.ourGlobeSuper = OurGlobeError;
 
 sys.extend( SchemaError, RuntimeError );
 sys.extend( FuncVerError, RuntimeError );
+sys.extend( FuncVer, OurGlobeObject );
+sys.extend( Schema, OurGlobeObject );
+sys.extend( OurGlobeObject, Object );
 
 RuntimeError.MSG_S = OurGlobeError.MSG_S;
 RuntimeError.VAR_S = OurGlobeError.VAR_S;
