@@ -20,21 +20,21 @@ function( dependencies, require )
 });
 
 ModuleHandler.CONSTR_FV = constrFv;
-ModuleHandler.MODULE_S = { types: "obj/func", minProps: 1 };
+
+// The following definitions of a valid module are naturally
+// used by DefineModuleHandler.get(), but it is OK for get() to
+// obtain an empty obj since a delayed cb may later stuff the
+// the module's empty obj with props. It is therefor important
+// that these definitions allow objs to be empty
+
+ModuleHandler.MODULE_S = { types: "obj/func" };
 
 ModuleHandler.isValidModule =
 getF(
 new FuncVer( [ "any" ], "bool" ),
 function( module )
 {
-	var returnVar =
-		(
-			sys.hasType( module, "obj" ) === true &&
-			Object.keys( module ).length > 0
-		) ||
-		sys.hasType( module, "func" ) === true
-	
-	return returnVar;
+	return sys.hasType( module, "obj", "func" ) === true;
 });
 
 ModuleHandler.MODULE_PATH_S = { minStrLen: 1 };
@@ -127,10 +127,7 @@ function( pathStr, complete )
 	{
 		throw new RuntimeError(
 			"Obtained dependency path doesnt return a valid module",
-			{
-				dependency: deps[ foundMod ],
-				returnedModule: mod
-			}
+			{ dependency: deps[ foundMod ], returnedModule: mod }
 		);
 	}
 	
