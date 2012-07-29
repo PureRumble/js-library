@@ -40,7 +40,11 @@ ourglobe.FuncVer = FuncVer;
 ourglobe.Schema = Schema;
 
 OurGlobeError.prototype.__proto__ = Error.prototype;
+OurGlobeError.ourGlobeSuper = Error;
+
 RuntimeError.prototype.__proto__ = OurGlobeError.prototype;
+RuntimeError.ourGlobeSuper = OurGlobeError;
+
 sys.extend( SchemaError, RuntimeError );
 sys.extend( FuncVerError, RuntimeError );
 

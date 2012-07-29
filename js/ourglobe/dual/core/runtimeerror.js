@@ -24,7 +24,7 @@ function RuntimeError( msg, errorVar, errorCode, errorPlace )
 		errorPlace = RuntimeError;
 	}
 	
-	ourglobe.OurGlobeError.call(
+	RuntimeError.ourGlobeSuper.call(
 		this, msg, errorVar, errorCode, errorPlace
 	);
 }

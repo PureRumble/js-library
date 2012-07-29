@@ -27,7 +27,7 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 		errorPlace = OurGlobeError;
 	}
 	
-	Error.call( this, msg );
+	OurGlobeError.ourGlobeSuper.call( this, msg );
 	
 	this.message = msg;
 	this.name = this.constructor.name;
