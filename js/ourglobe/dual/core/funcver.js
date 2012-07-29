@@ -7,31 +7,7 @@ function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
-		ourglobe.assert.nrArgs( arguments, 0, 3 );
-		
-		ourglobe.assert.argType(
-			"argSchemas", argSchemas, "arr", "undef"
-		);
-		
-		ourglobe.assert.argType(
-			"returnSchema",
-			returnSchema,
-			"obj",
-			"arr",
-			"str",
-			"func",
-			"undef"
-		);
-		
-		ourglobe.assert.argType(
-			"extraArgsSchema",
-			extraArgsSchema,
-			"obj",
-			"arr",
-			"str",
-			"func",
-			"undef"
-		);
+		FuncVer.verConstrArgs( arguments );
 	}
 	
 	this.argsSchemas =
@@ -39,9 +15,53 @@ function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 	;
 	this.extraArgsSchema = extraArgsSchema;
 	this.returnSchema = returnSchema;
-}
+};
 
-FuncVer.prototype.addArgs = function( argSchemas )
+FuncVer.verConstrArgs =
+function( args )
+{
+	ourglobe.assert.nrArgs( args, 0, 3 );
+	
+	ourglobe.assert.argType(
+		"argSchemas", args[ 0 ], "arr", "undef"
+	);
+	
+	ourglobe.assert.argType(
+		"returnSchema",
+		args[ 1 ],
+		"obj",
+		"arr",
+		"str",
+		"func",
+		"undef"
+	);
+	
+	ourglobe.assert.argType(
+		"extraArgsSchema",
+		args[ 2 ],
+		"obj",
+		"arr",
+		"str",
+		"func",
+		"undef"
+	);
+};
+
+FuncVer.getFuncVer =
+function( argSchemas, returnSchema, extraArgsSchema )
+{
+	if( ourglobe.conf.doVer() === true )
+	{
+		FuncVer.verConstrArgs( arguments );
+	}
+	
+	return(
+		new FuncVer( argSchemas, returnSchema, extraArgsSchema )
+	);
+};
+
+FuncVer.prototype.addArgs =
+function( argSchemas )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -53,9 +73,18 @@ FuncVer.prototype.addArgs = function( argSchemas )
 	this.argsSchemas.push( argSchemas );
 	
 	return this;
-}
+};
 
-FuncVer.prototype.setExtraArgs = function( extraArgsSchema )
+FuncVer.prototype.addA =
+function()
+{
+	var args = Array.prototype.slice.call( arguments );
+	
+	return FuncVer.prototype.addArgs.call( this, args );
+};
+
+FuncVer.prototype.setExtraArgs =
+function( extraArgsSchema )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -74,9 +103,12 @@ FuncVer.prototype.setExtraArgs = function( extraArgsSchema )
 	this.extraArgsSchema = extraArgsSchema;
 	
 	return this;
-}
+};
 
-FuncVer.prototype.setReturn = function( returnSchema )
+FuncVer.prototype.setE = FuncVer.prototype.setExtraArgs;
+
+FuncVer.prototype.setReturn =
+function( returnSchema )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -95,9 +127,12 @@ FuncVer.prototype.setReturn = function( returnSchema )
 	this.returnSchema = returnSchema;
 	
 	return this;
-}
+};
 
-FuncVer.prototype.verArgs = function( args )
+FuncVer.prototype.setR = FuncVer.prototype.setReturn;
+
+FuncVer.prototype.verArgs =
+function( args )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -162,9 +197,10 @@ FuncVer.prototype.verArgs = function( args )
 		undefined,
 		FuncVer.prototype.verArgs
 	);
-}
+};
 
-FuncVer.prototype.verReturn = function( returnVar )
+FuncVer.prototype.verReturn =
+function( returnVar )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -195,7 +231,7 @@ FuncVer.prototype.verReturn = function( returnVar )
 		undefined,
 		FuncVer.prototype.verReturn
 	);
-}
+};
 
 return FuncVer;
 

@@ -26,6 +26,7 @@ function(
 {
 
 var getF = sys.getFunc;
+var getV = FuncVer.getFuncVer;
 
 ourglobe.OurGlobeError = OurGlobeError;
 ourglobe.RuntimeError = RuntimeError;
@@ -34,6 +35,7 @@ ourglobe.FuncVerError = FuncVerError;
 ourglobe.conf = conf;
 ourglobe.sys = sys;
 ourglobe.getF = getF;
+ourglobe.getV = getV;
 ourglobe.assert = assert;
 ourglobe.OurGlobeObject = OurGlobeObject;
 ourglobe.FuncVer = FuncVer;
@@ -87,6 +89,7 @@ var returnVar =
 	conf: conf,
 	sys: sys,
 	getF: getF,
+	getV: getV,
 	assert: assert,
 	OurGlobeObject: OurGlobeObject,
 	FuncVer: FuncVer,

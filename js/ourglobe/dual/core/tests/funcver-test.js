@@ -13,8 +13,9 @@ var Test = mods.get( "testing" ).Test;
 var assert = ourglobe.assert;
 var sys = ourglobe.sys;
 
-var FuncVer = ourglobe.FuncVer;
 var FuncVerError = ourglobe.FuncVerError;
+var FuncVer = ourglobe.FuncVer;
+var getV = ourglobe.getV;
 
 var suite = vows.describe( "funcver" );
 
@@ -135,7 +136,8 @@ function doubleTestReturn( funcVer, okReturn, notOkReturn )
 }
 
 // no args
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"FuncVer given nothing with no args and one arg",
 	doubleTestArgs(
@@ -160,7 +162,8 @@ suite.addBatch( Test.getTests(
 ));
 
 // simple args
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"Arg int FuncVer with arg int and no args",
 	doubleTestArgs(
@@ -207,7 +210,8 @@ suite.addBatch( Test.getTests(
 ));
 
 // undef args
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"Arg undef FuncVer with no args and arg null",
 	doubleTestArgs(
@@ -268,7 +272,8 @@ suite.addBatch( Test.getTests(
 ));
 
 // extra args
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"str,int,bool with str,int,bool and str,int,bool,bool",
 	doubleTestArgs(
@@ -332,7 +337,8 @@ suite.addBatch( Test.getTests(
 ));
 
 // many args
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"str|int args with str and number",
 	doubleTestArgs(
@@ -393,7 +399,8 @@ suite.addBatch( Test.getTests(
 ));
 
 // return var
-suite.addBatch( Test.getTests(
+suite.addBatch(
+Test.getTests(
 	
 	"undef return with undef and int",
 	doubleTestReturn(
@@ -412,6 +419,130 @@ suite.addBatch( Test.getTests(
 		new FuncVer( undefined, { goodTypes:"bool/null/undef" } ),
 		null,
 		43
+	)
+	
+));
+
+// testing addA
+suite.addBatch(
+Test.getTests(
+	
+	"no args wit no args and null",
+	doubleTestArgs(
+		new FuncVer().addA(),
+		[],
+		[ null ]
+	),
+	
+	"int with 42 and 'dengo'",
+	doubleTestArgs(
+		new FuncVer().addA( "int" ),
+		[ 42],
+		[ "dengo" ]
+	),
+	
+	"int,str with 42,'dingo' and 43,false",
+	doubleTestArgs(
+		new FuncVer().addA( "int", "str" ),
+		[ 42, "dingo" ],
+		[ 43, false ]
+	),
+	
+	"[obj,null] with null and 43",
+	doubleTestArgs(
+		new FuncVer().addA( [ "obj", "null" ] ),
+		[ null ],
+		[ 43 ]
+	),
+	
+	"int|str,[obj,null] with 'dingo',null and 'dengo',false",
+	doubleTestArgs(
+		new FuncVer()
+			.addA( "int" )
+			.addA( "str", [ "obj", "null" ] ),
+		[ "dingo", null ],
+		[ "dengo", false ]
+	)
+	
+));
+
+// testing setR
+suite.addBatch(
+Test.getTests(
+	
+	"return undef with undef and null",
+	doubleTestReturn(
+		new FuncVer().setR( "undef" ).addA(),
+		undefined,
+		null
+	)
+	
+));
+
+// testing setE
+suite.addBatch(
+Test.getTests(
+	
+	"str extraArgs:int with 'dingo',42 and 'dengo',43,false",
+	doubleTestArgs(
+		new FuncVer().setE( "int" ).addA( "str" ),
+		[ "dingo", 42 ],
+		[ "dengo", 43, false ]
+	)
+	
+));
+
+// testing getV
+suite.addBatch(
+Test.getTests(
+	
+	"no args with no args and 'dengo'",
+	doubleTestArgs(
+		getV(),
+		[],
+		[ "dengo" ]
+	),
+	
+	"int extraArgs:bool with 42,true,true and 43,'dengo'",
+	doubleTestArgs(
+		getV( [ "int" ], undefined, "bool" ),
+		[ 42, true ],
+		[ 43, "dengo" ]
+	),
+	
+	"int extraArgs:[bool,null] with 42,null,true and 43,'dengo'",
+	doubleTestArgs(
+		getV( [ "int" ], undefined, [ "bool", "null" ] ),
+		[ 42, true, null ],
+		[ 43, "dengo" ]
+	),
+	
+	"int extraArgs:{} with 42,null and 'dengo',43",
+	doubleTestArgs(
+		getV( [ "int" ], undefined, {} ),
+		[ 42, null ],
+		[ "dengo", 43 ]
+	),
+	
+	"return:int with 42 and 'dengo'",
+	doubleTestReturn(
+		getV( [], "int", undefined ),
+		42,
+		"dengo"
+	),
+	
+	"return:[ int ] with 42 and 'dengo'",
+	doubleTestReturn(
+		getV( [], [ "int" ], undefined ),
+		42,
+		"dengo"
+	),
+	
+	"return:{ types:'int' } with 42 and 'dengo'",
+	doubleTestReturn(
+		getV( [], [ { types:"int" } ], undefined ),
+		42,
+		"dengo"
 	)
 	
 ));
