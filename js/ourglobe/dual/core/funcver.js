@@ -138,7 +138,7 @@ function( args )
 	{
 		ourglobe.assert.nrArgs( arguments, 1 );
 		
-		ourglobe.assert.argType( "args", args, "obj" );
+		ourglobe.assert.argType( "args", args, "obj", "arr" );
 	}
 	
 	try
