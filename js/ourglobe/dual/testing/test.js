@@ -124,192 +124,226 @@ function( arr )
 	);
 }
 
-Test.getTopicFunc =
-function( topic, local, conf, ver )
+Test.callVows =
+function( vowsObj, topicObj, vowCall )
 {
-	Test.assert(
-		arguments.length === 4, "Exactly four args must be provided"
-	);
+	if(
+		vowCall.byCallback === false &&
+		vowCall.args[ 0 ] === undefined
+	)
+	{
+		return;
+	}
 	
-	Test.assert(
-		Test.isFunc( topic ) === true, "Arg topic must be a func"
-	);
-	
-	Test.assert(
-		Test.isObj( local ) === true, "Arg local must be an obj"
-	);
-	
-	Test.assert(
-		Test.isObj( conf ) === true, "Arg conf must be an obj"
-	);
-	
-	Test.assert(
-		ver instanceof FuncVer === true, "Arg ver must be a FuncVer"
-	);
-	
-	return(
-		function()
+// Errs should be verified only if they are from topic and they
+// are allowed to occur
+	if(
+		vowCall.errorOccurred === false ||
+		(
+			vowCall.errFromTopic === true &&
+			vowsObj.conf.allowErrors === true
+		)
+	)
+	{
+		try
 		{
-			if( conf.errOccurred === true )
+			vowsObj.ver.verArgs( vowCall.args );
+		}
+		catch( e )
+		{
+			vowCall.errorOccurred = true;
+			
+// For the sake of clarity
+			vowCall.errFromTopic = false;
+			
+			var err = undefined;
+			
+			if( e instanceof FuncVerError === true )
 			{
-				throw new Error(
-					"An error occurred in a topic that belongs to an "+
-					"outer vows obj"
+				err =
+				new Error(
+					"The args passed on to the vows by "+
+					"the topic werent approved by the vows obj's FuncVer "
+				);
+			}
+			else
+			{
+				err =
+				new Error(
+					"The key 'ver' of the vows obj hasnt been set to "+
+					"a valid FuncVer"
 				);
 			}
 			
+			vowCall.args = [ err ];
+		}
+	}
+	
+	topicObj.callback( vowCall );
+	
+	return;
+};
+
+Test.getTopicFunc =
+function( vowsObj )
+{
+	Test.assert(
+		arguments.length === 1, "Exactly one arg must be provided"
+	);
+	
+	Test.assert(
+		Test.isObj( vowsObj ) === true, "Arg vowsObj must be an obj"
+	);
+	
+	return(
+		function( vowCall )
+		{
 			var outerThis = this;
+			
+			if(
+				vowCall !== undefined &&
+				vowCall.errorOccurred === true &&
+				(
+					vowCall.errFromTopic === false ||
+					vowsObj.conf.__proto__.allowErrors === false
+				)
+			)
+			{
+				Test.callVows(
+					vowsObj,
+					this,
+					{
+						byCallback: false,
+						errorOccurred: true,
+						errFromTopic: false,
+						args:
+						[
+							new Error(
+								"An error occurred in a topic that belongs "+
+								"to an outer vows obj"
+							)
+						]
+					}
+				);
+				
+				return;
+			}
 			
 			var obj =
 			{
-				local: local,
+				local: vowsObj.local,
 				callback:
 				function( err )
 				{
-					if(
-						err instanceof Error === true &&
-						conf.allowErrs === false
-					)
+					if( err instanceof Error === true )
 					{
-						conf.errOccurred = true;
+						Test.callVows(
+							vowsObj,
+							outerThis,
+							{
+								byCallback: true,
+								errorOccurred: true,
+								errFromTopic: true,
+								args: arguments
+							}
+						);
 						
-						return outerThis.callback.call( outerThis, err );
+						return;
 					}
-					
-					try
+					else
 					{
-						ver.verArgs( arguments );
+						Test.callVows(
+							vowsObj,
+							outerThis,
+							{
+								byCallback: true,
+								errorOccurred: false,
+								args: arguments
+							}
+						);
+						
+						return;
 					}
-					catch( e )
-					{
-						conf.errOccurred = true;
-						
-						var err = undefined;
-						
-						if( e instanceof FuncVerError === true )
-						{
-							err =
-							new Error(
-								"The args passed on to the vows by "+
-								"the topic werent approved by the FuncVer "+
-								"provided by the key 'ver' of the vows obj "+
-								"(if conf.allowErrs is true and an err was "+
-								"passed to the vows then the FuncVer of 'ver' "+
-								"must allow for the err)"
-							);
-						}
-						else
-						{
-							err =
-							new Error(
-								"The key 'ver' in the vows obj hasnt been set "+
-								"to a valid FuncVer"
-							);
-						}
-						
-						return outerThis.callback.call( outerThis, err );
-					}
-					
-					return(
-						outerThis.callback.apply( outerThis, arguments )
-					);
 				}
 			};
 			
-			var errorCaught = false;
 			var returnVar = undefined;
 			
 			try
 			{
-				returnVar = topic.call( obj );
+				returnVar = vowsObj.topic.call( obj );
 			}
 			catch( e )
 			{
-				errorCaught = true;
-				
-				if( conf.allowErrs === false )
-				{
-					conf.errOccurred = true;
-					 
-					throw e;
-				}
-				
-				returnVar = e;
-			}
-			
-			if( returnVar !== undefined )
-			{
-				try
-				{
-					ver.verArgs( [ returnVar ] );
-				}
-				catch( e )
-				{
-					conf.errOccurred = true;
-					
-					if( e instanceof FuncVerError === true )
+				Test.callVows(
+					vowsObj,
+					outerThis,
 					{
-						throw new Error(
-							"The args passed on to the vows by "+
-							"the topic werent approved by the FuncVer "+
-							"provided by the key 'ver' of the vows obj "+
-							"(if conf.allowErrs is true and an err was "+
-							"passed to the vows then the FuncVer of 'ver' "+
-							"must allow for the err)"
-						);
+						byCallback: false,
+						errorOccurred: true,
+						errFromTopic: true,
+						args: [ e ]
 					}
-					else
-					{
-						throw new Error(
-							"The key 'ver' of the vows obj hasnt been set to "+
-							"a valid FuncVer"
-						);
-					}
+				);
+				
+				return;
+			}
+			
+			Test.callVows(
+				vowsObj,
+				outerThis,
+				{
+					byCallback: false,
+					errorOccurred: false,
+					args: [ returnVar ]
 				}
-			}
+			);
 			
-			if( errorCaught === true )
-			{
-				throw returnVar;
-			}
-			
-			return returnVar;
+			return;
 		}
 	);
 };
 
 Test.getVowFunc =
-function( vow, local, conf )
+function( vowsObj, vow )
 {
 	Test.assert(
-		arguments.length === 3, "Exactly three args must be provided"
+		arguments.length === 2, "Exactly two args must be provided"
+	);
+	
+	Test.assert(
+		Test.isObj( vowsObj ) === true, "Arg vowsObj must be an obj"
 	);
 	
 	Test.assert(
 		Test.isFunc( vow ) === true, "Arg vow must be a func"
 	);
 	
-	Test.assert(
-		Test.isObj( local ) === true, "Arg local must be an obj"
-	);
-	
-	Test.assert(
-		Test.isObj( conf ) === true, "Arg conf must be an obj"
-	);
-	
 	return(
-		function( err )
+		function( vowCall )
 		{
-			if( conf.errOccurred === true )
+			if(
+				vowCall.errorOccurred === true &&
+				(
+					vowCall.errFromTopic === false ||
+					vowsObj.conf.allowErrors === false
+				)
+			)
 			{
-				throw err;
+				throw vowCall.args[ 0 ];
 			}
 			
-			var outerThis = this;
+			var obj =
+			{
+				local: vowsObj.local,
+				res:
+				{
+					byCallback: vowCall.byCallback,
+					errorOccurred: vowCall.errorOccurred
+				}
+			};
 			
-			var obj = { local: local };
-			
-			return vow.apply( obj, arguments );
+			return vow.apply( obj, vowCall.args );
 		}
 	);
 };
@@ -353,7 +387,7 @@ function( local, next )
 		{
 			name: "the root vows obj",
 			outerLocal: {},
-			outerConf: { allowErrs: false, errOccurred: false },
+			outerConf: { allowErrors: false },
 			vowsObj: rootVowsObj
 		}
 	];
@@ -430,7 +464,7 @@ function( local, next )
 		for( var prop in conf )
 		{
 			Test.assert(
-				prop === "allowErrs",
+				prop === "allowErrors",
 				"'"+prop+"' isnt a valid key for a conf obj",
 				set
 			);
@@ -438,7 +472,7 @@ function( local, next )
 		
 		conf.__proto__ = outerConf;
 		
-		var allowErrs = conf.allowErrs;
+		var allowErrors = conf.allowErrors;
 		
 // local must be prepared first as it is used by topic and vows
 		
@@ -497,7 +531,12 @@ function( local, next )
 			);
 			
 			vowsObj.topic =
-				Test.getTopicFunc( topic, local, conf, ver )
+				Test.getTopicFunc( {
+					topic: topic,
+					local: local,
+					conf: conf,
+					ver: ver
+				})
 			;
 			
 			if( vows === undefined )
@@ -554,7 +593,17 @@ function( local, next )
 					set
 				);
 				
-				vowsObj[ vowName ] = Test.getVowFunc( vow, local, conf );
+				vowsObj[ vowName ] =
+					Test.getVowFunc(
+						{
+							topic: topic,
+							local: local,
+							conf: conf,
+							ver: ver
+						},
+						vow
+					)
+				;
 			}
 		}
 		
