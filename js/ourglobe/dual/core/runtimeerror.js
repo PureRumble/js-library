@@ -7,7 +7,7 @@ function RuntimeError( msg, errorVar, errorCode, errorPlace )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
-		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
+		if( !( arguments.length >= 1 && arguments.length <= 4 ) )
 		{
 			throw new RuntimeError(
 				"Between one and four args must be provided",

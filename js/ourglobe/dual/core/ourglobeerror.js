@@ -9,7 +9,7 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
-		if( !( arguments.length >= 1 || arguments.length <= 4 ) )
+		if( !( arguments.length >= 1 && arguments.length <= 4 ) )
 		{
 			throw new ourglobe.RuntimeError(
 				"Between one and four args must be provided",
@@ -39,15 +39,58 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 };
 
 OurGlobeError.verArgs =
-function verArgs( msg, errorVar, errorCode, errorPlace )
+function( msg, errorVar, errorCode, errorPlace )
 {
-	if( typeof( msg ) !== "string" )
+	if( arguments.length < 1 || arguments.length > 4 )
 	{
 		throw new ourglobe.RuntimeError(
-			"Arg msg must be a string",
-			{ providedArg: msg },
-			undefined,
-			verArgs
+			"Between one and four args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	var res =
+		OurGlobeError.verArgsWithoutErr(
+			msg, errorVar, errorCode, errorPlace
+		)
+	;
+	
+	if( res !== undefined )
+	{
+		throw new ourglobe.RuntimeError(
+			res.message,
+			res.ourGlobeVar,
+			res.ourGlobeCode,
+			res.ourGlobePlace
+		);
+	}
+}
+
+OurGlobeError.verArgsWithoutErr =
+function verArgs( msg, errorVar, errorCode, errorPlace )
+{
+	if( arguments.length < 1 || arguments.length > 4 )
+	{
+		var err =
+			new Error(
+				"Between one and four args must be provided"
+			)
+		;
+		
+		err.ourGlobeVar = { providedArgs: arguments };
+		
+		throw err;
+	}
+	
+	if( typeof( msg ) !== "string" )
+	{
+		return(
+			{
+				message: "Arg msg must be a string",
+				ourGlobeVar:{ providedArg: msg },
+				ourGlobeCode: undefined,
+				ourGlobePlace: onlyVerArgs
+			}
 		);
 	}
 	
@@ -59,11 +102,14 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new ourglobe.RuntimeError(
-			"Arg errorVar must be undef or a non-empty obj",
-			{ providedArg: errorVar },
-			undefined,
-			verArgs
+		return(
+			{
+				message:
+					"Arg errorVar must be undef or a non-empty obj",
+				ourGlobeVar:{ providedArg: errorVar },
+				ourGlobeCode: undefined,
+				ourGlobePlace: onlyVerArgs
+			}
 		);
 	}
 	
@@ -75,11 +121,14 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		)
 	)
 	{
-		throw new ourglobe.RuntimeError(
-			"Arg errorCode must be undef or a non-empty str",
-			{ providedArg: errorCode },
-			undefined,
-			verArgs
+		return(
+			{
+				message:
+					"Arg errorCode must be undef or a non-empty str",
+				ourGlobeVar:{ providedArg: errorCode },
+				ourGlobeCode: undefined,
+				ourGlobePlace: onlyVerArgs
+			}
 		);
 	}
 	
@@ -88,11 +137,14 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 		typeof( errorPlace ) !== "function"
 	)
 	{
-		throw new ourglobe.RuntimeError(
-			"Arg errorPlace must be undef or a func",
-			{ providedArg: errorPlace },
-			undefined,
-			verArgs
+		return(
+			{
+				message:
+					"Arg errorPlace must be undef or a func",
+				ourGlobeVar:{ providedArg: errorPlace },
+				ourGlobeCode: undefined,
+				ourGlobePlace: onlyVerArgs
+			}
 		);
 	}
 };

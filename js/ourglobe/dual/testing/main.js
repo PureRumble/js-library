@@ -1,7 +1,10 @@
 ourglobe.define(
 [
 	"./testerror",
-	"./test"
+	"./testruntimeerror",
+	"./suiteruntimeerror",
+	"./test",
+	"./suite"
 ],
 function( mods )
 {
@@ -9,7 +12,10 @@ function( mods )
 return(
 	{
 		TestError: mods.get( "testerror" ),
-		Test: mods.get( "test" )
+		TestRuntimeError: mods.get( "testruntimeerror" ),
+		SuiteRuntimeError: mods.get( "suiteruntimeerror" ),
+		Test: mods.get( "test" ),
+		Suite: mods.get( "suite" )
 	}
 );
 
