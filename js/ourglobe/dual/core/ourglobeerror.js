@@ -64,17 +64,15 @@ function( msg, errorVar, errorCode, errorPlace )
 			res.ourGlobePlace
 		);
 	}
-}
+};
 
 OurGlobeError.verArgsWithoutErr =
-function verArgs( msg, errorVar, errorCode, errorPlace )
+function( msg, errorVar, errorCode, errorPlace )
 {
 	if( arguments.length < 1 || arguments.length > 4 )
 	{
 		var err =
-			new Error(
-				"Between one and four args must be provided"
-			)
+			new Error( "Between one and four args must be provided" )
 		;
 		
 		err.ourGlobeVar = { providedArgs: arguments };
@@ -89,7 +87,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 				message: "Arg msg must be a string",
 				ourGlobeVar:{ providedArg: msg },
 				ourGlobeCode: undefined,
-				ourGlobePlace: onlyVerArgs
+				ourGlobePlace: OurGlobeError.verArgsWithoutErr
 			}
 		);
 	}
@@ -104,11 +102,10 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 	{
 		return(
 			{
-				message:
-					"Arg errorVar must be undef or a non-empty obj",
+				message: "Arg errorVar must be undef or a non-empty obj",
 				ourGlobeVar:{ providedArg: errorVar },
 				ourGlobeCode: undefined,
-				ourGlobePlace: onlyVerArgs
+				ourGlobePlace: OurGlobeError.verArgsWithoutErr
 			}
 		);
 	}
@@ -127,7 +124,7 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 					"Arg errorCode must be undef or a non-empty str",
 				ourGlobeVar:{ providedArg: errorCode },
 				ourGlobeCode: undefined,
-				ourGlobePlace: onlyVerArgs
+				ourGlobePlace: OurGlobeError.verArgsWithoutErr
 			}
 		);
 	}
@@ -139,29 +136,52 @@ function verArgs( msg, errorVar, errorCode, errorPlace )
 	{
 		return(
 			{
-				message:
-					"Arg errorPlace must be undef or a func",
+				message: "Arg errorPlace must be undef or a func",
 				ourGlobeVar:{ providedArg: errorPlace },
 				ourGlobeCode: undefined,
-				ourGlobePlace: onlyVerArgs
+				ourGlobePlace: OurGlobeError.verArgsWithoutErr
 			}
 		);
 	}
 };
 
-OurGlobeError.prototype.toString =
-function()
+OurGlobeError.toString =
+function( err )
 {
+	if( ourglobe.conf.doVer() === true )
+	{
+		if( arguments.length !== 1 )
+		{
+			throw new ourglobe.RuntimeError(
+				"Exactly one arg must be provided",
+				{ providedArgs: arguments }
+			);
+		}
+		
+		if( err instanceof Error === false )
+		{
+			throw new ourglobe.RuntimeError(
+				"Arg err must be an err", { err: err }
+			);
+		}
+	}
+	
 	return util.inspect(
 		{
-			name: this.name,
-			message: this.message,
-			ourGlobeVar: this.ourGlobeVar,
-			ourGlobeCode: this.ourGlobeCode
+			name: err.name,
+			message: err.message,
+			ourGlobeVar: err.ourGlobeVar,
+			ourGlobeCode: err.ourGlobeCode
 		},
 		false,
 		null
 	);
+};
+
+OurGlobeError.prototype.toString =
+function()
+{
+	return OurGlobeError.toString( this );
 };
 
 // Do not use these vars in core modules, instead use
