@@ -42,12 +42,20 @@ function( msg, errorVar, errorCode, errorPlace )
 	Error.captureStackTrace( this, errorPlace );
 };
 
-TestRuntimeError.prototype.constructor.name =
-	"TestRuntimeError"
-;
-
 TestRuntimeError.prototype.__proto__ = Error.prototype;
 
 return TestRuntimeError;
+
+},
+function( mods, TestRuntimeError )
+{
+
+var OurGlobeError = ourglobe.OurGlobeError;
+
+TestRuntimeError.prototype.toString =
+function()
+{
+	return OurGlobeError.toString( this );
+};
 
 });

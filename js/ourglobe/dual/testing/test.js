@@ -15,6 +15,248 @@ function( mods, Test )
 
 var TestRuntimeError = mods.get( "testruntimeerror" );
 
+Test.expectErr =
+function( errClass, verError, errFunc, refFunc )
+{
+	if( arguments.length < 3 || arguments.length > 4 )
+	{
+		throw new TestRuntimeError(
+			"Between three and four args must be provided"
+		);
+	}
+	
+	if(
+		refFunc === undefined &&
+		errFunc instanceof Function === true &&
+		verError instanceof Function === true
+	)
+	{
+		refFunc = errFunc;
+		errFunc = verError;
+		verError =
+		function( err )
+		{
+			
+		};
+	}
+	
+	if( verError instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg verError must be a func", { verError: verError }
+		);
+	}
+	
+	if( errFunc instanceof Function === false )
+	{
+		throw new TestRuntimeError( "Arg errFunc must be a func" );
+	}
+	
+	if( refFunc instanceof Function === false )
+	{
+		throw new TestRuntimeError( "Arg refFunc must be a func" );
+	}
+	
+	if( errClass instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg errClass must be a class constr"
+		);
+	}
+	
+	var errOk = false;
+	
+	try
+	{
+		errFunc();
+	}
+	catch( e )
+	{
+		if( e.__proto__ !== errClass.prototype )
+		{
+			throw new TestRuntimeError(
+				"The error thrown by the error func isnt of expected "+
+				"class",
+				{ thrownErr: e }
+			);
+		}
+		
+		try
+		{
+			verError( e );
+		}
+		catch( e )
+		{
+			throw new TestRuntimeError(
+				"The func verError didnt approve of the error that the "+
+				"error func threw",
+				{ thrownErr: e }
+			);
+		}
+		
+		errOk = true;
+	}
+	
+	if( errOk === false )
+	{
+		throw new TestRuntimeError(
+			"An error was expected to occur but this didnt happen"
+		);
+	}
+	
+	var err = undefined;
+	
+	try
+	{
+		refFunc();
+	}
+	catch( e )
+	{
+		throw new TestRuntimeError(
+			"The reference func may not throw an err",
+			{ thrownErr: e }
+		);
+	}
+};
+
+Test.expectCbErr =
+function( errClass, cbTime, errFunc, refFunc )
+{
+	if( arguments.length < 3 || arguments.length > 4 )
+	{
+		throw new TestRuntimeError(
+			"Between three and four args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if(
+		cbTime instanceof Function === true &&
+		errFunc instanceof Function === true &&
+		refFunc === undefined
+	)
+	{
+		refFunc = errFunc;
+		errFunc = cbTime;
+		cbTime = 200;
+	}
+	
+	if( typeof( cbTime ) !== "number" )
+	{
+		throw new TestRuntimeError(
+			"Arg cbTime must be a number", { cbTime: cbTime }
+		);
+	}
+	
+	if( errFunc instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg errFunc must be a func", { errFunc: errFunc }
+		);
+	}
+	
+	if( refFunc instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg refFunc must be a func", { refFunc: refFunc }
+		);
+	}
+	
+	if( errClass instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg errClass must be a class constr",
+			{ errClass: errClass }
+		);
+	}
+	
+	var errFuncCbCalled = false;
+	var refFuncCbCalled = false;
+	
+	errFunc(
+		function( err )
+		{
+			if( errFuncCbCalled === true )
+			{
+				throw new TestRuntimeError(
+					"The cb given to the error func has been called twice"
+				);
+			}
+			
+			errFuncCbCalled = true;
+			
+			if( err instanceof Error === false )
+			{
+				throw new TestRuntimeError(
+					"An err was expected to be given to the cb of the "+
+					"error func but this didnt happen"
+				);
+			}
+			
+			if( err.__proto__ !== errClass.prototype )
+			{
+				throw new TestRuntimeError(
+					"The error given to the cb of the error func isnt of "+
+					"expected class",
+					{ givenErr: err }
+				);
+			}
+		}
+	);
+	
+	refFunc(
+		function( err )
+		{
+			if( refFuncCbCalled === true )
+			{
+				throw new TestRuntimeError(
+					"The cb given to the reference func has been called "+
+					"twice"
+				);
+			}
+			
+			refFuncCbCalled = true;
+			
+			if( err instanceof Error === true )
+			{
+				throw new TestRuntimeError(
+					"The reference func may not cause an error but an "+
+					"error was handed to its cb"
+				);
+			}
+		}
+	);
+	
+	setTimeout(
+		function()
+		{
+			if( errFuncCbCalled === false )
+			{
+				throw new TestRuntimeError(
+					"The cb given to the error func hasnt been called"
+				);
+			}
+			
+			if( refFuncCbCalled === false )
+			{
+				throw new TestRuntimeError(
+					"The cb given to the reference func hasnt been called"
+				);
+			}
+		},
+		cbTime
+	);
+};
+
+Test.assert =
+function( boolVar, msg )
+{
+	if( boolVar === false )
+	{
+		throw new TestRuntimeError( msg );
+	}
+};
+
 Test.isFunc =
 function( func )
 {
