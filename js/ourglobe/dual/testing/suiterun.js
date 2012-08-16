@@ -328,13 +328,11 @@ function()
 // finishTopic() throws an err then it wont bubble up to the call
 // of topicCb. Hence handleCbErrs() doesnt need to be used
 					suiteRun.finishTopic(
+						undefined,
 						new SuiteRuntimeError(
 							"The cb of topicCb hasnt been called within the "+
 							"allowed time limit"
-						),
-						false,
-						true,
-						false
+						)
 					);
 				}
 			},
@@ -369,29 +367,27 @@ function()
 	
 	if( err !== undefined )
 	{
-		this.finishTopic( err, false, true, true );
+		this.finishTopic( undefined, err, false, true );
 		
 		return;
 	}
 	
 	if( suiteHolder.topic !== undefined )
 	{
-		this.finishTopic( topicReturn, false, false );
+		this.finishTopic( undefined, topicReturn, false, false );
 		
 		return;
 	}
 	else if( topicReturn !== undefined )
 	{
 		this.finishTopic(
+			undefined,
 			new SuiteRuntimeError(
 				"The func of Suite prop 'topicCb' may not return "+
 				"a variable and must use the cb obtained by "+
 				"this.getCb() to relay its final args to the vows "+
 				"and/or the next Suites"
-			),
-			false,
-			true,
-			false
+			)
 		);
 		
 		return;
@@ -399,39 +395,49 @@ function()
 };
 
 SuiteRun.prototype.finishTopic =
-function( result, byCb, errOccurred, errFromTopic )
+function( err, result, byCb, errOccurred )
 {
-	if( arguments.length < 3 || arguments.length > 4 )
+	if( arguments.length < 2 || arguments.length > 4 )
 	{
 		throw new TestRuntimeError(
-			"Between three and four args must be provided",
+			"Between two and four args must be provided",
 			{ providedArgs: arguments }
 		);
 	}
 	
-	if( typeof( errOccurred ) !== "boolean" )
+	if( err !== undefined && err instanceof Error === false )
 	{
 		throw new TestRuntimeError(
-			"Arg errOccurred must be a bool",
-			{ errOccurred: errOccurred }
-		);
-	}
-	
-	if( typeof( byCb ) !== "boolean" )
-	{
-		throw new TestRuntimeError(
-			"Arg byCb must be a bool", { byCb: byCb }
+			"Arg err must be undef or an err", { err: err }
 		);
 	}
 	
 	if(
-		errFromTopic !== undefined &&
-		typeof( errFromTopic ) !== "boolean"
+		err !== undefined &&
+		result === undefined &&
+		byCb === undefined &&
+		errOccurred === undefined
 	)
 	{
+		this.suiteRunCb( err );
+		
+		return;
+	}
+	
+	if( byCb !== undefined && typeof( byCb ) !== "boolean" )
+	{
 		throw new TestRuntimeError(
-			"Arg errFromTopic must be undef or a bool",
-			{ errFromTopic: errFromTopic }
+			"Arg byCb must be undef or a bool", { byCb: byCb }
+		);
+	}
+	
+	if(
+		errOccurred !== undefined &&
+		typeof( errOccurred ) !== "boolean" )
+	{
+		throw new TestRuntimeError(
+			"Arg errOccurred must be undef or a bool",
+			{ errOccurred: errOccurred }
 		);
 	}
 	
@@ -453,6 +459,28 @@ function( result, byCb, errOccurred, errFromTopic )
 	}
 	
 	if(
+		( byCb !== undefined && errOccurred === undefined ) ||
+		( byCb === undefined && errOccurred !== undefined )
+	)
+	{
+		throw new TestRuntimeError(
+			"Arg errOccurred must indicate if an err occurred if "+
+			"and only if arg byCb indicates the result is from the "+
+			"topic/topicCb",
+			{ byCb: byCb, errOccurred: errOccurred }
+		);
+	}
+	
+	if( byCb === undefined && result instanceof Error === false )
+	{
+		throw new TestRuntimeError(
+			"If arg byCb is undef then arg result must be the err "+
+			"that topic/topicCb raised",
+			{ result: result }
+		);
+	}
+	
+	if(
 		errOccurred === true &&
 		!(
 			byCb === true && result[ 0 ] instanceof Error === true
@@ -465,15 +493,6 @@ function( result, byCb, errOccurred, errFromTopic )
 			"must be provided, either by arg result being the err "+
 			"or result being an arr with the err as its first item",
 			{ result: result }
-		);
-	}
-	
-	if( errOccurred === true && errFromTopic === undefined )
-	{
-		throw new TestRuntimeError(
-			"Arg errFromTopic may not be undefined if an error has "+
-			"occurred",
-			{ errFromTopic: errFromTopic }
 		);
 	}
 	
@@ -495,63 +514,48 @@ function( result, byCb, errOccurred, errFromTopic )
 		return;
 	}
 	
-// allowTopicErrs is a reminder for future changes
-	var allowTopicErrs = false;
-	
 	var suiteHolder = this.suiteHolder;
 	
-	if( byCb === false )
+	var allowThrownErr = suiteHolder.conf.allowThrownErr;
+	var allowCbErr = suiteHolder.conf.allowCbErr;
+	
+	this.markStepDone(
+		"topic",
+		byCb !== undefined &&
+		(
+			errOccurred === false ||
+			( byCb === false && allowThrownErr === true ) ||
+			( byCb === true && allowCbErr === true )
+		)
+	);
+	
+	if( byCb === false || byCb === undefined )
 	{
 		result = [ result ];
 	}
 	
-	if(
-		byCb === true &&
-		result[ 0 ] !== undefined &&
-		result[ 0 ] instanceof Error === false
-	)
-	{
-		var err =
-			new SuiteRuntimeError(
-				"The first arg that topicCb passes on (via cb) must be "+
-				"undef or an err",
-				{ providedArgs: result }
-			)
-		;
-		
-		result = err;
-		
-		errOccurred = true;
-		errFromTopic = false;
-		byCb = false;
-	}
-	
-	this.markStepDone(
-		"topic",
-		errOccurred === false ||
-		( allowTopicErrs === true && errFromTopic === true )
-	);
-	
-	if( errOccurred === false || errFromTopic === true )
+	if( byCb !== undefined )
 	{
 		this.steps.topic.result = result;
-	}
-	
-	if( errOccurred === true )
-	{
-		this.steps.topic.error = result[ 0 ];
 		
-		if( errFromTopic === true )
+		if( errOccurred === true )
 		{
 			this.steps.topic.errByCb = byCb;
 		}
+	}
+	
+	if( this.steps.topic.status === "done" )
+	{
+		this.runArgsVer();
+	}
+	else
+	{
+		this.steps.topic.error = result[ 0 ];
 		
 		this.suiteRunCb( undefined, this );
 		
 		return;
 	}
-	
-	this.runArgsVer();
 };
 
 SuiteRun.prototype.getCb =
@@ -576,15 +580,14 @@ function()
 		function( err )
 		{
 			var errOccurred = err instanceof Error === true;
-			var errFromTopic = errOccurred === true;
 			
 			try
 			{
 				suiteRun.finishTopic(
+					undefined,
 					Array.prototype.slice.call( arguments ),
 					true,
-					errOccurred,
-					errFromTopic
+					errOccurred
 				);
 			}
 			catch( e )
