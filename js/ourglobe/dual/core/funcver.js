@@ -141,6 +141,27 @@ function( args )
 		ourglobe.assert.argType( "args", args, "obj", "arr" );
 	}
 	
+	if( this.argsAreValid( args ) === false )
+	{
+		throw new ourglobe.FuncVerError(
+			"This FuncVer doesnt approve the provided args",
+			{ argSchemas: this.argsSchemas, providedArgs: args },
+			undefined,
+			FuncVer.prototype.verArgs
+		);
+	}
+};
+
+FuncVer.prototype.argsAreValid =
+function( args )
+{
+	if( ourglobe.conf.doVer() === true )
+	{
+		ourglobe.assert.nrArgs( arguments, 1 );
+		
+		ourglobe.assert.argType( "args", args, "obj", "arr" );
+	}
+	
 	try
 	{
 		args = Array.prototype.slice.call( args );
@@ -148,7 +169,7 @@ function( args )
 	catch( err )
 	{
 		throw new ourglobe.RuntimeError(
-			"Arg args must be an arguments object",
+			"Arg args must be an arr or an arguments object",
 			{ providedArg: args }
 		);
 	}
@@ -160,7 +181,7 @@ function( args )
 	
 	for( var pos in this.argsSchemas )
 	{
-		var argSchemas = this.argsSchemas[pos];
+		var argSchemas = this.argsSchemas[ pos ];
 		
 		var finalArgs = args;
 		
@@ -174,7 +195,8 @@ function( args )
 			}
 		}
 		
-		var schema = {
+		var schema =
+		{
 			types: "arr",
 			items: argSchemas,
 			extraItems:
@@ -187,16 +209,11 @@ function( args )
 		
 		if( ourglobe.Schema.test( schema, finalArgs ) === true )
 		{
-			return;
+			return true;
 		}
 	}
 	
-	throw new ourglobe.FuncVerError(
-		"This FuncVer doesnt approve the provided args",
-		{ argSchemas: this.argsSchemas, providedArgs: args },
-		undefined,
-		FuncVer.prototype.verArgs
-	);
+	return false;
 };
 
 FuncVer.prototype.verReturn =
