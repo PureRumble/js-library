@@ -9,12 +9,13 @@ var sys = ourglobe.sys;
 
 var TestingError =
 getF(
-getV([
-	[ OurGlobeError.MSG_S, "undef" ],
-	[ OurGlobeError.VAR_S, "undef" ],
-	[ OurGlobeError.CODE_S, "undef" ],
-	[ OurGlobeError.PLACE_S, "undef" ]
-]),
+getV()
+	.addA(
+		[ OurGlobeError.MSG_S, "undef" ],
+		[ OurGlobeError.VAR_S, "undef" ],
+		[ OurGlobeError.CODE_S, "undef" ],
+		[ OurGlobeError.PLACE_S, "undef" ]
+	),
 function( msg, errorVar, errorCode, errorPlace )
 {
 	if( msg === undefined )

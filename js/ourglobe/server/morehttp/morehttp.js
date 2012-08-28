@@ -16,7 +16,7 @@ new FuncVer()
 	.addArgs( [ Error ] )
 	.addArgs( [
 		"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
-	] )
+	])
 ;
 
 return MoreHttp;
@@ -105,7 +105,8 @@ function( hostname, opts, cb )
 	
 	path = path !== "/" ? path : undefined;
 	
-	var reqOpts = {
+	var reqOpts =
+	{
 		method: method,
 		hostname: hostname,
 		port: port,
