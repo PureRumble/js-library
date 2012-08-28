@@ -15,9 +15,8 @@ var SuiteHolder = mods.get( "suiteholder" );
 var test = mods.get( "testing" ).Test;
 var expectErr = test.expectErr;
 
-console.log( "A Suite must have a non-empty name" );
-
 expectErr(
+	 "A Suite must have a non-empty name",
 	TestRuntimeError,
 	function()
 	{
@@ -43,9 +42,8 @@ expectErr(
 	}
 );
 
-console.log( "A Suite may not be empty" );
-
 expectErr(
+	"A Suite may not be empty",
 	SuiteRuntimeError,
 	function()
 	{
@@ -64,9 +62,8 @@ expectErr(
 	}
 );
 
-console.log( "topic may not be null in a Suite" );
-
 expectErr(
+	"topic may not be null in a Suite",
 	SuiteRuntimeError,
 	function()
 	{
@@ -92,9 +89,8 @@ expectErr(
 	}
 );
 
-console.log( "vows may not be empty in a Suite" );
-
 expectErr(
+	"vows may not be empty in a Suite",
 	SuiteRuntimeError,
 	function()
 	{
@@ -120,9 +116,8 @@ expectErr(
 	}
 );
 
-console.log( "Every second item in vows must be a func" );
-
 expectErr(
+	"Every second item in vows must be a func",
 	SuiteRuntimeError,
 	function()
 	{
@@ -148,12 +143,9 @@ expectErr(
 	}
 );
 
-console.log(
-	"Every second item (starting from first) in vows must be a "+
-	"vow-name"
-);
-
 expectErr(
+	"Every second item (starting from first) in vows must be a "+
+	"vow-name",
 	SuiteRuntimeError,
 	function()
 	{
@@ -179,9 +171,8 @@ expectErr(
 	}
 );
 
-console.log( "vow names must be unique" );
-
 expectErr(
+	"vow names must be unique",
 	SuiteRuntimeError,
 	function()
 	{
@@ -207,9 +198,8 @@ expectErr(
 	}
 );
 
-console.log( "A Suite may not have both topic and topicCb" );
-
 expectErr(
+	"A Suite may not have both topic and topicCb",
 	SuiteRuntimeError,
 	function()
 	{
@@ -236,9 +226,8 @@ expectErr(
 	}
 );
 
-console.log( "argsVer must be an arr or a FuncVer" );
-
 expectErr(
+	"argsVer must be an arr or a FuncVer",
 	SuiteRuntimeError,
 	function()
 	{
@@ -264,9 +253,8 @@ expectErr(
 	}
 );
 
-console.log( "conf must be undef or an obj" );
-
 expectErr(
+	"conf must be undef or an obj",
 	SuiteRuntimeError,
 	function()
 	{
@@ -294,16 +282,15 @@ expectErr(
 	}
 );
 
-console.log( "verArgs of conf must be bool or undef" );
-
 expectErr(
+	"verifyArgs of conf must be bool or undef",
 	SuiteRuntimeError,
 	function()
 	{
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: 1 },
+				conf:{ verifyArgs: 1 },
 				topic: function() {},
 				argsVer: [ "undef" ],
 				vows:[ "dango", function() {} ]
@@ -315,7 +302,7 @@ expectErr(
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: true },
+				conf:{ verifyArgs: true },
 				topic: function() {},
 				argsVer: [ "undef" ],
 				vows:[ "dango", function() {} ]
@@ -324,19 +311,16 @@ expectErr(
 	}
 );
 
-console.log(
-	"argsVer of a Suite must be set if verArgs of conf "+
-	"is undef or true"
-);
-
 expectErr(
+	"argsVer of a Suite must be set if verifyArgs of conf "+
+	"is undef or true",
 	SuiteRuntimeError,
 	function()
 	{
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: true },
+				conf:{ verifyArgs: true },
 				topic: function() {},
 				vows:[ "dango", function() {} ]
 			}
@@ -347,7 +331,7 @@ expectErr(
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: true },
+				conf:{ verifyArgs: true },
 				topic: function() {},
 				argsVer: [ "undef" ],
 				vows:[ "dango", function() {} ]
@@ -356,18 +340,16 @@ expectErr(
 	}
 );
 
-console.log(
-	"argsVer of a Suite may not be set if verArgs of conf is false"
-);
-
 expectErr(
+	"argsVer of a Suite may not be set if verifyArgs of conf is "+
+	"false",
 	SuiteRuntimeError,
 	function()
 	{
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: false },
+				conf:{ verifyArgs: false },
 				topic: function() {},
 				argsVer: [ "undef" ],
 				vows:[ "dango", function() {} ]
@@ -379,7 +361,7 @@ expectErr(
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ verArgs: false },
+				conf:{ verifyArgs: false },
 				topic: function() {},
 				vows:[ "dango", function() {} ]
 			}
@@ -387,18 +369,15 @@ expectErr(
 	}
 );
 
-console.log(
-	"allowThrownErr of conf must be undef or a bool"
-);
-
 expectErr(
+	"allowThrownErr of conf must be undef or a bool",
 	SuiteRuntimeError,
 	function()
 	{
 		new SuiteHolder(
 			"dingo",
 			{
-				conf:{ allowThrownErr: undefined },
+				conf:{ allowThrownErr: null },
 				topic: function() {},
 				argsVer: [ "undef" ],
 				vows:[ "dango", function() {} ]

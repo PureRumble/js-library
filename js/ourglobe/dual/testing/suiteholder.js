@@ -72,9 +72,9 @@ function( name, suiteObj, parentSuite )
 		this.conf = {};
 	}
 	
-	if( this.conf.verArgs === undefined )
+	if( this.conf.verifyArgs === undefined )
 	{
-		this.conf.verArgs = true;
+		this.conf.verifyArgs = true;
 	}
 	
 	if( this.conf.allowThrownErr === undefined )
@@ -306,7 +306,7 @@ function( name, suiteObj )
 	for( var prop in conf )
 	{
 		if(
-			prop !== "verArgs" &&
+			prop !== "verifyArgs" &&
 			prop !== "allowThrownErr" &&
 			prop !== "allowCbErr"
 		)
@@ -318,36 +318,39 @@ function( name, suiteObj )
 		}
 	}
 	
-	var verArgs = conf[ "verArgs" ];
+	var verifyArgs = conf[ "verifyArgs" ];
 	var allowThrownErr = conf[ "allowThrownErr" ];
 	var allowCbErr = conf[ "allowCbErr" ];
 	
-	if( verArgs !== undefined && typeof( verArgs ) !== "boolean" )
+	if(
+		verifyArgs !== undefined &&
+		typeof( verifyArgs ) !== "boolean"
+	)
 	{
 		throw new SuiteRuntimeError(
-			msgPrefix+"Prop 'verArgs' of Suite prop 'conf' must "+
+			msgPrefix+"Prop 'verifyArgs' of Suite prop 'conf' must "+
 			"be undef or a bool"
 		);
 	}
 	
-	if( verArgs === undefined )
+	if( verifyArgs === undefined )
 	{
-		verArgs = true;
+		verifyArgs = true;
 	}
 	
-	if( verArgs === true && argsVer === undefined )
+	if( verifyArgs === true && argsVer === undefined )
 	{
 		throw new SuiteRuntimeError(
 			msgPrefix+"Prop 'argsVer' of a Suite must be set if "+
-			"'conf' prop 'verArgs' is undef or true"
+			"'conf' prop 'verifyArgs' is undef or true"
 		);
 	}
 	
-	if( verArgs === false && argsVer !== undefined )
+	if( verifyArgs === false && argsVer !== undefined )
 	{
 		throw new SuiteRuntimeError(
 			msgPrefix+"Prop 'argsVer' of a Suite may not be set if "+
-			"prop 'verArgs' of 'conf' indicates args verification "+
+			"prop 'verifyArgs' of 'conf' indicates args verification "+
 			"should not be done"
 		);
 	}

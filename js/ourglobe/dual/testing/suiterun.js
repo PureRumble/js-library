@@ -2,29 +2,54 @@ ourglobe.define(
 [
 	"./testruntimeerror",
 	"./suiteruntimeerror",
-	"./suiteholder"
+	"./suiteholder",
+	"./suitestep",
+	"./topic",
+	"./topiccb",
+	"./argsver",
+	"./vow"
 ],
 function( mods )
 {
 
 var TestRuntimeError = undefined;
 var SuiteHolder = undefined;
+var Topic = undefined;
+var TopicCb = undefined;
+var ArgsVer = undefined;
+var Vow = undefined;
 
 mods.delay(
 	function()
 	{
 		TestRuntimeError = mods.get( "testruntimeerror" );
 		SuiteHolder = mods.get( "suiteholder" );
+		Topic = mods.get( "topic" );
+		TopicCb = mods.get( "topiccb" );
+		ArgsVer = mods.get( "argsver" );
+		Vow = mods.get( "vow" );
 	}
 );
 
 var SuiteRun =
-function( suiteHolder )
+function( suiteHolder, parentRun )
 {
-	if( arguments.length !== 1 )
+	if( arguments.length < 1 || arguments.length > 2 )
 	{
 		throw new TestRuntimeError(
-			"Exactly one arg must be provided"
+			"Between one and two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if(
+		parentRun !== undefined &&
+		parentRun instanceof SuiteRun === false
+	)
+	{
+		throw new TestRuntimeError(
+			"Arg parentRun must be undef or a SuiteRun",
+			{ parentRun: parentRun }
 		);
 	}
 	
@@ -35,6 +60,7 @@ function( suiteHolder )
 		);
 	}
 	
+	this.parentRun = parentRun;
 	this.suiteHolder = suiteHolder;
 	
 	this.cbSteps = {};
@@ -62,9 +88,28 @@ function( suiteHolder )
 	
 	this.suiteRunCb = undefined;
 	this.runOk = undefined;
+	
+	if( suiteHolder.topic !== undefined )
+	{
+		this.topic = new Topic( this );
+	}
+	else
+	{
+		this.topic = new TopicCb( this );
+	}
+	
+	this.argsVer = new ArgsVer( this );
+	
+	this.vows = [];
+	
+	if( suiteHolder.vows !== undefined )
+	{
+		for( var item in suiteHolder.vows )
+		{
+			this.vows[ item ] = new Vow( this, item );
+		}
+	}
 };
-
-SuiteRun.DEFAULT_CB_TIMEOUT = 1000;
 
 return SuiteRun;
 
@@ -72,49 +117,12 @@ return SuiteRun;
 function( mods, SuiteRun )
 {
 
+var getF = ourglobe.getF;
+var getV = ourglobe.getV;
+
 var TestRuntimeError = mods.get( "testruntimeerror" );
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
-
-SuiteRun.prototype.runArgsVer =
-function()
-{
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
-	var resultIsValid = true;
-	var argsVer = this.suiteHolder.argsVer;
-	
-	if( argsVer !== undefined )
-	{
-		resultIsValid =
-			argsVer.argsAreValid( this.steps.topic.result )
-		;
-	}
-	
-	
-	this.markStepDone( "argsVer", resultIsValid );
-	
-	if( resultIsValid === false )
-	{
-		this.steps.argsVer.error =
-			new SuiteRuntimeError(
-				"The args that topic/topicCb were to give to vows/next "+
-				"werent approved by the FuncVer of the Suite prop "+
-				"'argsVer'"
-			)
-		;
-		
-		this.suiteRunCb( undefined, this );
-		
-		return;
-	}
-	
-	this.runVows();
-};
+var SuiteStep = mods.get( "suitestep" );
 
 SuiteRun.prototype.handleCbErrs =
 function( step, err )
@@ -241,6 +249,41 @@ function( step, succeeded )
 	}
 };
 
+SuiteRun.prototype.runArgsVer =
+getF(
+getV(),
+function()
+{
+	var argsVerErr = undefined;
+	var argsVerOk = undefined;
+	
+	this.argsVer.takeStep(
+		getF(
+		SuiteStep.TAKE_STEP_CB_FV,
+		function( err, runOk )
+		{
+			argsVerErr = err;
+			argsVerOk = runOk;
+		})
+	);
+	
+	if( argsVerErr !== undefined )
+	{
+		this.suiteRunCb( argsVerErr );
+		
+		return;
+	}
+	
+	if( argsVerOk === false )
+	{
+		this.suiteRunCb( undefined, false );
+		
+		return;
+	}
+	
+	this.runVows();
+});
+
 SuiteRun.prototype.runVows =
 function()
 {
@@ -251,46 +294,48 @@ function()
 		);
 	}
 	
-	var suiteHolder = this.suiteHolder;
+	var vowsOk = true;
 	
-	var vowArgs = this.steps.topic.result;
-	
-	var vowObj = {};
-	
-	var vows = suiteHolder.vows;
-	var failedVows = {};
-	var vowFailed = false;
-	
-	if( vows !== undefined )
+	for( var item = 0; item < this.vows.length; item++ )
 	{
+		var vow = this.vows[ item ];
 		
-// The vows are to be executed in the order that they were given
-		for( var item = 0; item < vows.length; item++ )
+		var vowErr = undefined;
+		var vowRunOk = undefined;
+		
+		vow.takeStep(
+			getF(
+			SuiteStep.TAKE_STEP_CB_FV,
+			function( err, runOk )
+			{
+				vowErr = err;
+				vowRunOk = runOk;
+			})
+		);
+		
+		if( vowErr !== undefined )
 		{
-			var vowName = vows[ item ].key;
-			var vow = vows[ item ].value;
+			this.suiteRunCb( vowErr );
 			
-			try
-			{
-				vow.apply( vowObj, vowArgs );
-			}
-			catch( e )
-			{
-				failedVows[ vowName ] = {};
-				failedVows[ vowName ].error = e;
-				vowFailed = true;
-			}
+			return;
+		}
+		
+		if( vowRunOk === false )
+		{
+			vowsOk = false;
 		}
 	}
 	
-	this.markStepDone( "vows", vowFailed === false );
-	
-	if( vowFailed === true )
+	if( vowsOk === false )
 	{
-		this.steps.vows.vows = failedVows;
+		this.suiteRunCb( undefined, false );
+		
+		return;
 	}
 	
-	this.suiteRunCb( undefined, this );
+	this.runOk = true;
+	
+	this.suiteRunCb( undefined, true );
 };
 
 SuiteRun.prototype.runTopic =
@@ -304,94 +349,29 @@ function()
 	}
 	
 	var suiteRun = this;
-	var suiteHolder = suiteRun.suiteHolder;
 	
-	var topicArgs = [];
-	
-	var topic = suiteHolder.topic;
-	
-	if( suiteHolder.topicCb !== undefined )
-	{
-		topic = suiteHolder.topicCb;
-		
-		this.cbSteps.topicCb.timerId =
-		setTimeout(
-			function()
-			{
-// It must be cleared otherwise an attempt is made to
-// clearTimeout()
-				suiteRun.cbSteps.topicCb.timerId = undefined;
-				
-				if( suiteRun.steps.topic.status === undefined )
-				{
-// This call was initiated by setTimeout() and so if 
-// finishTopic() throws an err then it wont bubble up to the call
-// of topicCb. Hence handleCbErrs() doesnt need to be used
-					suiteRun.finishTopic(
-						undefined,
-						new SuiteRuntimeError(
-							"The cb of topicCb hasnt been called within the "+
-							"allowed time limit"
-						)
-					);
-				}
-			},
-			SuiteRun.DEFAULT_CB_TIMEOUT
-		);
-	}
-	
-	var topicObj =
-	{
-		getCb:
-		function()
+	this.topic.takeStep(
+		getF(
+		SuiteStep.TAKE_STEP_CB_FV,
+		function( err, stepOk )
 		{
-			return suiteRun.getCb.apply( suiteRun, arguments );
-		}
-	};
-	
-	var err = undefined;
-	
-	try
-	{
-		topicReturn = topic.apply( topicObj, topicArgs );
-	}
-	catch( e )
-	{
-		err = e;
-	}
-	
-	if( suiteHolder.topicCb !== undefined )
-	{
-		this.handleCbErrs( "topicCb" );
-	}
-	
-	if( err !== undefined )
-	{
-		this.finishTopic( undefined, err, false, true );
-		
-		return;
-	}
-	
-	if( suiteHolder.topic !== undefined )
-	{
-		this.finishTopic( undefined, topicReturn, false, false );
-		
-		return;
-	}
-	else if( topicReturn !== undefined )
-	{
-		this.finishTopic(
-			undefined,
-			new SuiteRuntimeError(
-				"The func of Suite prop 'topicCb' may not return "+
-				"a variable and must use the cb obtained by "+
-				"this.getCb() to relay its final args to the vows "+
-				"and/or the next Suites"
-			)
-		);
-		
-		return;
-	}
+			if( err !== undefined )
+			{
+				suiteRun.suiteRunCb( err );
+				
+				return;
+			}
+			
+			if( stepOk === false )
+			{
+				suiteRun.suiteRunCb( undefined, false );
+				
+				return;
+			}
+			
+			suiteRun.runArgsVer();
+		})
+	);
 };
 
 SuiteRun.prototype.finishTopic =
@@ -601,23 +581,13 @@ function()
 };
 
 SuiteRun.prototype.run =
-function( parentRun, cb )
+function( cb )
 {
-	if( arguments.length !== 2 )
+	if( arguments.length !== 1 )
 	{
 		throw new TestRuntimeError(
-			"Exactly two args must be provided"
-		);
-	}
-	
-	if(
-		parentRun !== undefined &&
-		parentRun instanceof SuiteRun === false
-	)
-	{
-		throw new TestRuntimeError(
-			"Arg parentRun must be undef or a SuiteRun",
-			{ parentRun: parentRun }
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
 		);
 	}
 	
@@ -627,7 +597,6 @@ function( parentRun, cb )
 			"Arg cb must be a func", { cb: cb }
 		);
 	}
-	
 	
 	this.suiteRunCb = cb;
 	

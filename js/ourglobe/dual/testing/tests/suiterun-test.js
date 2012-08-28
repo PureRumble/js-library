@@ -1,8 +1,12 @@
 ourglobe.require(
 [
-	"ourglobe/dual/testing",
+	"ourglobe/dual/testing/suiteruntimeerror",
+	"ourglobe/dual/testing/testruntimeerror",
+	"ourglobe/dual/testing/testingerror",
+	"ourglobe/dual/testing/test",
 	"ourglobe/dual/testing/suiteholder",
-	"ourglobe/dual/testing/suiterun"
+	"ourglobe/dual/testing/suiterun",
+	"ourglobe/dual/testing/cbstep"
 ],
 function( mods )
 {
@@ -11,35 +15,27 @@ debugger;
 
 var getV = ourglobe.getV;
 
-var SuiteRuntimeError = mods.get( "testing" ).SuiteRuntimeError;
-var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
-var TestingError = mods.get( "testing" ).TestingError;
-var test = mods.get( "testing" ).Test;
+var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
+var TestRuntimeError = mods.get( "testruntimeerror" );
+var TestingError = mods.get( "testingerror" );
+var test = mods.get( "test" );
 var expectErr = test.expectErr;
 var assert = test.assert;
 var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
+var CbStep = mods.get( "cbstep" );
 
 var expectCbErr =
-function( errClass, errFunc, refFunc )
+function( testName, errClass, errFunc, refFunc )
 {
 	return(
 		test.expectCbErr(
+			testName,
 			errClass,
-			SuiteRun.DEFAULT_CB_TIMEOUT + 2000,
+			CbStep.DEFAULT_CB_TIMEOUT + 1000,
 			errFunc,
 			refFunc
 		)
-	);
-}
-
-var throwErr = 
-function( name, err )
-{
-	throw new TestRuntimeError(
-		"An err occurred when testing '"+name+"':\n"+
-		err.message,
-		{ occurredErr: err }
 	);
 }
 
@@ -57,7 +53,7 @@ function( name, suiteHolder, cbTime, cb )
 	if( cbTime instanceof Function === true && cb === undefined )
 	{
 		cb = cbTime;
-		cbTime = SuiteRun.DEFAULT_CB_TIMEOUT + 1000;
+		cbTime = CbStep.DEFAULT_CB_TIMEOUT + 1000;
 	}
 	
 	if( typeof( name ) !== "string" )
@@ -85,53 +81,50 @@ function( name, suiteHolder, cbTime, cb )
 	
 	console.log( name );
 	
+	var errPrefix = "An err occurred when testing '"+name+"':\n";
+	
 	try
 	{
 	
 	suiteRun.run(
-	undefined,
 	function( err, res )
 	{
 		if( err !== undefined )
 		{
-			throwErr( name, err );
-			
-			return;
+			throw new TestRuntimeError(
+				errPrefix + err.message, { occurredErr: err }
+			);
 		}
 		
 		if( cbCalled === true )
 		{
-			throwErr(
-				name,
-				new TestRuntimeError(
-					"The cb given to SuiteRun.run() has been called twice",
-					{ providedArgs: arguments }
-				)
+			throw new TestRuntimeError(
+				errPrefix+
+				"The cb given to SuiteRun.run() has been called twice",
+				{ providedArgs: arguments }
 			);
-			
-			return;
 		}
 		
 		cbCalled = true;
 		
 		try
 		{
-			cb( res );
+			cb( suiteRun );
 		}
 		catch( e )
 		{
-			throwErr( name, e );
-			
-			return;
+			throw new TestRuntimeError(
+				errPrefix + e.message, { occurredErr: e }
+			);
 		}
 	});
 	
 	}
 	catch( e )
 	{
-		throwErr( name, e );
-		
-		return;
+		throw new TestRuntimeError(
+			errPrefix + e.message, { occurredErr: e }
+		);
 	}
 	
 	setTimeout(
@@ -139,14 +132,10 @@ function( name, suiteHolder, cbTime, cb )
 		{
 			if( cbCalled === false )
 			{
-				throwErr(
-					name,
-					new TestRuntimeError(
-						"The cb given to SuiteRun.run() hasnt been called"
-					)
+				throw new TestRuntimeError(
+					errPrefix+
+					"The cb given to SuiteRun.run() hasnt been called"
 				);
-				
-				return;
 			}
 		},
 		cbTime
@@ -167,13 +156,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ] === "dango" &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.topic.error === undefined &&
-			run.steps.vows.status === "done" &&
-			run.steps.vows.vows === undefined,
+			run.topic.thrownErr === undefined &&
+			run.topic.err === undefined &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ] === "dango" &&
+			run.vows.length === 1 &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -191,18 +179,11 @@ testSuiteRun(
 				"dongo",
 				function( dango )
 				{
-					if( dango !== "dango" )
-					{
-						throw new TestingError();
-					}
 				},
 				"dengo",
 				function( dango )
 				{
-					if( dango === "dango" )
-					{
-						throw new TestingError();
-					}
+					throw new TestingError();
 				}
 			]
 		}
@@ -211,16 +192,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ] === "dango" &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "failed" &&
-			Object.keys( run.steps.vows.vows ).length === 1 &&
-			run.steps.vows.vows.dengo.error.constructor ===
-				TestingError
-			,
+			run.topic.thrownErr === undefined &&
+			run.topic.err === undefined &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ] === "dango" &&
+			run.vows.length === 2 &&
+			run.vows[ 0 ].err === undefined &&
+			run.vows[ 1 ].err.constructor === TestingError,
 			"run result is invalid"
 		);
 	}
@@ -246,13 +224,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === false &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.err.constructor === TestingError &&
+			run.topic.thrownErr === undefined &&
+			run.topic.result === undefined &&
+			run.vows.length === 1 &&
+			run.vows[ 0 ].err === undefined &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -278,14 +255,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === SuiteRuntimeError &&
-			run.steps.topic.result[ 0 ].constructor ===
-				SuiteRuntimeError
-			&&
-			run.steps.topic.errByCb === false &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.err instanceof Error === true &&
+			run.topic.thrownErr === undefined &&
+			run.topic.result === undefined &&
+			run.vows.length === 1 &&
+			run.vows[ 0 ].err === undefined &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -311,12 +286,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === SuiteRuntimeError &&
-			run.steps.topic.result === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === SuiteRuntimeError &&
+			run.vows.length === 1 &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined
+			,
 			"run result is invalid"
 		);
 	}
@@ -357,11 +332,14 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 0 &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done" &&
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.result.length === 0 &&
+			run.topic.thrownErr === undefined &&
+			run.vows[ 0 ].stepOk === true &&
+			run.vows[ 0 ].err === undefined &&
+			run.vows[ 1 ].stepOk === true &&
+			run.vows[ 1 ].err === undefined &&
 			alphaVowArgsOne.length === 0 &&
 			alphaVowArgsTwo.length === 0,
 			"run result is invalid"
@@ -402,19 +380,22 @@ testSuiteRun(
 	),
 	function( run )
 	{
-		var res = run.steps.topic.result;
+		var res = run.topic.result;
 		var argsOne = betaVowArgsOne;
 		var argsTwo = betaVowArgsTwo;
 		
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done" &&
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.thrownErr === undefined &&
+			run.vows[ 0 ].stepOk === true &&
+			run.vows[ 1 ].stepOk === true &&
+			run.vows[ 0 ].err === undefined &&
+			run.vows[ 1 ].err === undefined &&
 			res.length === 4 &&
-			argsOne.length === 4 &&
-			argsTwo.length === 4 &&
+			betaVowArgsOne.length === 4 &&
+			betaVowArgsTwo.length === 4 &&
 			res[ 0 ] === "dingo" &&
 			argsOne[ 0 ] === "dingo" &&
 			argsTwo[ 0 ] === "dingo" &&
@@ -463,15 +444,11 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.result.length === 0 &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "failed" &&
-			Object.keys( run.steps.vows.vows ).length === 1 &&
-			run.steps.vows.vows.dingo.error.constructor ===
-				TestingError
-			,
+			run.topic.stepOk === true &&
+			run.vows[ 0 ].stepOk === false &&
+			run.vows[ 0 ].err.constructor === TestingError &&
+			run.vows[ 1 ].stepOk === true &&
+			run.vows[ 1 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -503,15 +480,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor ===
-				TestingError
-			&&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.thrownErr === undefined &&
+			run.topic.cbErr === undefined &&
+			run.topic.result === undefined &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -554,15 +529,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.result.length === 0 &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "failed" &&
-			Object.keys( run.steps.vows.vows ).length === 1 &&
-			run.steps.vows.vows.dingo.error.constructor ===
-				TestingError
-			,
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.result.length === 0 &&
+			run.vows[ 0 ].stepOk === false &&
+			run.vows[ 0 ].err.constructor === TestingError &&
+			run.vows[ 1 ].stepOk === true &&
+			run.vows[ 1 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -600,23 +573,17 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor ===
-				TestingError
-			&&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
 );
 
 testSuiteRun(
-	"faulty topicCb with err and bool via cb and faulty "+
-	"vow",
+	"faulty topicCb with err and bool via cb and faulty vow",
 	new SuiteHolder(
 		"suite",
 		{
@@ -641,14 +608,11 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.result.length === 2 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.result[ 1 ] === true &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.result === undefined &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -656,7 +620,7 @@ testSuiteRun(
 
 testSuiteRun(
 	"faulty topicCb with err and bool via delayed cb and "+
-	"faulty vow",
+	"faulty cancelled vow",
 	new SuiteHolder(
 		"suite",
 		{
@@ -687,96 +651,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.result.length === 2 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.result[ 1 ] === true &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
-			"run result is invalid"
-		);
-	}
-);
-
-testSuiteRun(
-	"faulty topicCb with the calls cb(err) and cb() and "+
-	"faulty cancelled vow",
-	new SuiteHolder(
-		"suite",
-		{
-			topicCb:
-			function()
-			{
-				var cb = this.getCb();
-				
-				cb( new TestingError() );
-				
-				cb();
-			},
-			argsVer: getV().setE( "any" ),
-			vows:[
-				"dingo",
-				function()
-				{
-					throw new TestingError();
-				}
-			]
-		}
-	),
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
-			"run result is invalid"
-		);
-	}
-);
-
-testSuiteRun(
-	"faulty topicCb with the calls cb(err) and cb(err) "+
-	"and faulty cancelled vow",
-	new SuiteHolder(
-		"suite",
-		{
-			topicCb:
-			function()
-			{
-				var cb = this.getCb();
-				
-				cb( new TestingError() );
-				
-				cb( new TestingError() );
-			},
-			argsVer: getV().setE( "any" ),
-			vows:[
-				"dingo",
-				function()
-				{
-					throw new TestingError();
-				}
-			]
-		}
-	),
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -793,9 +671,11 @@ testSuiteRun(
 			{
 				var cb = this.getCb();
 				
-				cb( new TestingError() );
+				cb( new TestingError( undefined, undefined, "cbErr" ) );
 				
-				throw new TestingError();
+				throw new TestingError(
+					undefined, undefined, "thrownErr"
+				);
 			},
 			argsVer: getV().setE( "any" ),
 			vows:[
@@ -811,13 +691,11 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.err.ourGlobeCode === "thrownErr" &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
@@ -837,12 +715,16 @@ testSuiteRun(
 				setTimeout(
 					function()
 					{
-						cb( new TestingError() );
+						cb(
+							new TestingError( undefined, undefined, "cbErr" )
+						);
 					},
 					100
 				);
 				
-				throw new TestingError();
+				throw new TestingError(
+					undefined, undefined, "thrownErr"
+				);
 			},
 			argsVer: getV().setE( "any" ),
 			vows:
@@ -859,24 +741,20 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === false &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.err.ourGlobeCode === "thrownErr" &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.vows[ 0 ].err === undefined,
 			"run result is invalid"
 		);
 	}
 );
 
-console.log(
+expectCbErr(
 	"faulty topicCb with double call to cb() (expecting err) and "+
-	"another faulty topicCb with calls to cb(err) and cb() "+
-	"(expecting no errors)"
-);
-
-expectCbErr(
+	"another faulty topicCb with calls to cb(err) and "+
+	"delayed cb() (expecting no errors)",
 	SuiteRuntimeError,
 	function( cb )
 	{
@@ -903,7 +781,6 @@ expectCbErr(
 			)
 		)
 			.run(
-				undefined,
 				function( err )
 				{
 					if( err !== undefined )
@@ -927,7 +804,13 @@ expectCbErr(
 						
 						cb( new TestingError() );
 						
-						cb();
+						setTimeout(
+							function()
+							{
+								cb();
+							},
+							100
+						);
 					},
 					argsVer: getV().setE( "any" ),
 					vows:
@@ -938,18 +821,15 @@ expectCbErr(
 				}
 			)
 		)
-			.run( undefined, cb )
+			.run( cb )
 		;
 	}
 );
 
-console.log(
-	"faulty topicCb calling cb() and cb(err) (expecting err) and "+
-	"another faulty topicCb calling cb(err) and cb(err) "+
-	"(expecting no errors)"
-);
-
 expectCbErr(
+	"faulty topicCb calling direct cb(err) and direct cb() "+
+	"(expecting err) and another faulty topicCb calling cb(err) "+
+	"and cb(err) (expecting no errors)",
 	SuiteRuntimeError,
 	function( cb )
 	{
@@ -962,9 +842,9 @@ expectCbErr(
 					{
 						var cb = this.getCb();
 						
-						cb();
-						
 						cb( new TestingError() );
+						
+						cb();
 					},
 					argsVer: getV().setE( "any" ),
 					vows:
@@ -976,7 +856,6 @@ expectCbErr(
 			)
 		)
 			.run(
-				undefined,
 				function( err )
 				{
 					if( err !== undefined )
@@ -1000,7 +879,13 @@ expectCbErr(
 						
 						cb( new TestingError() );
 						
-						cb( new TestingError() );
+						setTimeout(
+							function()
+							{
+								cb( new TestingError() );
+							},
+							100
+						);
 					},
 					argsVer: getV().setE( "any" ),
 					vows:
@@ -1011,18 +896,15 @@ expectCbErr(
 				}
 			)
 		)
-			.run( undefined, cb )
+			.run( cb )
 		;
 	}
 );
 
-console.log(
-	"faulty topicCb calling cb() and throwing err "+
+expectCbErr(
+	"faulty topicCb with double call to delayed cb() "+
 	"(expecting err) and another faulty topicCb throwing err and "+
-	"calling delayed cb() (expecting no err)"
-);
-
-expectCbErr(
+	"calling delayed cb() (expecting no err)",
 	SuiteRuntimeError,
 	function( cb )
 	{
@@ -1035,9 +917,21 @@ expectCbErr(
 					{
 						var cb = this.getCb();
 						
-						cb();
+						setTimeout(
+							function()
+							{
+								cb();
+							},
+							100
+						);
 						
-						throw new TestingError();
+						setTimeout(
+							function()
+							{
+								cb();
+							},
+							200
+						);
 					},
 					argsVer: getV().setE( "any" ),
 					vows:
@@ -1049,7 +943,6 @@ expectCbErr(
 			)
 		)
 			.run(
-				undefined,
 				function( err )
 				{
 					if( err !== undefined )
@@ -1090,7 +983,7 @@ expectCbErr(
 				}
 			)
 		)
-			.run( undefined, cb )
+			.run( cb )
 		;
 	}
 );
@@ -1120,12 +1013,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === SuiteRuntimeError &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.topic.result === undefined &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === SuiteRuntimeError &&
+			run.topic.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1148,7 +1039,7 @@ testSuiteRun(
 						cb();
 						cb( new TestingError() );
 					},
-					SuiteRun.DEFAULT_CB_TIMEOUT+1000
+					CbStep.DEFAULT_CB_TIMEOUT+100
 				);
 			},
 			argsVer: getV().setE( "any" ),
@@ -1166,12 +1057,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.error.constructor === SuiteRuntimeError &&
-			run.steps.topic.result === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === SuiteRuntimeError &&
+			run.topic.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1200,14 +1089,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			"0" in run.steps.topic.result === true &&
-			run.steps.topic.result[ 0 ] === undefined &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done",
+			run.topic.stepOk === true &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ] === undefined &&
+			run.argsVer.stepOk === true &&
+			run.argsVer.err === undefined &&
+			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
 	}
@@ -1237,12 +1124,12 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result[ 0 ] === "dingo" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done",
+			run.topic.stepOk === true &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ] === "dingo" &&
+			run.argsVer.stepOk === true &&
+			run.argsVer.err === undefined &&
+			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
 	}
@@ -1272,15 +1159,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result[ 0 ] === "dingo" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "failed" &&
-			run.steps.argsVer.error.constructor ===
-				SuiteRuntimeError
-			&&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === true &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ] === "dingo" &&
+			run.argsVer.stepOk === false &&
+			run.argsVer.err.constructor === SuiteRuntimeError &&
+			run.argsVer.err.ourGlobeCode === "ArgsAreNotValid" &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1318,12 +1203,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 0 &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done",
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === true &&
+			run.argsVer.err === undefined &&
+			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
 	}
@@ -1362,15 +1245,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 3 &&
-			run.steps.topic.result[ 0 ] === "dingo" &&
-			run.steps.topic.result[ 1 ] === 42 &&
-			run.steps.topic.result[ 2 ] === true &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done",
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === true &&
+			run.argsVer.err === undefined &&
+			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
 	}
@@ -1409,16 +1287,11 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ] === "dengo" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "failed" &&
-			run.steps.argsVer.error.constructor ===
-				SuiteRuntimeError
-			&&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === false &&
+			run.argsVer.err.constructor === SuiteRuntimeError &&
+			run.argsVer.err.ourGlobeCode === "ArgsAreNotValid" &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1431,7 +1304,7 @@ testSuiteRun(
 		{
 			conf:
 			{
-				verArgs: false
+				verifyArgs: false
 			},
 			topic:
 			function()
@@ -1452,37 +1325,20 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ] === "dingo" &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.argsVer.error === undefined &&
-			run.steps.vows.status === "done",
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === true &&
+			run.argsVer.err === undefined &&
+			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
 	}
 );
 
-console.log(
+expectErr(
 	"SuiteRun given faulty cb and topicCb with direct call of cb "+
 	"(expecting err) and SuiteRun given healthy cb "+
-	"(expecting no err)"
-);
-
-expectErr(
-	SuiteRuntimeError,
-	function( e )
-	{
-		assert(
-			e.ourGlobeVar.thrownErr !== undefined &&
-			e.ourGlobeVar.thrownErr.__proto__ ===
-				TestingError.prototype
-			,
-			"the err isnt as expected"
-		)
-	},
+	"(expecting no err)",
+	TestingError,
 	function()
 	{
 		new SuiteRun(
@@ -1506,7 +1362,6 @@ expectErr(
 			)
 		)
 			.run(
-				undefined,
 				function( err )
 				{
 					if( err !== undefined )
@@ -1542,7 +1397,6 @@ expectErr(
 			)
 		)
 			.run(
-				undefined,
 				function( err )
 				{
 					if( err !== undefined )
@@ -1586,13 +1440,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.errByCb === false &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.vows.status === "done" &&
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.thrownErr.constructor === TestingError &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ].constructor === TestingError &&
+			run.argsVer.stepOk === true &&
+			run.vows[ 0 ].stepOk === true &&
 			charlieVowArgs.length === 1 &&
 			charlieVowArgs[ 0 ].constructor === TestingError,
 			"run result is invalid"
@@ -1629,16 +1483,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.error === undefined &&
-			run.steps.topic.errByCb === false &&
-			run.steps.argsVer.status === "failed" &&
-			run.steps.argsVer.error.constructor ===
-				SuiteRuntimeError
-			&&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.thrownErr.constructor === TestingError &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ].constructor === TestingError &&
+			run.argsVer.stepOk === false &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1668,7 +1519,7 @@ testSuiteRun(
 					100
 				);
 			},
-			argsVer:[ [ TestingError, "undef" ] ],
+			argsVer:[ [ TestingError ] ],
 			vows:
 			[
 				"dingo",
@@ -1683,14 +1534,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.argsVer.error === undefined &&
-			run.steps.vows.status === "done" &&
+			run.topic.stepOk === true &&
+			run.topic.err === undefined &&
+			run.topic.cbErr.constructor === TestingError &&
+			run.topic.result.length === 1 &&
+			run.topic.result[ 0 ].constructor === TestingError &&
+			run.argsVer.stepOk === true &&
+			run.vows[ 0 ].stepOk === true &&
 			deltaVowArgs.length === 1 &&
 			deltaVowArgs[ 0 ].constructor === TestingError,
 			"run result is invalid"
@@ -1698,10 +1548,8 @@ testSuiteRun(
 	}
 );
 
-var gammaVowArgs = undefined;
-
 testSuiteRun(
-	"faulty topicCb allowed to throw err and healthy vow",
+	"faulty topicCb throws allowed err and calls cb",
 	new SuiteHolder(
 		"suite",
 		{
@@ -1714,15 +1562,9 @@ testSuiteRun(
 			{
 				var cb = this.getCb();
 				
-				throw new TestingError();
+				cb();
 				
-				setTimeout(
-					function()
-					{
-						cb();
-					},
-					100
-				);
+				throw new TestingError();
 			},
 			argsVer: getV().addA( TestingError ).addA(),
 			vows:
@@ -1730,7 +1572,6 @@ testSuiteRun(
 				"dingo",
 				function( err )
 				{
-					gammaVowArgs = arguments;
 				}
 			]
 		}
@@ -1738,19 +1579,100 @@ testSuiteRun(
 	function( run )
 	{
 		assert(
-			run.runOk === true &&
-			run.steps.topic.status === "done" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.errByCb === false &&
-			run.steps.topic.error === undefined &&
-			run.steps.argsVer.status === "done" &&
-			run.steps.argsVer.error === undefined &&
-			run.steps.vows.status === "done" &&
-			gammaVowArgs.length === 1 &&
-			gammaVowArgs[ 0 ].constructor === TestingError,
+			run.runOk === false &&
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === SuiteRuntimeError &&
+			run.topic.err.ourGlobeCode === "ErrThrownAndCbCalled" &&
+			run.topic.result === undefined &&
+			run.topic.thrownErr === undefined &&
+			run.topic.cbErr === undefined &&
+			run.argsVer.stepOk === undefined,
 			"run result is invalid"
 		);
+	}
+);
+
+expectCbErr(
+	"faulty topicCb allowed to throw err but calls delayed cb "+
+	"too (expecting err) and faulty topicCb throws unallowed err",
+	SuiteRuntimeError,
+	function( cb )
+	{
+		new SuiteRun(
+			new SuiteHolder(
+				"suite",
+				{
+					conf:
+					{
+						allowThrownErr: true
+					},
+					topicCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						setTimeout(
+							function()
+							{
+								cb();
+							},
+							100
+						);
+						
+						throw new TestingError();
+					},
+					argsVer: getV().setE( "any" ),
+					vows:
+					[
+						"dingo",
+						function() {}
+					]
+				}
+			)
+		)
+			.run(
+				function( err )
+				{
+					if( err !== undefined )
+					{
+						cb( err );
+					}
+				}
+			)
+		;
+	},
+	function( cb )
+	{
+		new SuiteRun(
+			new SuiteHolder(
+				"suite",
+				{
+					topicCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						setTimeout(
+							function()
+							{
+								cb();
+							},
+							100
+						);
+						
+						throw new TestingError();
+					},
+					argsVer: getV().setE( "any" ),
+					vows:
+					[
+						"dingo",
+						function() {}
+					]
+				}
+			)
+		)
+			.run( cb )
+		;
 	}
 );
 
@@ -1788,13 +1710,13 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === true &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.result === undefined &&
+			run.topic.cbErr === undefined &&
+			run.topic.thrownErr === undefined &&
+			run.argsVer.stepOk === undefined &&
+			run.vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1815,14 +1737,10 @@ testSuiteRun(
 			{
 				var cb = this.getCb();
 				
-				throw new TestingError();
+				cb( new TestingError( undefined, undefined, "cbErr" ) );
 				
-				setTimeout(
-					function()
-					{
-						cb();
-					},
-					100
+				throw new TestingError(
+					undefined, undefined, "thrownErr"
 				);
 			},
 			argsVer:[ TestingError ],
@@ -1836,13 +1754,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result.length === 1 &&
-			run.steps.topic.result[ 0 ].constructor === TestingError &&
-			run.steps.topic.error.constructor === TestingError &&
-			run.steps.topic.errByCb === false &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === TestingError &&
+			run.topic.err.ourGlobeCode === "thrownErr" &&
+			run.argsVer.stepOk === undefined,
 			"run result is invalid"
 		);
 	}
@@ -1874,12 +1789,10 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.steps.topic.status === "failed" &&
-			run.steps.topic.result === undefined &&
-			run.steps.topic.error.constructor === SuiteRuntimeError &&
-			run.steps.topic.errByCb === undefined &&
-			run.steps.argsVer.status === "cancelled" &&
-			run.steps.vows.status === "cancelled",
+			run.topic.stepOk === false &&
+			run.topic.err.constructor === SuiteRuntimeError &&
+			run.topic.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			run.argsVer.stepOk === undefined,
 			"run result is invalid"
 		);
 	}

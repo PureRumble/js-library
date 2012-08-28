@@ -16,12 +16,12 @@ function( mods, Test )
 var TestRuntimeError = mods.get( "testruntimeerror" );
 
 Test.expectErr =
-function( errClass, verError, errFunc, refFunc )
+function( testName, errClass, verError, errFunc, refFunc )
 {
-	if( arguments.length < 3 || arguments.length > 4 )
+	if( arguments.length < 4 || arguments.length > 5 )
 	{
 		throw new TestRuntimeError(
-			"Between three and four args must be provided"
+			"Between four and five args must be provided"
 		);
 	}
 	
@@ -38,6 +38,13 @@ function( errClass, verError, errFunc, refFunc )
 		{
 			
 		};
+	}
+	
+	if( typeof( testName ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg testName must be a str", { testName: testName }
+		);
 	}
 	
 	if( verError instanceof Function === false )
@@ -64,6 +71,12 @@ function( errClass, verError, errFunc, refFunc )
 		);
 	}
 	
+	console.log( testName );
+	
+	var errPrefix =
+		"An err occurred when testing '"+testName+"':\n"
+	;
+	
 	var errOk = false;
 	
 	try
@@ -75,6 +88,7 @@ function( errClass, verError, errFunc, refFunc )
 		if( e.__proto__ !== errClass.prototype )
 		{
 			throw new TestRuntimeError(
+				errPrefix+
 				"The error thrown by the error func isnt of expected "+
 				"class",
 				{ thrownErr: e }
@@ -88,6 +102,7 @@ function( errClass, verError, errFunc, refFunc )
 		catch( e )
 		{
 			throw new TestRuntimeError(
+				errPrefix+
 				"The func verError didnt approve of the error that the "+
 				"error func threw",
 				{ thrownErr: e }
@@ -100,6 +115,7 @@ function( errClass, verError, errFunc, refFunc )
 	if( errOk === false )
 	{
 		throw new TestRuntimeError(
+			errPrefix+
 			"An error was expected to occur but this didnt happen"
 		);
 	}
@@ -113,6 +129,7 @@ function( errClass, verError, errFunc, refFunc )
 	catch( e )
 	{
 		throw new TestRuntimeError(
+			errPrefix+
 			"The reference func may not throw an err",
 			{ thrownErr: e }
 		);
@@ -120,12 +137,12 @@ function( errClass, verError, errFunc, refFunc )
 };
 
 Test.expectCbErr =
-function( errClass, cbTime, errFunc, refFunc )
+function( testName, errClass, cbTime, errFunc, refFunc )
 {
-	if( arguments.length < 3 || arguments.length > 4 )
+	if( arguments.length < 4 || arguments.length > 5 )
 	{
 		throw new TestRuntimeError(
-			"Between three and four args must be provided",
+			"Between four and five args must be provided",
 			{ providedArgs: arguments }
 		);
 	}
@@ -139,6 +156,13 @@ function( errClass, cbTime, errFunc, refFunc )
 		refFunc = errFunc;
 		errFunc = cbTime;
 		cbTime = 200;
+	}
+	
+	if( typeof( testName ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg testName must be a str", { testName: testName }
+		);
 	}
 	
 	if( typeof( cbTime ) !== "number" )
@@ -170,6 +194,12 @@ function( errClass, cbTime, errFunc, refFunc )
 		);
 	}
 	
+	console.log( testName );
+	
+	var errPrefix =
+		"An err occurred when testing '"+testName+"':\n"
+	;
+	
 	var errFuncCbCalled = false;
 	var refFuncCbCalled = false;
 	
@@ -179,6 +209,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( errFuncCbCalled === true )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The cb given to the error func has been called twice"
 				);
 			}
@@ -188,6 +219,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( err instanceof Error === false )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"An err was expected to be given to the cb of the "+
 					"error func but this didnt happen"
 				);
@@ -196,6 +228,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( err.__proto__ !== errClass.prototype )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The error given to the cb of the error func isnt of "+
 					"expected class",
 					{ givenErr: err }
@@ -210,6 +243,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( refFuncCbCalled === true )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The cb given to the reference func has been called "+
 					"twice"
 				);
@@ -220,6 +254,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( err instanceof Error === true )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The reference func may not cause an error but an "+
 					"error was handed to its cb"
 				);
@@ -233,6 +268,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( errFuncCbCalled === false )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The cb given to the error func hasnt been called"
 				);
 			}
@@ -240,6 +276,7 @@ function( errClass, cbTime, errFunc, refFunc )
 			if( refFuncCbCalled === false )
 			{
 				throw new TestRuntimeError(
+					errPrefix+
 					"The cb given to the reference func hasnt been called"
 				);
 			}
