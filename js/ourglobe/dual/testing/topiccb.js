@@ -1,6 +1,5 @@
 ourglobe.define(
 [
-	"./testruntimeerror",
 	"./suiteruntimeerror",
 	"./suiterun",
 	"./suitestep",
@@ -12,8 +11,8 @@ function( mods )
 
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
+var sys = ourglobe.sys;
 
-var TestRuntimeError = mods.get( "testruntimeerror" );
 var CbStep = mods.get( "cbstep" );
 var SuiteRun = undefined;
 
@@ -28,10 +27,48 @@ getF(
 function() { return getV().addA( SuiteRun ); },
 function( suiteRun )
 {
-	CbStep.call( this, suiteRun, suiteRun.suiteHolder.topicCb );
+	this.result = undefined;
+	this.thrownErr = undefined;
+	this.cbErr = undefined;
+	
+	var topicCb = suiteRun.suiteHolder.topicCb;
+	
+	if( topicCb !== undefined )
+	{
+		TopicCb.ourGlobeSuper.call( this, suiteRun, topicCb );
+	}
+	else if( suiteRun.parentRun === undefined )
+	{
+		TopicCb.ourGlobeSuper.call(
+			this,
+			suiteRun,
+			function()
+			{
+				var cb = this.getCb();
+				
+				cb();
+			}
+		);
+	}
+	else
+	{
+// parentRun's topic hasnt been cancelled because if it had then
+// the parentRun hadnt executed its next child suites and
+// therefore this suiteRun hadnt been created
+		
+		var parentTopic = suiteRun.parentRun.topic;
+		
+		this.result = parentTopic.result;
+		this.thrownErr = parentTopic.thrownErr;
+		this.cbErr = parentTopic.cbErr;
+		
+		this.suiteRun = suiteRun;
+		this.stepOk = parentTopic.stepOk;
+		this.err = parentTopic.err;
+	}
 });
 
-TopicCb.prototype.__proto__ = CbStep.prototype;
+sys.extend( TopicCb, CbStep );
 
 return TopicCb;
 
@@ -48,6 +85,29 @@ var CbStep = mods.get( "cbstep" );
 var Topic = mods.get( "topic" );
 
 TopicCb.prototype.getArgs = Topic.prototype.getArgs;
+
+TopicCb.prototype.takeStep =
+getF(
+SuiteStep.TAKE_STEP_FV,
+function( cb )
+{
+	if( this.stepOk === undefined )
+	{
+		TopicCb.ourGlobeSuper.prototype.takeStep.call( this, cb );
+		
+		return;
+	}
+	else
+	{
+// this.stepOk is already set so this TopicCb has been copied
+// from the parent SuiteRun
+		
+		cb( undefined, this.stepOk );
+		
+		return;
+	}
+	
+});
 
 TopicCb.prototype.evaluate =
 getF(

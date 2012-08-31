@@ -40,7 +40,7 @@ function( suiteRun )
 		suiteRun,
 		function()
 		{
-			if( suiteRun.suiteHolder.conf.verifyArgs === false )
+			if( suiteRun.suiteHolder.argsVer === undefined )
 			{
 				return;
 			}

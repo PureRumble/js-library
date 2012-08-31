@@ -1,14 +1,17 @@
 ourglobe.define(
 [
-	"./testruntimeerror",
 	"./suiteruntimeerror",
 	"./suiterun",
+	"./suitestep",
 	"./returnstep"
 ],
 function( mods )
 {
 
-var TestRuntimeError = mods.get( "testruntimeerror" );
+var getF = ourglobe.getF;
+var getV = ourglobe.getV;
+var sys = ourglobe.sys;
+
 var ReturnStep = mods.get( "returnstep" );
 
 var SuiteRun = undefined;
@@ -20,27 +23,16 @@ function()
 });
 
 var Topic =
+getF(
+function() { return getV().addA( SuiteRun ); },
 function( suiteRun )
 {
-	if( arguments.length !== 1 )
-	{
-		throw new TestRuntimeError(
-			"Exactly one arg must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	if( suiteRun instanceof SuiteRun === false )
-	{
-		throw new TestRuntimeError(
-			"Arg suiteRun must be a SuiteRun", { suiteRun: suiteRun }
-		);
-	}
-	
-	ReturnStep.call( this, suiteRun, suiteRun.suiteHolder.topic );
-};
+	Topic.ourGlobeSuper.call(
+		this, suiteRun, suiteRun.suiteHolder.topic
+	);
+});
 
-Topic.prototype.__proto__ = ReturnStep.prototype;
+sys.extend( Topic, ReturnStep );
 
 return Topic;
 
@@ -53,6 +45,7 @@ var getV = ourglobe.getV;
 
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var ReturnStep = mods.get( "returnstep" );
+var SuiteStep = mods.get( "suitestep" );
 
 Topic.prototype.evaluate =
 getF(
@@ -77,44 +70,29 @@ function( returnVar, thrownErr )
 });
 
 Topic.prototype.getStepObj =
+getF(
+SuiteStep.GET_STEP_OBJ_FV,
 function()
 {
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
 	return {};
-};
+});
 
 Topic.prototype.getArgs =
+getF(
+SuiteStep.GET_ARGS_FV,
 function()
 {
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
 	var parentRun = this.suiteRun.parentRun;
 	
 	return parentRun === undefined ? [] : parentRun.topic.result;
-};
+});
 
 Topic.prototype.getName =
+getF(
+SuiteStep.GET_NAME_FV,
 function()
 {
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
 	return "topic";
-};
+});
 
 });

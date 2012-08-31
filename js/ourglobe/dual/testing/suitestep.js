@@ -1,6 +1,5 @@
 ourglobe.define(
 [
-	"./testruntimeerror",
 	"./suiteruntimeerror",
 	"./suiterun"
 ],
@@ -9,8 +8,6 @@ function( mods )
 
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
-
-var TestRuntimeError = mods.get( "testruntimeerror" );
 
 var SuiteRun = undefined;
 
