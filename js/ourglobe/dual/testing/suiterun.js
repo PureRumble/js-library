@@ -51,9 +51,19 @@ function( suiteHolder, parentRun )
 	{
 		this.topic = new Topic( this );
 	}
-	else
+	else if(
+		suiteHolder.topicCb !== undefined || parentRun === undefined
+	)
 	{
 		this.topic = new TopicCb( this );
+	}
+	else if( parentRun.topic instanceof Topic === true )
+	{
+		this.topic = new Topic( this, parentRun.topic );
+	}
+	else
+	{
+		this.topic = new TopicCb( this, parentRun.topic );
 	}
 	
 	this.argsVer = new ArgsVer( this );

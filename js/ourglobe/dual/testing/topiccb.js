@@ -24,20 +24,38 @@ function()
 
 var TopicCb =
 getF(
-function() { return getV().addA( SuiteRun ); },
-function( suiteRun )
+function()
+{
+	return getV().addA( SuiteRun, [ TopicCb, "undef" ] );
+},
+function( suiteRun, topicCb )
 {
 	this.result = undefined;
 	this.thrownErr = undefined;
 	this.cbErr = undefined;
+	
+	if( topicCb !== undefined )
+	{
+		this.result = topicCb.result;
+		this.thrownErr = topicCb.thrownErr;
+		this.cbErr = topicCb.cbErr;
+		
+		this.suiteRun = suiteRun;
+		this.stepOk = topicCb.stepOk;
+		this.err = topicCb.err;
+		
+		return;
+	}
 	
 	var topicCb = suiteRun.suiteHolder.topicCb;
 	
 	if( topicCb !== undefined )
 	{
 		TopicCb.ourGlobeSuper.call( this, suiteRun, topicCb );
+		
+		return;
 	}
-	else if( suiteRun.parentRun === undefined )
+	else
 	{
 		TopicCb.ourGlobeSuper.call(
 			this,
@@ -49,22 +67,8 @@ function( suiteRun )
 				cb();
 			}
 		);
-	}
-	else
-	{
-// parentRun's topic hasnt been cancelled because if it had then
-// the parentRun hadnt executed its next child suites and
-// therefore this suiteRun hadnt been created
 		
-		var parentTopic = suiteRun.parentRun.topic;
-		
-		this.result = parentTopic.result;
-		this.thrownErr = parentTopic.thrownErr;
-		this.cbErr = parentTopic.cbErr;
-		
-		this.suiteRun = suiteRun;
-		this.stepOk = parentTopic.stepOk;
-		this.err = parentTopic.err;
+		return;
 	}
 });
 
@@ -100,13 +104,12 @@ function( cb )
 	else
 	{
 // this.stepOk is already set so this TopicCb has been copied
-// from the parent SuiteRun
+// from another TopicCb
 		
 		cb( undefined, this.stepOk );
 		
 		return;
 	}
-	
 });
 
 TopicCb.prototype.evaluate =
