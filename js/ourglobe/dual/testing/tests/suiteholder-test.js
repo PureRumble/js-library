@@ -6,396 +6,631 @@ ourglobe.require(
 function( mods )
 {
 
+var getF = ourglobe.getF;
 var getV = ourglobe.getV;
+var sys = ourglobe.sys;
 var FuncVer = ourglobe.FuncVer;
 
 var SuiteRuntimeError = mods.get( "testing" ).SuiteRuntimeError;
 var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
 var SuiteHolder = mods.get( "suiteholder" );
 var test = mods.get( "testing" ).Test;
-var expectErr = test.expectErr;
 
-expectErr(
-	 "A Suite must have a non-empty name",
-	TestRuntimeError,
-	function()
+var emptyFunc = function() {};
+
+var validSuite =
+{
+	topic: emptyFunc,
+	argsVer: [ "undef" ],
+	vows:[ "dango", emptyFunc ]
+};
+
+var expectErr =
+getF(
+getV()
+	.addA( "str", "str", "obj", "str", "obj", "bool/undef" )
+	.addA(
+		"str", "str/undef", "str", "obj", "str", "obj", "bool/undef"
+	),
+function(
+	testName,
+	errCode,
+	faultySuiteName,
+	faultySuite,
+	healthySuiteName,
+	healthySuite,
+	doRecTest
+)
+{
+	if( sys.hasType( faultySuiteName, "obj" ) )
 	{
-		new SuiteHolder(
-			"",
-			{
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dongo", function() {} ]
-			}
-		);
-	},
-	function()
+		doRecTest = healthySuite;
+		healthySuite = healthySuiteName;
+		healthySuiteName = faultySuite;
+		faultySuite = faultySuiteName;
+		faultySuiteName = errCode;
+		errCode = undefined;
+	}
+	
+	if( doRecTest === undefined )
 	{
-		new SuiteHolder(
-			"dingo",
+		doRecTest = true;
+	}
+	
+	test.expectErr(
+		testName + " - simple suite",
+		SuiteRuntimeError,
+		errCode,
+		function()
+		{
+			new SuiteHolder( faultySuiteName, faultySuite );
+		},
+		function()
+		{
+			new SuiteHolder( healthySuiteName, healthySuite );
+		}
+	);
+	
+	if( doRecTest === true )
+	{
+		test.expectErr(
+			testName + " - recursive suite",
+			SuiteRuntimeError,
+			errCode,
+			function()
 			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dongo", function() {} ]
+				new SuiteHolder(
+					"recursive suite obj",
+					{
+						topic: emptyFunc,
+						argsVer:[ "undef" ],
+						vows:[ "dingo", emptyFunc ],
+						next:[ faultySuiteName, faultySuite ]
+					}
+				);
+			},
+			function()
+			{
+				new SuiteHolder(
+					"recursive suite obj",
+					{
+						topic: emptyFunc,
+						argsVer:[ "undef" ],
+						vows:[ "dingo", emptyFunc ],
+						next:[ healthySuiteName, healthySuite ]
+					}
+				);
 			}
 		);
 	}
-);
+});
 
 expectErr(
 	"A Suite may not be empty",
-	SuiteRuntimeError,
-	function()
+	"SuiteHasNoRequiredProp",
+	"dingo",
+	{},
+	"dingo",
 	{
-		new SuiteHolder( "dingo", {} );
-	},
-	function()
-	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dingo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"topic may not be null in a Suite",
-	SuiteRuntimeError,
-	function()
+	"TopicIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: null,
-				argsVer:[ "undef" ],
-				vows:[ "dingo", function() {} ]
-			}
-		);
+		topic: null,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dingo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"vows may not be empty in a Suite",
-	SuiteRuntimeError,
-	function()
+	"VowsAreNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic:function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dongo", function() {} ]
-			}
-		);
+		topic:emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dongo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"Every second item in vows must be a func",
-	SuiteRuntimeError,
-	function()
+	"VowsAreNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dongo", "dongo" ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dongo", "dongo" ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic:function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dongo", function() {} ]
-			}
-		);
+		topic:emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dongo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"Every second item (starting from first) in vows must be a "+
 	"vow-name",
-	SuiteRuntimeError,
-	function()
+	"VowsAreNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ function() {}, "dongo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ emptyFunc, "dongo", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dango", function() {}, "dongo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc, "dongo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"vow names must be unique",
-	SuiteRuntimeError,
-	function()
+	"VowsAreNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dongo", function() {}, "dongo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dongo", emptyFunc, "dongo", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dango", function() {}, "dongo", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc, "dongo", emptyFunc ]
 	}
 );
 
 expectErr(
 	"A Suite may not have both topic and topicCb",
-	SuiteRuntimeError,
-	function()
+	"TopicIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				topicCb: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		topicCb: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer:[ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"argsVer must be an arr or a FuncVer",
-	SuiteRuntimeError,
-	function()
+	"ArgsVerIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() { return 42; },
-				argsVer:{ types: "int" },
-				vows:[ "dango", function() {} ]
-			}
-		);
+		topic: function() { return 42; },
+		argsVer:{ types: "int" },
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				topic: function() {},
-				argsVer: getV(),
-				vows:[ "dango", function() {} ]
-			}
-		);
+		topic: emptyFunc,
+		argsVer: getV(),
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"conf must be undef or an obj",
-	SuiteRuntimeError,
-	function()
+	"ConfIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf: null,
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf: null,
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{},
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{},
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"verifyArgs of conf must be bool or undef",
-	SuiteRuntimeError,
-	function()
+	"ConfIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: 1 },
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: 1 },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: true },
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: true },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"argsVer of a Suite must be set if verifyArgs of conf "+
 	"is undef or true",
-	SuiteRuntimeError,
-	function()
+	"ArgsVerIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: true },
-				topic: function() {},
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: true },
+		topic: emptyFunc,
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: true },
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: true },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"argsVer of a Suite may not be set if verifyArgs of conf is "+
 	"false",
-	SuiteRuntimeError,
-	function()
+	"ArgsVerIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: false },
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: false },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ verifyArgs: false },
-				topic: function() {},
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ verifyArgs: false },
+		topic: emptyFunc,
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
 expectErr(
 	"allowThrownErr of conf must be undef or a bool",
-	SuiteRuntimeError,
-	function()
+	"ConfIsNotValid",
+	"dingo",
 	{
-		new SuiteHolder(
-			"dingo",
-			{
-				conf:{ allowThrownErr: null },
-				topic: function() {},
-				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
-			}
-		);
+		conf:{ allowThrownErr: null },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	},
-	function()
+	"dingo",
 	{
-		new SuiteHolder(
+		conf:{ allowThrownErr: false },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
+expectErr(
+	"next must be an arr of suites",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next: validSuite
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:
+		[
 			"dingo",
 			{
-				conf:{ allowThrownErr: false },
-				topic: function() {},
+				topic: emptyFunc,
 				argsVer: [ "undef" ],
-				vows:[ "dango", function() {} ]
+				vows:[ "dango", emptyFunc ]
 			}
-		);
+		]
 	}
+);
+
+expectErr(
+	"next must be a proper arr of suites",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite ]
+	}
+);
+
+expectErr(
+	"suite name in next must be a proper str",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "", validSuite ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite ]
+	}
+);
+
+expectErr(
+	"suites in next must be non-empty objs",
+	"SuiteHasNoRequiredProp",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", {} ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite ]
+	}
+);
+
+expectErr(
+	"every even next item must be a suite name",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ validSuite, "dingo", validSuite ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite, "dango", validSuite ]
+	}
+);
+
+expectErr(
+	"every odd next item must be a suite",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite, "dango" ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite, "dango", validSuite ]
+	}
+);
+
+expectErr(
+	"suite names in next must be unique",
+	"NextSuitesAreNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite, "dingo", validSuite ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ],
+		next:[ "dingo", validSuite, "dango", validSuite ]
+	}
+);
+
+expectErr(
+	"topic/topicCb must have an argsVer",
+	"TopicWithoutArgsVer",
+	"dingo",
+	{
+		topic: emptyFunc,
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	false
+);
+
+expectErr(
+	"There must be a topic/topicCb with an argsVer",
+	"ArgsVerWithoutTopic",
+	"dingo",
+	{
+		conf:{ verifyArgs: true },
+		argsVer: [ "undef" ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		conf:{ verifyArgs: true },
+		argsVer:[ "undef" ],
+		vows:[ "dongo", emptyFunc ]
+	},
+	false
+);
+
+expectErr(
+	"There must be a parent topic/topicCb with an argsVer",
+	"ArgsVerWithoutTopic",
+	"dingo",
+	{
+		next:
+		[
+			"dingo",
+			{
+				conf:{ verifyArgs: true },
+				argsVer:[ "undef" ]
+			}
+		]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		next:
+		[
+			"dingo",
+			{
+				conf:{ verifyArgs: true },
+				argsVer:[ "undef" ],
+				vows:[ "dongo", emptyFunc ]
+			}
+		]
+	},
+	false
+);
+
+expectErr(
+	"Vows must have a topic/topicCb",
+	"VowsWithoutTopic",
+	"dingo",
+	{
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		conf:{ verifyArgs: false },
+		vows:[ "dango", emptyFunc ]
+	},
+	false
+);
+
+expectErr(
+	"Vows must have parent topic/topicCb",
+	"VowsWithoutTopic",
+	"dingo",
+	{
+		next:
+		[
+			"dingo",
+			{
+				vows:[ "dango", emptyFunc ]
+			}
+		]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		conf:{ verifyArgs: false },
+		next:
+		[
+			"dingo",
+			{
+				vows:[ "dango", emptyFunc ]
+			}
+		]
+	},
+	false
+);
+
+expectErr(
+	"topic must have vows",
+	"TopicWithoutVows",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	false
+);
+
+expectErr(
+	"topic must have child vows",
+	"TopicWithoutVows",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		next:
+		[
+			"dingo",
+			{
+				argsVer:[ "undef" ],
+			}
+		]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		next:
+		[
+			"dingo",
+			{
+				argsVer:[ "undef" ],
+				vows:[ "dango", emptyFunc ]
+			}
+		]
+	},
+	false
 );
 
 });

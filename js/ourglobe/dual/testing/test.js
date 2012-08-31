@@ -16,13 +16,33 @@ function( mods, Test )
 var TestRuntimeError = mods.get( "testruntimeerror" );
 
 Test.expectErr =
-function( testName, errClass, verError, errFunc, refFunc )
+function(
+	testName,
+	errClass,
+	errCode,
+	verError,
+	errFunc,
+	refFunc
+)
 {
-	if( arguments.length < 4 || arguments.length > 5 )
+	if( arguments.length < 4 || arguments.length > 6 )
 	{
 		throw new TestRuntimeError(
-			"Between four and five args must be provided"
+			"Between four and six args must be provided"
 		);
+	}
+	
+	if(
+		refFunc === undefined &&
+		( errFunc === undefined || errFunc instanceof Function ) &&
+		verError instanceof Function &&
+		errCode instanceof Function
+	)
+	{
+		refFunc = errFunc;
+		errFunc = verError;
+		verError = errCode;
+		errCode = undefined;
 	}
 	
 	if(
@@ -71,6 +91,13 @@ function( testName, errClass, verError, errFunc, refFunc )
 		);
 	}
 	
+	if( errCode !== undefined && typeof( errCode ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg errCode must be a str"
+		);
+	}
+	
 	console.log( testName );
 	
 	var errPrefix =
@@ -92,6 +119,16 @@ function( testName, errClass, verError, errFunc, refFunc )
 				"The error thrown by the error func isnt of expected "+
 				"class",
 				{ thrownErr: e }
+			);
+		}
+		
+		if( errCode !== undefined && e.ourGlobeCode !== errCode )
+		{
+			throw new TestRuntimeError(
+				errPrefix+
+				"The error thrown by the error func doesnt have "+
+				"expected error code",
+				{ expectedCode: errCode, thrownErr: e }
 			);
 		}
 		
