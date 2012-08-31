@@ -1,45 +1,30 @@
 ourglobe.define(
-[
-	"./testruntimeerror"
-],
 function( mods )
 {
 
-var TestRuntimeError = undefined;
+var sys = ourglobe.sys;
+var getV = ourglobe.getV;
+var getF = ourglobe.getF;
+var RuntimeError = ourglobe.RuntimeError;
 
 var SuiteRuntimeError =
+getF(
+RuntimeError.CONSTR_FV,
 function( msg, errorVar, errorCode, errorPlace )
 {
-	if( arguments.length < 1 || arguments.length > 4 )
-	{
-		throw new TestRuntimeError(
-			"Between one and four args must be provided"
-		);
-	}
-	
 	if( errorPlace === undefined )
 	{
 		errorPlace = SuiteRuntimeError;
 	}
 	
-	TestRuntimeError.call(
+	SuiteRuntimeError.ourGlobeSuper.call(
 		this, msg, errorVar, errorCode, errorPlace
 	);
-};
-
-SuiteRuntimeError.prototype.constructor.name =
-	"SuiteRuntimeError"
-;
-
-mods.delay(
-function()
-{
-	TestRuntimeError = mods.get( "testruntimeerror" );
-	
-	SuiteRuntimeError.prototype.__proto__ =
-		TestRuntimeError.prototype
-	;
 });
+
+sys.extend( SuiteRuntimeError, RuntimeError );
+
+SuiteRuntimeError.prototype.className =  "SuiteRuntimeError";
 
 return SuiteRuntimeError;
 

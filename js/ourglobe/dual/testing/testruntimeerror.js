@@ -33,14 +33,15 @@ function( msg, errorVar, errorCode, errorPlace )
 		);
 	}
 	
-	this.name = this.constructor.name;
+	this.className = this.className;
 	this.message = msg;
 	this.ourGlobeVar = errorVar;
 	this.ourGlobeCode = errorCode;
-	this.ourGlobePlace = errorPlace;
 	
 	Error.captureStackTrace( this, errorPlace );
 };
+
+TestRuntimeError.prototype.className =  "TestRuntimeError";
 
 TestRuntimeError.prototype.__proto__ = Error.prototype;
 

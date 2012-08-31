@@ -29,11 +29,10 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 	
 	OurGlobeError.ourGlobeSuper.call( this, msg );
 	
+	this.className = this.className;
 	this.message = msg;
-	this.name = this.constructor.name;
 	this.ourGlobeVar = errorVar;
 	this.ourGlobeCode = errorCode;
-	this.ourGlobePlace = errorPlace;
 	
 	Error.captureStackTrace( this, errorPlace );
 };
@@ -168,7 +167,7 @@ function( err )
 	
 	return util.inspect(
 		{
-			name: err.name,
+			className: err.className,
 			message: err.message,
 			ourGlobeVar: err.ourGlobeVar,
 			ourGlobeCode: err.ourGlobeCode
