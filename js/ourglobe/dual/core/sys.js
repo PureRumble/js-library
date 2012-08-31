@@ -16,9 +16,7 @@ function()
 	}
 	
 	for(
-		var item = 0;
-		item < sys.funcsWithDelayedFvs.length;
-		item++
+		var item = 0; item < sys.funcsWithDelayedFvs.length; item++
 	)
 	{
 		var currFunc = sys.funcsWithDelayedFvs[ item ];
