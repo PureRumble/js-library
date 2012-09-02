@@ -164,19 +164,6 @@ function( returnVar, thrownErr, cbArgs )
 	return undefined;
 });
 
-TopicCb.prototype.getStepObj =
-getF(
-SuiteStep.GET_STEP_OBJ_FV,
-function()
-{
-	var stepObj =
-	{
-		getCb: this.getCbFunc()
-	};
-	
-	return stepObj;
-});
-
 TopicCb.prototype.getName =
 getF(
 SuiteStep.GET_NAME_FV,

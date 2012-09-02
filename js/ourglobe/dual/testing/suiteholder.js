@@ -50,6 +50,13 @@ function( name, suiteObj, parentSuite )
 		this.conf = {};
 	}
 	
+	this.local = SuiteHolder.copySet( suiteObj.local );
+	
+	if( this.local === undefined )
+	{
+		this.local = {};
+	}
+	
 	if( this.conf.verifyArgs === undefined )
 	{
 		this.conf.verifyArgs =
@@ -110,6 +117,7 @@ function( name, suiteObj, topicFound )
 	{
 		if(
 			prop !== "conf" &&
+			prop !== "local" &&
 			prop !== "topic" &&
 			prop !== "topicCb" &&
 			prop !== "argsVer" &&
@@ -119,12 +127,14 @@ function( name, suiteObj, topicFound )
 		{
 			throw new SuiteRuntimeError(
 				"Prop "+prop+" isnt a valid suite prop",
-				{ suiteName: name }
+				{ suiteName: name },
+				"UnknownSuitePropFound"
 			);
 		}
 	}
 	
 	var conf = suiteObj[ "conf" ];
+	var local = suiteObj[ "local" ];
 	var topic = suiteObj[ "topic" ];
 	var topicCb = suiteObj[ "topicCb" ];
 	var argsVer = suiteObj[ "argsVer" ];
@@ -234,6 +244,15 @@ function( name, suiteObj, topicFound )
 			"Prop conf of a suite must be undef or an obj",
 			{ suiteName: name, conf: conf },
 			"ConfIsNotValid"
+		);
+	}
+	
+	if( sys.hasType( local, "obj", "undef" ) === false )
+	{
+		throw new SuiteRuntimeError(
+			"Prop local of a suite must be undef or an obj",
+			{ suiteName: name, local: local },
+			"LocalIsNotValid"
 		);
 	}
 	

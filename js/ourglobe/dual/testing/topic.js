@@ -109,14 +109,6 @@ function( returnVar, thrownErr )
 	return undefined;
 });
 
-Topic.prototype.getStepObj =
-getF(
-SuiteStep.GET_STEP_OBJ_FV,
-function()
-{
-	return {};
-});
-
 Topic.prototype.getArgs =
 getF(
 SuiteStep.GET_ARGS_FV,

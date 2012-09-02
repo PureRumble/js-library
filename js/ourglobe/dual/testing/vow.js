@@ -61,19 +61,6 @@ function( mods, Vow )
 
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 
-Vow.prototype.getStepObj =
-function()
-{
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
-	return {};
-};
-
 Vow.prototype.getArgs =
 function()
 {

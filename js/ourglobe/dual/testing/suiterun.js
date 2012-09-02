@@ -47,6 +47,8 @@ function( suiteHolder, parentRun )
 	this.suiteRunCb = undefined;
 	this.runOk = undefined;
 	
+	this.local = SuiteHolder.copySet( suiteHolder.local );
+	
 	if( suiteHolder.topic !== undefined )
 	{
 		this.topic = new Topic( this );

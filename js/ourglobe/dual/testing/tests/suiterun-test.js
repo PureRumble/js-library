@@ -86,23 +86,23 @@ var expectSuiteCbErr =
 getF(
 getV()
 	.addA( "str", "func", "obj", "obj" ),
-function( testName, errClass, faultySuite, healthySuite )
+function( testName, errClass, faultySuiteObj, healthySuiteObj )
 {
 	expectSingleSuiteCbErr(
 		testName+" - plain suite",
 		errClass,
-		faultySuite,
-		healthySuite
+		faultySuiteObj,
+		healthySuiteObj
 	);
 	
 	expectSingleSuiteCbErr(
 		testName+" - nested suite",
 		errClass,
 		{
-			next:[ "nested suite", faultySuite ]
+			next:[ "nested suite", faultySuiteObj ]
 		},
 		{
-			next:[ "nested suite", healthySuite ]
+			next:[ "nested suite", healthySuiteObj ]
 		}
 	);
 	
@@ -112,15 +112,15 @@ function( testName, errClass, faultySuite, healthySuite )
 		{
 			next:
 			[
-				"first nested suite (healthy)", healthySuite,
-				"second nested suite (faulty)", faultySuite
+				"first nested suite (healthy)", healthySuiteObj,
+				"second nested suite (faulty)", faultySuiteObj
 			]
 		},
 		{
 			next:
 			[
-				"first nested suite (healthy)", healthySuite,
-				"second nested suite (healthy)", healthySuite
+				"first nested suite (healthy)", healthySuiteObj,
+				"second nested suite (healthy)", healthySuiteObj
 			]
 		}
 	);
@@ -135,7 +135,7 @@ function( testName, suite, cb )
 	var cbTime = CbStep.DEFAULT_CB_TIMEOUT + 1000;
 	
 	var suiteRun =
-		new SuiteRun( new SuiteHolder( "suite", suite) )
+		new SuiteRun( new SuiteHolder( "suite", suite ) )
 	;
 	
 	var cbCalled = false;
@@ -2435,6 +2435,185 @@ testSuiteRun(
 					vowArgsFour[ 0 ].constructor === TestingError &&
 					sys.hasType( vowArgsFour[ 1 ], "arr" ) &&
 					sys.hasType( vowArgsFour[ 2 ], "obj" ),
+					"run result is invalid"
+				);
+			}
+		});
+	}
+);
+
+testSuiteRun(
+	"suite that uses get()/set() to handle local var, and one "+
+	"nested suite that handles outer local var and another "+
+	"nested suite that handles itw own local vars with a vow "+
+	"that fails on reading a local var that doesnt exist",
+	function()
+	{
+		var topicOneBefore = undefined;
+		var topicOneAfter = undefined;
+		var topicTwoBefore = undefined;
+		var topicTwoAfter = undefined;
+		var topicThreeBefore = undefined;
+		var topicThreeAfter = undefined;
+		var vowOneBefore = undefined;
+		var vowOneAfter = undefined;
+		var vowTwoBefore = undefined;
+		var vowTwoAfter = undefined;
+		var vowThreeBefore = undefined;
+		var vowThreeAfter = undefined;
+		var vowFourBefore = undefined;
+		var vowFourAfter = undefined;
+		var vowFiveBefore = undefined;
+		var vowFiveAfter = undefined;
+		
+		return(
+		{
+			suite:
+			{
+				local:
+				{
+					dingo: "topicOneGoesFirst"
+				},
+				topic:
+				function()
+				{
+					topicOneBefore = this.get( "dingo" );
+					
+					this.set( "dingo", "toBeOverWritten" );
+					this.set( "dingo", "toBeOverWrittenAgain" );
+					this.set( "dingo", "topicOneWasHere" );
+					
+					topicOneAfter = this.get( "dingo" );
+				},
+				argsVer:[ "undef" ],
+				vows:
+				[
+					"vow one",
+					function()
+					{
+						vowOneBefore = this.get( "dingo" );
+						this.set( "dingo", "vowOneWasHere" );
+						vowOneAfter = this.get( "dingo" );
+					},
+					"vow two",
+					function()
+					{
+						vowTwoBefore = this.get( "dingo" );
+						this.set( "dingo", "vowTwoWasHere" );
+						vowTwoAfter = this.get( "dingo" );
+					}
+				],
+				next:
+				[
+					"next suite one",
+					{
+						topicCb:
+						function()
+						{
+							topicTwoBefore = this.get( "dingo" );
+							this.set( "dingo", "localTopicTwoWasHere" );
+							topicTwoAfter = this.get( "dingo" );
+							
+							var topicCb = this;
+							
+							setTimeout(
+								function()
+								{
+									topicThreeBefore = topicCb.get( "dingo" );
+									
+									topicCb.set(
+										"dingo", "will be overwritten"
+									);
+									topicCb.set(
+										"dingo", "localTopicThreeWasHere"
+									);
+									
+									topicThreeAfter = topicCb.get( "dingo" );
+									
+									var cb = topicCb.getCb();
+									cb();
+								},
+								100
+							);
+						},
+						argsVer:[],
+						vows:
+						[
+							"local vow three",
+							function()
+							{
+								vowThreeBefore = this.get( "dingo" );
+								this.set( "dingo", "localVowThreeWasHere" );
+								vowThreeAfter = this.get( "dingo" );
+							}
+						]
+					},
+					"next suite two",
+					{
+						local:
+						{
+							dingo: "localTopicFourGoesFirst",
+							dango: "localVowFiveGoesFirst"
+						},
+						topic:
+						function()
+						{
+							topicFourBefore = this.get( "dingo" );
+							this.set( "dingo", "localTopicFourWasHere" );
+							topicFourAfter = this.get( "dingo" );
+						},
+						argsVer:[ "undef" ],
+						vows:
+						[
+							"local vow four",
+							function()
+							{
+								vowFourBefore = this.get( "dingo" );
+								this.set( "dingo", "localVowFourWasHere" );
+								vowFourAfter = this.get( "dingo" );
+							},
+							"local vow five",
+							function()
+							{
+								vowFiveBefore = this.get( "dango" );
+								
+								this.set( "dango", "will be overwritten..." );
+								this.set( "dango", "localVowFiveWasHere" );
+								
+								vowFiveAfter = this.get( "dango" );
+							},
+							"failing local vow six",
+							function()
+							{
+								this.get( "dengo" );
+							}
+						]
+					}
+				]
+			},
+			cb:
+			function( run )
+			{
+				assert(
+					topicOneBefore === "topicOneGoesFirst" &&
+					topicOneAfter === "topicOneWasHere" &&
+					vowOneBefore === "topicOneWasHere" &&
+					vowOneAfter === "vowOneWasHere" &&
+					vowTwoBefore === "vowOneWasHere" &&
+					vowTwoAfter === "vowTwoWasHere" &&
+					topicTwoBefore === "vowTwoWasHere" &&
+					topicTwoAfter === "localTopicTwoWasHere" &&
+					topicThreeBefore === "localTopicTwoWasHere" &&
+					topicThreeAfter === "localTopicThreeWasHere" &&
+					vowThreeBefore === "localTopicThreeWasHere" &&
+					vowThreeAfter === "localVowThreeWasHere" &&
+					topicFourBefore === "localTopicFourGoesFirst" &&
+					topicFourAfter === "localTopicFourWasHere" &&
+					vowFourBefore === "localTopicFourWasHere" &&
+					vowFourAfter === "localVowFourWasHere" &&
+					vowFiveBefore === "localVowFiveGoesFirst" &&
+					vowFiveAfter === "localVowFiveWasHere" &&
+					run.next[ 1 ].vows[ 2 ].stepOk === false,
 					"run result is invalid"
 				);
 			}

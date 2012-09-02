@@ -2,7 +2,8 @@ ourglobe.define(
 [
 	"./suiteruntimeerror",
 	"./suiterun",
-	"./suitestep"
+	"./suitestep",
+	"./cbstepobject"
 ],
 function( mods )
 {
@@ -68,6 +69,15 @@ var getV = ourglobe.getV;
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 
 var SuiteStep = mods.get( "suitestep" );
+var CbStepObject = mods.get( "cbstepobject" );
+
+CbStep.prototype.getStepObj =
+getF(
+SuiteStep.GET_STEP_OBJ_FV,
+function()
+{
+	return new CbStepObject( this );
+});
 
 CbStep.prototype.takeStep =
 getF(
@@ -265,41 +275,21 @@ function( returnVar, thrownErr, cbArgs )
 	return undefined;
 });
 
-CbStep.prototype.getCbFunc =
+CbStep.prototype.handleCbCall =
 getF(
 getV()
-	.setR( "func" ),
-function()
+	.addA( Error )
+	.addA( "undef", "obj" ),
+function( err, args )
 {
-	var cbStep = this;
-	
-	return(
-		function()
-		{
-			if( arguments.length !== 0 )
-			{
-				throw new SuiteRuntimeError(
-					"No args may be provided", { providedArgs: arguments }
-				);
-			}
-			
-			return(
-				function()
-				{
-					try
-					{
-						cbStep.landCbStep.call(
-							cbStep, undefined, arguments
-						);
-					}
-					catch( e )
-					{
-						cbStep.handleCbThrownErr( e );
-					}
-				}
-			);
-		}
-	);
+	try
+	{
+		this.landCbStep( err, args );
+	}
+	catch( e )
+	{
+		this.handleCbThrownErr( e );
+	}
 });
 
 CbStep.prototype.handleCbThrownErr =

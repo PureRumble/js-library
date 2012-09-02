@@ -259,6 +259,25 @@ expectErr(
 );
 
 expectErr(
+	"local must be undef or an obj",
+	"LocalIsNotValid",
+	"dingo",
+	{
+		local: 43,
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		local:{},
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
+expectErr(
 	"verifyArgs of conf must be bool or undef",
 	"ConfIsNotValid",
 	"dingo",

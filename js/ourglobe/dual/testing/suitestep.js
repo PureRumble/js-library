@@ -1,7 +1,8 @@
 ourglobe.define(
 [
 	"./suiteruntimeerror",
-	"./suiterun"
+	"./suiterun",
+	"./suitestepobject"
 ],
 function( mods )
 {
@@ -10,13 +11,23 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteRun = undefined;
+var SuiteStepObject = undefined;
 
 mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
+	var SuiteStepObject = mods.get( "suitestepobject" );
 	
-	SuiteStep.CONSTR_FV = getV().addA( SuiteRun, "func" );
+	SuiteStep.CONSTR_FV =
+		getV()
+			.addA( SuiteRun, "func" )
+	;
+	
+	SuiteStep.GET_STEP_OBJ_FV =
+		getV()
+			.setR( SuiteStepObject )
+	;
 });
 
 var SuiteStep =
@@ -28,6 +39,7 @@ function( suiteRun, func )
 	this.func = func;
 	
 	this.stepOk = undefined;
+	this.err = undefined;
 	this.suiteStepCb = undefined;
 	
 	this.stepName = this.getName();
@@ -47,11 +59,6 @@ SuiteStep.GET_NAME_FV =
 SuiteStep.GET_ARGS_FV =
 	getV()
 		.setR( "arr" )
-;
-
-SuiteStep.GET_STEP_OBJ_FV =
-	getV()
-		.setR( "obj" )
 ;
 
 SuiteStep.TAKE_STEP_FV =
@@ -75,6 +82,16 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
+var SuiteRun = mods.get( "suiterun" );
+var SuiteStepObject = mods.get( "suitestepobject" );
+
+SuiteStep.prototype.getStepObj =
+getF(
+SuiteStep.GET_STEP_OBJ_FV,
+function()
+{
+	return new SuiteStepObject( this );
+});
 
 SuiteStep.prototype.takeStep =
 getF(
