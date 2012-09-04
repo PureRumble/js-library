@@ -1,12 +1,11 @@
 ourglobe.core.define(
-[ "ourglobe/dual/core/core" ],
-function( core )
+function()
 {
 
-var RuntimeError = core.RuntimeError;
-var sys = core.sys;
-var getF = core.getF;
-var FuncVer = core.FuncVer;
+var RuntimeError = ourglobe.RuntimeError;
+var sys = ourglobe.sys;
+var getF = ourglobe.getF;
+var FuncVer = ourglobe.FuncVer;
 
 var constrFv = new FuncVer( [ { extraItems: "str" }, "func" ] );
 

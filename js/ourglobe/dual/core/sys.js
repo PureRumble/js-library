@@ -5,41 +5,8 @@ function()
 
 var sys = {};
 
-sys.funcsWithDelayedFvs = [];
-
-sys.prepareDelayedFuncVers =
-function()
-{
-	if( ourglobe.conf.doVer() === true )
-	{
-		new ourglobe.FuncVer().verArgs( arguments );
-	}
-	
-	for(
-		var item = 0; item < sys.funcsWithDelayedFvs.length; item++
-	)
-	{
-		var currFunc = sys.funcsWithDelayedFvs[ item ];
-		
-		var cb = currFunc.ourglobe.funcVer;
-		var funcVer = cb();
-		
-		if( funcVer instanceof ourglobe.FuncVer === false )
-		{
-			throw new RuntimeError(
-				"The cb given to getF() or sys.getFunc() didnt return "+
-				"a FuncVer",
-				{ returnedVar: funcVer }
-			);
-		}
-		
-		currFunc.ourglobe.funcVer = funcVer;
-	}
-	
-	sys.funcsWithDelayedFvs = [];
-};
-
-sys.extend = function( subClass, superClass )
+sys.extend =
+function( subClass, superClass )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -56,7 +23,7 @@ sys.extend = function( subClass, superClass )
 		"ourGlobeSuper",
 		{ value: superClass, enumerable:false }
 	);
-}
+};
 
 sys.getClass =
 function( obj )
@@ -72,9 +39,10 @@ function( obj )
 	}
 	
 	return obj.constructor;
-}
+};
 
-sys.isOurType = function( str )
+sys.isOurType =
+function( str )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -94,9 +62,10 @@ sys.isOurType = function( str )
 		str === "undefined" || str === "undef" ||
 		str === "null"
 	);
-}
+};
 
-sys.getType = function( variable )
+sys.getType =
+function( variable )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -110,9 +79,10 @@ sys.getType = function( variable )
 		variable.__proto__ === Object.prototype ? "object" :
 		"instance"
 	);
-}
+};
 
-sys.hasType = function( variable )
+sys.hasType =
+function( variable )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -188,9 +158,10 @@ sys.hasType = function( variable )
 	}
 	
 	return false;
-}
+};
 
-sys.errorCheck = function( err, cb )
+sys.errorCheck =
+function( err, cb )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -207,9 +178,10 @@ sys.errorCheck = function( err, cb )
 	}
 	
 	return false;
-}
+};
 
-sys.getFunc = function( funcVer, func )
+sys.getFunc =
+function( funcVer, func )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -245,7 +217,22 @@ sys.getFunc = function( funcVer, func )
 		
 		if( sys.hasType( funcVer, "func" ) === true )
 		{
-			sys.funcsWithDelayedFvs.push( newFunc );
+			ourglobe.core.ModuleUtils.delayFvConstr(
+			function()
+			{
+				var funcVer = newFunc.ourglobe.funcVer();
+				
+				if( funcVer instanceof ourglobe.FuncVer === false )
+				{
+					throw new ourglobe.RuntimeError(
+						"The cb given to getF() or sys.getFunc() didnt "+
+						"return a FuncVer",
+						{ returnedVar: funcVer }
+					);
+				}
+				
+				newFunc.ourglobe.funcVer = funcVer;
+			});
 		}
 		
 		return newFunc;
@@ -254,7 +241,7 @@ sys.getFunc = function( funcVer, func )
 	{
 		return func;
 	}
-}
+};
 
 return sys;
 
