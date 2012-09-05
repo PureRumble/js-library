@@ -82,14 +82,6 @@ var SuiteStep = mods.get( "suitestep" );
 
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 
-ArgsVer.prototype.getArgs =
-getF(
-SuiteStep.GET_ARGS_FV,
-function()
-{
-	return [];
-});
-
 ArgsVer.prototype.getName =
 getF(
 SuiteStep.GET_NAME_FV,

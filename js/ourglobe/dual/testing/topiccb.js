@@ -89,12 +89,6 @@ var SuiteStep = mods.get( "suitestep" );
 var CbStep = mods.get( "cbstep" );
 var Topic = mods.get( "topic" );
 
-mods.delay(
-function()
-{
-	TopicCb.prototype.getArgs = Topic.prototype.getArgs;
-});
-
 TopicCb.prototype.takeStep =
 getF(
 SuiteStep.TAKE_STEP_FV,

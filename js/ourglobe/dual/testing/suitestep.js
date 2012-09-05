@@ -85,6 +85,16 @@ var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteRun = mods.get( "suiterun" );
 var SuiteStepObject = mods.get( "suitestepobject" );
 
+SuiteStep.prototype.getArgs =
+getF(
+SuiteStep.GET_ARGS_FV,
+function()
+{
+	var parentRun = this.suiteRun.parentRun;
+	
+	return parentRun === undefined ? [] : parentRun.topic.result;
+});
+
 SuiteStep.prototype.getStepObj =
 getF(
 SuiteStep.GET_STEP_OBJ_FV,
