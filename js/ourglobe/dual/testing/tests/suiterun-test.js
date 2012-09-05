@@ -301,6 +301,9 @@ function( testName, testNested, suiteArg, cbArg )
 	);
 });
 
+
+// testing simple suites with topic and vows
+
 testSuiteRun(
 	"healthy topic with single vow",
 	function()
@@ -415,6 +418,8 @@ testSuiteRun(
 		);
 	}
 );
+
+// testing simple suites with topicCb and vows
 
 testSuiteRun(
 	"faulty topicCb (tries to return var) with faulty vow",
@@ -756,6 +761,9 @@ testSuiteRun(
 	}
 );
 
+// testing suites with topicCb that signals it is done many times
+// by a combination of call(s) to cb() and throwing err
+
 testSuiteRun(
 	"faulty topicCb with cb(err) followed by "+
 	"throwing an err and faulty cancelled vow",
@@ -957,6 +965,9 @@ expectSuiteCbErr(
 	}
 );
 
+// testing suites with topicCb that doesnt call cb() within
+// allowed timeout limit
+
 testSuiteRun(
 	"faulty topicCb with no call to cb() and faulty "+
 	"cancelled vow",
@@ -1011,6 +1022,9 @@ testSuiteRun(
 		);
 	}
 );
+
+// testing suite step argsVer (using suites with both topic and
+// topicCb)
 
 testSuiteRun(
 	"healthy topic that returns undef and upholds argsVer",
@@ -1186,6 +1200,9 @@ testSuiteRun(
 	}
 );
 
+// testing suites where suite prop conf forbids suite step
+// argsVer
+
 testSuiteRun(
 	"healthy topic and vow with no argsVer",
 	{
@@ -1213,6 +1230,10 @@ testSuiteRun(
 		);
 	}
 );
+
+// testing that err thrown by cb given to SuiteRuns bubble up
+// through suite steps that use direct call to their own cb funcs
+// and that err reaches the call of SuiteRun.run()
 
 expectErr(
 	"SuiteRun given faulty cb and topicCb with direct call of cb "+
@@ -1376,6 +1397,9 @@ expectErr(
 	}
 );
 
+// testing suites with conf prop allowThrownErr set and topic
+// that throws err
+
 testSuiteRun(
 	"faulty topic allowed to throw err with healthy vow",
 	function()
@@ -1449,12 +1473,15 @@ testSuiteRun(
 	}
 );
 
-var deltaVowArgs = undefined;
+// testing suites where prop conf allowThrownErr and allowCbErr
+// and topicCb that throws err or gives err to its cb
 
 testSuiteRun(
 	"faulty topicCb allowed to pass err to cb and healthy vow",
 	function()
 	{
+		var deltaVowArgs = undefined;
+		
 		return(
 		{
 			suite:
@@ -1690,6 +1717,9 @@ testSuiteRun(
 		);
 	}
 );
+
+// testing suites with child suites where it is alternated if
+// parent or child suite has/hasnt a topic
 
 testSuiteRun(
 	"healthy suite with healthy child suite",
@@ -2141,6 +2171,10 @@ testSuiteRun(
 	}
 );
 
+// testing suites where parent suite has topic/topicCb that
+// throws err or gives cb err and where child suite doesnt
+// allow thrown err or cb err
+
 testSuiteRun(
 	"healthy suite with topic throwing allowed err and healthy "+
 	"child suite that doesnt allow err",
@@ -2437,6 +2471,11 @@ testSuiteRun(
 	}
 );
 
+// testing suites that use get() and set() in many suite steps to
+// handle the suite prop local and that have child suites that in
+// turn handle parent suite's prop local or their own prop local
+// instead
+
 testSuiteRun(
 	"suite that uses get()/set() to handle local var, and one "+
 	"nested suite that handles outer local var and another "+
@@ -2615,6 +2654,9 @@ testSuiteRun(
 		});
 	}
 );
+
+// testing suites where suite checks if it hasParent() and reads
+// parent suite result if there is a parent
 
 testSuiteRun(
 	"healthy suites at many levels that check if they hasParent()",
@@ -2874,7 +2916,7 @@ testSuiteRun(
 		var suiteOneOneTopicParentRes = undefined;
 		var suiteOneOneTopicParentErrOccurred = undefined;
 		var suiteOneOneTopicParentErrThrown = undefined;
-3		
+		
 		return(
 			{
 				suite:
@@ -2946,14 +2988,14 @@ testSuiteRun(
 testSuiteRun(
 	"healthy suite with topicCb that gives allowed cbErr "+
 	"followed by child suite that has no topic followed "+
-	"by another child suite that reads results propagated by "+
-	"first suite",
+	"by another child suite that reads results via getParent() "+
+	"propagated by first suite",
 	function()
 	{
 		var suiteOneOneTopicParentRes = undefined;
 		var suiteOneOneTopicParentErrOccurred = undefined;
 		var suiteOneOneTopicParentErrThrown = undefined;
-3		
+		
 		return(
 			{
 				suite:
@@ -3016,6 +3058,230 @@ testSuiteRun(
 						&&
 						suiteOneOneTopicParentErrOccurred === true &&
 						suiteOneOneTopicParentErrThrown === false,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// testing suites where vows read their own suite's topic result
+
+testSuiteRun(
+	"healthy suite with vow that reads topic results and child "+
+	"suites with vows that read topic results too",
+	function()
+	{
+		var vowOneTopicRes = undefined;
+		var vowOneErrThrown = undefined;
+		var vowOneErrOccurred = undefined;
+		
+		var suiteOneVowOneTopicRes = undefined;
+		var suiteOneVowOneErrThrown = undefined;
+		var suiteOneVowOneErrOccurred = undefined;
+		
+		var suiteOneOneVowOneTopicRes = undefined;
+		var suiteOneOneVowOneErrThrown = undefined;
+		var suiteOneOneVowOneErrOccurred = undefined;
+		
+		var suiteTwoVowOneTopicRes = undefined;
+		var suiteTwoVowOneErrThrown = undefined;
+		var suiteTwoVowOneErrOccurred = undefined;
+		
+		var suiteTwoOneVowOneTopicRes = undefined;
+		var suiteTwoOneVowOneErrThrown = undefined;
+		var suiteTwoOneVowOneErrOccurred = undefined;
+		
+		return(
+			{
+// topic returns simple result and vow reads topic results
+				suite:
+				{
+					topic:
+					function()
+					{
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					vows:
+					[
+						"vow one",
+						function()
+						{
+							vowOneTopicRes = this.getTopicRes();
+							vowOneErrOccurred = this.errOccurred();
+							vowOneErrThrown = this.errThrown();
+						}
+					],
+					next:
+					[
+// topic throws allowed err and vow reads topic results
+						"suite one",
+						{
+							conf:
+							{
+								allowThrownErr: true
+							},
+							topic: faultyFunc,
+							argsVer:[ TestingError ],
+							vows:
+							[
+								"suite one vow one",
+								function()
+								{
+									suiteOneVowOneTopicRes = this.getTopicRes();
+									suiteOneVowOneErrOccurred = this.errOccurred();
+									suiteOneVowOneErrThrown = this.errThrown();
+								}
+							],
+							next:
+							[
+// suite has no topic so its vow reads topic res propagated by
+// parent
+								"suite one one",
+								{
+									vows:
+									[
+										"suite one one vow one",
+										function()
+										{
+											suiteOneOneVowOneTopicRes =
+												this.getTopicRes()
+											;
+											suiteOneOneVowOneErrOccurred =
+												this.errOccurred()
+											;
+											suiteOneOneVowOneErrThrown =
+												this.errThrown()
+											;
+										}
+									]
+								}
+							]
+						},
+// topicCb gives allowed err and vow reads topic results
+						"suite two",
+						{
+							conf:
+							{
+								allowCbErr: true
+							},
+							topicCb:
+							function()
+							{
+								var cb = this.getCb();
+								
+								cb( new TestingError() );
+							},
+							argsVer:[ TestingError ],
+							vows:
+							[
+								"suite two vow one",
+								function()
+								{
+									suiteTwoVowOneTopicRes = this.getTopicRes();
+									suiteTwoVowOneErrOccurred = this.errOccurred();
+									suiteTwoVowOneErrThrown = this.errThrown();
+								}
+							],
+							next:
+							[
+// suite has no topic so its vow reads topic res propagated by
+// parent
+								"suite two one",
+								{
+									vows:
+									[
+										"suite two one vow one",
+										function()
+										{
+											suiteTwoOneVowOneTopicRes =
+												this.getTopicRes()
+											;
+											suiteTwoOneVowOneErrOccurred =
+												this.errOccurred()
+											;
+											suiteTwoOneVowOneErrThrown =
+												this.errThrown()
+											;
+										}
+									]
+								}
+							]
+						},
+// suite has no topic and vow reads topic results propagated from
+// parent suite
+						"suite three",
+						{
+							vows:
+							[
+								"suite two vow one",
+								function()
+								{
+									suiteThreeVowOneTopicRes = this.getTopicRes();
+									suiteThreeVowOneErrOccurred =
+										this.errOccurred()
+									;
+									suiteThreeVowOneErrThrown = this.errThrown();
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						vowOneTopicRes.length === 1 &&
+						vowOneTopicRes[ 0 ] === "dingo" &&
+						vowOneErrOccurred === false &&
+						vowOneErrThrown === false &&
+						
+						suiteOneVowOneTopicRes.length === 1 &&
+						suiteOneVowOneTopicRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteOneVowOneErrOccurred === true &&
+						suiteOneVowOneErrThrown === true &&
+						
+						suiteOneOneVowOneTopicRes.length ===
+							suiteOneVowOneTopicRes.length
+						&&
+						suiteOneOneVowOneTopicRes[ 0 ].constructor ===
+							suiteOneVowOneTopicRes[ 0 ].constructor
+						&&
+						suiteOneOneVowOneErrOccurred ===
+							suiteOneVowOneErrOccurred
+						&&
+						suiteOneOneVowOneErrThrown ===
+							suiteOneVowOneErrThrown
+						&&
+						
+						suiteTwoVowOneTopicRes.length === 1 &&
+						suiteTwoVowOneTopicRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteTwoVowOneErrOccurred === true &&
+						suiteTwoVowOneErrThrown === false &&
+						
+						suiteTwoOneVowOneTopicRes.length ===
+							suiteTwoVowOneTopicRes.length
+						&&
+						suiteTwoOneVowOneTopicRes[ 0 ].constructor ===
+							suiteTwoVowOneTopicRes[ 0 ].constructor
+						&&
+						suiteTwoOneVowOneErrOccurred ===
+							suiteTwoVowOneErrOccurred
+						&&
+						suiteTwoOneVowOneErrThrown ===
+							suiteTwoOneVowOneErrThrown
+						&&
+						
+						suiteThreeVowOneTopicRes.length === 1 &&
+						suiteThreeVowOneTopicRes[ 0 ] === "dingo" &&
+						suiteThreeVowOneErrOccurred === false &&
+						suiteThreeVowOneErrThrown === false,
 						"run result is invalid"
 					);
 				}

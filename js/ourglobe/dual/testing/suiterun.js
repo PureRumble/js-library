@@ -74,7 +74,7 @@ function( suiteHolder, parentRun )
 	
 	if( suiteHolder.vows !== undefined )
 	{
-		for( var item in suiteHolder.vows )
+		for( var item = 0; item < suiteHolder.vows.length; item++ )
 		{
 			this.vows[ item ] = new Vow( this, item );
 		}

@@ -1,57 +1,44 @@
 ourglobe.define(
 [
-	"./testruntimeerror",
 	"./suiteruntimeerror",
 	"./suiterun",
-	"./returnstep"
+	"./suitestep",
+	"./returnstep",
+	"./vowobject"
 ],
 function( mods )
 {
 
-var TestRuntimeError = mods.get( "testruntimeerror" );
+var getF = ourglobe.getF;
+var getV = ourglobe.getV;
+var sys = ourglobe.sys;
 
-var ReturnStep = mods.get( "returnstep" );
+var ReturnStep = undefined;
 var SuiteRun = undefined;
 
 mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
+	ReturnStep = mods.get( "returnstep" );
+	
+	sys.extend( Vow, ReturnStep );
 });
 
 var Vow =
+getF(
+function()
+{
+	return getV().addA( SuiteRun, { gte: 0 } );
+},
 function( suiteRun, vowItem )
 {
-	if( arguments.length !== 2 )
-	{
-		throw new TestRuntimeError(
-			"Exactly two args must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	if( suiteRun instanceof SuiteRun === false )
-	{
-		throw new TestRuntimeError(
-			"Arg suiteRun must be a SuiteRun", { suiteRun: suiteRun }
-		);
-	}
-	
-	if( typeof( vowItem ) !== "string" )
-	{
-		throw new TestRuntimeError(
-			"Arg vowItem must be a string", { vowItem: vowItem }
-		);
-	}
-	
-	ReturnStep.call(
+	Vow.ourGlobeSuper.call(
 		this, suiteRun, suiteRun.suiteHolder.vows[ vowItem ].value
 	);
 	
 	this.vowName = suiteRun.suiteHolder.vows[ vowItem ].key;
-};
-
-Vow.prototype.__proto__ = ReturnStep.prototype;
+});
 
 return Vow;
 
@@ -59,32 +46,35 @@ return Vow;
 function( mods, Vow )
 {
 
+var getF = ourglobe.getF;
+var getV = ourglobe.getV;
+
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
+var SuiteStep = mods.get( "suitestep" );
+var VowObject = mods.get( "vowobject" );
+
+Vow.prototype.getStepObj =
+getF(
+SuiteStep.GET_STEP_OBJ_FV,
+function()
+{
+	return new VowObject( this );
+});
 
 Vow.prototype.getArgs =
+getF(
+SuiteStep.GET_ARGS_FV,
 function()
 {
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
 	return this.suiteRun.topic.result;
-};
+});
 
 Vow.prototype.getName =
+getF(
+SuiteStep.GET_NAME_FV,
 function()
 {
-	if( arguments.length !== 0 )
-	{
-		throw new TestRuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
 	return "vow '"+this.vowName+"'";
-};
+});
 
 });
