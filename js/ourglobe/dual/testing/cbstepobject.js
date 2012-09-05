@@ -11,13 +11,16 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var SuiteStepObject = mods.get( "suitestepobject" );
 var CbStep = undefined;
+var SuiteStepObject = undefined;
 
 mods.delay(
 function()
 {
 	CbStep = mods.get( "cbstep" );
+	SuiteStepObject = mods.get( "suitestepobject" );
+	
+	sys.extend( CbStepObject, SuiteStepObject );
 });
 
 var CbStepObject =
@@ -33,8 +36,6 @@ function( cbStep )
 {
 	CbStepObject.ourGlobeSuper.call( this, cbStep );
 });
-
-sys.extend( CbStepObject, SuiteStepObject );
 
 return CbStepObject;
 

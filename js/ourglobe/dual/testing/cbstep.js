@@ -1,7 +1,6 @@
 ourglobe.define(
 [
 	"./suiteruntimeerror",
-	"./suiterun",
 	"./suitestep",
 	"./cbstepobject"
 ],
@@ -10,15 +9,16 @@ function( mods )
 
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
+var sys = ourglobe.sys;
 
-var SuiteStep = mods.get( "suitestep" );
-
-var SuiteRun = undefined;
+var SuiteStep = undefined;
 
 mods.delay(
 function()
 {
-	SuiteRun = mods.get( "suiterun" );
+	SuiteStep = mods.get( "suitestep" );
+	
+	sys.extend( CbStep, SuiteStep );
 });
 
 var CbStep =
@@ -39,8 +39,6 @@ function( suiteRun, func )
 	
 	SuiteStep.call( this, suiteRun, func );
 });
-
-CbStep.prototype.__proto__ = SuiteStep.prototype;
 
 CbStep.GET_CB_TIMEOUT_FV =
 	getV()

@@ -17,7 +17,7 @@ mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
-	var SuiteStepObject = mods.get( "suitestepobject" );
+	SuiteStepObject = mods.get( "suitestepobject" );
 	
 	SuiteStep.CONSTR_FV =
 		getV()

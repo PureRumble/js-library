@@ -12,14 +12,16 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var ReturnStep = mods.get( "returnstep" );
-
 var SuiteRun = undefined;
+var ReturnStep = undefined;
 
 mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
+	ReturnStep = mods.get( "returnstep" );
+	
+	sys.extend( Topic, ReturnStep );
 });
 
 var Topic =
@@ -49,8 +51,6 @@ function( suiteRun, topic )
 		this, suiteRun, suiteRun.suiteHolder.topic
 	);
 });
-
-sys.extend( Topic, ReturnStep );
 
 return Topic;
 

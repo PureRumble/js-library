@@ -1,7 +1,5 @@
 ourglobe.define(
 [
-	"./testruntimeerror",
-	"./suiterun",
 	"./suitestep"
 ],
 function( mods )
@@ -9,16 +7,16 @@ function( mods )
 
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
+var sys = ourglobe.sys;
 
-var TestRuntimeError = mods.get( "testruntimeerror" );
-var SuiteStep = mods.get( "suitestep" );
-
-var SuiteRun = undefined;
+var SuiteStep = undefined;
 
 mods.delay(
 function()
 {
-	SuiteRun = mods.get( "suiterun" );
+	SuiteStep = mods.get( "suitestep" );
+	
+	sys.extend( ReturnStep, SuiteStep );
 });
 
 var ReturnStep =
@@ -26,7 +24,7 @@ getF(
 function() { return SuiteStep.CONSTR_FV; },
 function( suiteRun, func )
 {
-	SuiteStep.call( this, suiteRun, func );
+	ReturnStep.ourGlobeSuper.call( this, suiteRun, func );
 });
 
 ReturnStep.EVALUATE_FV =
@@ -35,8 +33,6 @@ ReturnStep.EVALUATE_FV =
 		.addA( "undef", Error )
 		.setR( [ Error, "undef" ] )
 ;
-
-ReturnStep.prototype.__proto__ = SuiteStep.prototype;
 
 return ReturnStep;
 

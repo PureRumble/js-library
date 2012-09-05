@@ -13,13 +13,16 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var CbStep = mods.get( "cbstep" );
+var CbStep = undefined;
 var SuiteRun = undefined;
 
 mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
+	CbStep = mods.get( "cbstep" );
+	
+	sys.extend( TopicCb, CbStep );
 });
 
 var TopicCb =
@@ -72,8 +75,6 @@ function( suiteRun, topicCb )
 	}
 });
 
-sys.extend( TopicCb, CbStep );
-
 return TopicCb;
 
 },
@@ -88,7 +89,11 @@ var SuiteStep = mods.get( "suitestep" );
 var CbStep = mods.get( "cbstep" );
 var Topic = mods.get( "topic" );
 
-TopicCb.prototype.getArgs = Topic.prototype.getArgs;
+mods.delay(
+function()
+{
+	TopicCb.prototype.getArgs = Topic.prototype.getArgs;
+});
 
 TopicCb.prototype.takeStep =
 getF(
