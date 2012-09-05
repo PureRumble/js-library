@@ -1473,8 +1473,8 @@ testSuiteRun(
 	}
 );
 
-// testing suites where prop conf allowThrownErr and allowCbErr
-// and topicCb that throws err or gives err to its cb
+// testing suites where topicCb is allowed to throw err and/or
+// give cb err and where topicCb throws err or gives cb err
 
 testSuiteRun(
 	"faulty topicCb allowed to pass err to cb and healthy vow",
@@ -2172,12 +2172,13 @@ testSuiteRun(
 );
 
 // testing suites where parent suite has topic/topicCb that
-// throws err or gives cb err and where child suite doesnt
-// allow thrown err or cb err
+// throws err or gives cb err and where child suite receives the
+// resulting err from the parent suite, sometimes the child suite
+// has no topic/topicCb
 
 testSuiteRun(
 	"healthy suite with topic throwing allowed err and healthy "+
-	"child suite that doesnt allow err",
+	"child suite",
 	function()
 	{
 		var gammaVowArgs = undefined;
@@ -2192,7 +2193,6 @@ testSuiteRun(
 				[
 					"dingo",
 					{
-						conf:{ allowThrownErr: false },
 						argsVer:[ TestingError ],
 						vows:
 						[
@@ -2223,7 +2223,7 @@ testSuiteRun(
 
 testSuiteRun(
 	"healthy suite with topicCb giving allowed cb err and "+
-	"healthy child suite that doesnt allow cb err",
+	"healthy child suite",
 	function()
 	{
 		var heroVowArgs = undefined;
@@ -2244,7 +2244,6 @@ testSuiteRun(
 				[
 					"dingo",
 					{
-						conf:{ allowCbErr: false },
 						argsVer:[ TestingError ],
 						vows:
 						[

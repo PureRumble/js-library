@@ -309,6 +309,20 @@ function( name, suiteObj, topicFound )
 	}
 	
 	if(
+		allowThrownErr !== undefined &&
+		topicCb === undefined &&
+		topic === undefined
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop allowThrownErr of suite prop conf may be set only "+
+			"if the suite has a topic or topicCb",
+			{ suiteName: name },
+			"AllowThrownErrWithoutTopic"
+		);
+	}
+	
+	if(
 		allowCbErr !== undefined &&
 		typeof( allowCbErr ) !== "boolean"
 	)
@@ -318,6 +332,16 @@ function( name, suiteObj, topicFound )
 			"must be undef or a bool",
 			{ suiteName: name },
 			"ConfIsNotValid"
+		);
+	}
+	
+	if( allowCbErr !== undefined && topicCb === undefined )
+	{
+		throw new SuiteRuntimeError(
+			"Prop allowCbErr of suite prop conf may only be set "+
+			"if the suite has a topicCb",
+			{ suiteName: name },
+			"AllowCbErrWithoutTopicCb"
 		);
 	}
 	

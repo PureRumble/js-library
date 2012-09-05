@@ -118,22 +118,7 @@ expectErr(
 	}
 );
 
-expectErr(
-	"topic may not be null in a Suite",
-	"TopicIsNotValid",
-	"dingo",
-	{
-		topic: null,
-		argsVer:[ "undef" ],
-		vows:[ "dingo", emptyFunc ]
-	},
-	"dingo",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dingo", emptyFunc ]
-	}
-);
+// testing verification of vows
 
 expectErr(
 	"vows may not be empty in a Suite",
@@ -204,6 +189,25 @@ expectErr(
 	}
 );
 
+// testing verification of topic and topicCb
+
+expectErr(
+	"topic may not be null in a Suite",
+	"TopicIsNotValid",
+	"dingo",
+	{
+		topic: null,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
 expectErr(
 	"A Suite may not have both topic and topicCb",
 	"TopicIsNotValid",
@@ -222,22 +226,7 @@ expectErr(
 	}
 );
 
-expectErr(
-	"argsVer must be an arr or a FuncVer",
-	"ArgsVerIsNotValid",
-	"dingo",
-	{
-		topic: function() { return 42; },
-		argsVer:{ types: "int" },
-		vows:[ "dango", emptyFunc ]
-	},
-	"dingo",
-	{
-		topic: emptyFunc,
-		argsVer: getV(),
-		vows:[ "dango", emptyFunc ]
-	}
-);
+// testing verification of suite prop conf
 
 expectErr(
 	"conf must be undef or an obj",
@@ -258,6 +247,8 @@ expectErr(
 	}
 );
 
+// testing verification of suite prop local
+
 expectErr(
 	"local must be undef or an obj",
 	"LocalIsNotValid",
@@ -276,6 +267,9 @@ expectErr(
 		vows:[ "dango", emptyFunc ]
 	}
 );
+
+// testing verification of conf flag verifyArgs on its own and
+// in relation to suite step argsVer
 
 expectErr(
 	"verifyArgs of conf must be bool or undef",
@@ -334,6 +328,9 @@ expectErr(
 	}
 );
 
+// testing verification of conf flag allowThrownErr on its own
+// and in relation to suite step topic and topicCb
+
 expectErr(
 	"allowThrownErr of conf must be undef or a bool",
 	"ConfIsNotValid",
@@ -352,6 +349,117 @@ expectErr(
 		vows:[ "dango", emptyFunc ]
 	}
 );
+
+expectErr(
+	"there must be a topic or topicCb with conf prop "+
+	"allowThrownErr",
+	"AllowThrownErrWithoutTopic",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		next:
+		[
+			"suite",
+			{
+				conf:
+				{
+					allowThrownErr: true
+				},
+				vows:
+				[
+					"dingo",
+					emptyFunc
+				]
+			}
+		]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		next:
+		[
+			"suite one",
+			{
+				conf:
+				{
+					allowThrownErr: true
+				},
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:
+				[
+					"dingo",
+					emptyFunc
+				]
+			},
+			"suite two",
+			{
+				conf:
+				{
+					allowThrownErr: true
+				},
+				topicCb: emptyFunc,
+				argsVer:[],
+				vows:
+				[
+					"dingo",
+					emptyFunc
+				]
+			}
+		]
+	}
+);
+
+// testing verification of conf flag allowCbErr on its own
+// and in relation to suite step topicCb
+
+expectErr(
+	"allowCbErr of conf must be undef or a bool",
+	"ConfIsNotValid",
+	"dingo",
+	{
+		conf:{ allowCbErr: 1 },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		conf:{ allowThrownErr: false },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
+expectErr(
+	"there must be a topicCb with conf prop allowCbErr",
+	"AllowCbErrWithoutTopicCb",
+	"dingo",
+	{
+		conf:
+		{
+			allowCbErr: true
+		},
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		conf:
+		{
+			allowCbErr: true
+		},
+		topicCb: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
+// testing verification of suite prop next
 
 expectErr(
 	"next must be an arr of suites",
@@ -494,6 +602,26 @@ expectErr(
 	}
 );
 
+// testing verification of suite step argsVer on its own and in
+// relation to suite step topic/topicCb
+
+expectErr(
+	"argsVer must be an arr or a FuncVer",
+	"ArgsVerIsNotValid",
+	"dingo",
+	{
+		topic: function() { return 42; },
+		argsVer:{ types: "int" },
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer: getV(),
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
 expectErr(
 	"topic/topicCb must have an argsVer",
 	"TopicWithoutArgsVer",
@@ -559,6 +687,9 @@ expectErr(
 	},
 	false
 );
+
+// testing verification of suite step topic/topicCb in relation
+// to suite step vows
 
 expectErr(
 	"Vows must have a topic/topicCb",
