@@ -1,7 +1,8 @@
 ourglobe.define(
 [
 	"./suiteruntimeerror",
-	"./suitestep"
+	"./suitestep",
+	"./suiteresult"
 ],
 function( mods )
 {
@@ -10,11 +11,13 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteStep = undefined;
+var SuiteResult = undefined;
 
 mods.delay(
 function()
 {
 	SuiteStep = mods.get( "suitestep" );
+	SuiteResult = mods.get( "suiteresult" );
 });
 
 var SuiteStepObject =
@@ -29,6 +32,7 @@ function()
 function( suiteStep )
 {
 	this.suiteStep = suiteStep;
+	this.suiteRes = new SuiteResult( this.suiteStep.suiteRun );
 });
 
 return SuiteStepObject;
@@ -40,6 +44,8 @@ function( mods, SuiteStepObject )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
+
+var SuiteResult = mods.get( "suiteresult" );
 
 SuiteStepObject.prototype.getLocalByVar =
 getF(
@@ -130,6 +136,26 @@ function( varName, variable )
 	var local = this.getLocalByVar( varName );
 	
 	local[ varName ] = variable;
+});
+
+SuiteStepObject.prototype.hasParent =
+getF(
+SuiteResult.HAS_PARENT_FV,
+function()
+{
+	return(
+		this.suiteRes.hasParent.apply( this.suiteRes, arguments )
+	);
+});
+
+SuiteStepObject.prototype.getParent =
+getF(
+SuiteResult.GET_PARENT_FV,
+function()
+{
+	return(
+		this.suiteRes.getParent.apply( this.suiteRes, arguments )
+	);
 });
 
 });

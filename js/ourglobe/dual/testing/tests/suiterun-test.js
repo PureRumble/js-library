@@ -11,8 +11,6 @@ ourglobe.require(
 function( mods )
 {
 
-debugger;
-
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
@@ -146,9 +144,6 @@ function( testName, suite, cb )
 		"An err occurred when testing '"+testName+"':\n"
 	;
 	
-	try
-	{
-	
 	suiteRun.run(
 		getF(
 		SuiteRun.RUN_CB_FV,
@@ -156,9 +151,7 @@ function( testName, suite, cb )
 		{
 			if( err !== undefined )
 			{
-				throw new TestRuntimeError(
-					errPrefix + err.message, { occurredErr: err }
-				);
+				throw err;
 			}
 			
 			if( cbCalled === true )
@@ -172,26 +165,9 @@ function( testName, suite, cb )
 			
 			cbCalled = true;
 			
-			try
-			{
-				cb( suiteRun );
-			}
-			catch( e )
-			{
-				throw new TestRuntimeError(
-					errPrefix + e.message, { occurredErr: e }
-				);
-			}
+			cb( suiteRun );
 		})
 	);
-	
-	}
-	catch( e )
-	{
-		throw new TestRuntimeError(
-			errPrefix + e.message, { occurredErr: e }
-		);
-	}
 	
 	setTimeout(
 		function()
@@ -211,10 +187,24 @@ function( testName, suite, cb )
 var testSuiteRun =
 getF(
 getV()
+	.addA( "str", "bool/undef", "func" )
+	.addA( "str", "bool/undef", "obj", "func" )
 	.addA( "str", "func" )
 	.addA( "str", "obj", "func" ),
-function( testName, suiteArg, cbArg )
+function( testName, testNested, suiteArg, cbArg )
 {
+	if( sys.hasType( testNested, "bool", "undef" ) === false )
+	{
+		cbArg = suiteArg;
+		suiteArg = testNested;
+		testNested = undefined;
+	}
+	
+	if( testNested === undefined )
+	{
+		testNested = true;
+	}
+	
 	var testFunc = undefined;
 	
 	if( sys.hasType( suiteArg, "func" ) )
@@ -261,6 +251,11 @@ function( testName, suiteArg, cbArg )
 		function( suiteRun )
 		{
 			cbOne( suiteRun );
+			
+			if( testNested === false )
+			{
+				return;
+			}
 			
 			var returnVar = getTestObj();
 			var suite = returnVar.suite;
@@ -2618,6 +2613,414 @@ testSuiteRun(
 				);
 			}
 		});
+	}
+);
+
+testSuiteRun(
+	"healthy suites at many levels that check if they hasParent()",
+	false,
+	function()
+	{
+		var topicHasParent = undefined;
+		var vowOneHasParent = undefined;
+		var suiteOneTopicHasParent = undefined;
+		var suiteOneVowOneHasParent = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic:
+					function()
+					{
+						topicHasParent = this.hasParent();
+					},
+					argsVer:[ "undef" ],
+					vows:
+					[
+						"vowOne",
+						function()
+						{
+							vowOneHasParent = this.hasParent();
+						}
+					],
+					next:
+					[
+						"suiteOne",
+						{
+							topic:
+							function()
+							{
+								suiteOneTopicHasParent = this.hasParent();
+							},
+							argsVer:[ "undef" ],
+							vows:
+							[
+								"suiteOneVowOne",
+								function()
+								{
+									suiteOneVowOneHasParent = this.hasParent();
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						topicHasParent === false &&
+						vowOneHasParent === false &&
+						suiteOneTopicHasParent === true &&
+						suiteOneVowOneHasParent === true,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with healthy child suites that getParent() "+
+	"and read parent suite results at various suite steps and "+
+	"another level of child suites that in turn getParent() and "+
+	"read parent suite results",
+	function()
+	{
+		var suiteOneTopicParentRes = undefined;
+		var suiteOneTopicParentErrOccurred = undefined;
+		var suiteOneTopicParentErrThrown = undefined;
+		
+		var suiteOneOneTopicParentRes = undefined;
+		var suiteOneOneTopicParentErrOccurred = undefined;
+		var suiteOneOneTopicParentErrThrown = undefined;
+		
+		var suiteOneVowOneParentRes = undefined;
+		var suiteOneVowOneParentErrOccurred = undefined;
+		var suiteOneVowOneParentErrThrown = undefined;
+		
+		var suiteTwoOneTopicParentRes = undefined;
+		var suiteTwoOneTopicParentErrOccurred = undefined;
+		var suiteTwoOneTopicParentErrThrown = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic:
+					function()
+					{
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					next:
+					[
+// suite reads parent results in steps topic and vow
+						"suite one",
+						{
+							conf:
+							{
+								allowCbErr: true
+							},
+							topicCb:
+							function()
+							{
+								var parent = this.getParent();
+								
+								suiteOneTopicParentRes = parent.getTopicRes();
+								suiteOneTopicParentErrOccurred =
+									parent.errOccurred()
+								;
+								suiteOneTopicParentErrThrown =
+									parent.errThrown()
+								;
+								
+								var cb = this.getCb();
+								
+// gives cb err so child suite can test this result
+								cb( new TestingError() );
+							},
+							argsVer:[ TestingError ],
+							vows:
+							[
+								"suite one vow one",
+								function()
+								{
+									var parent = this.getParent();
+									
+									suiteOneVowOneParentRes = parent.getTopicRes();
+									suiteOneVowOneParentErrOccurred =
+										parent.errOccurred()
+									;
+									suiteOneVowOneParentErrThrown =
+										parent.errThrown()
+									;
+								}
+							],
+							next:
+							[
+// suite reads parent results in topic
+								"suite one one",
+								{
+									topic:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteOneOneTopicParentRes =
+											parent.getTopicRes()
+										;
+										suiteOneOneTopicParentErrOccurred =
+											parent.errOccurred()
+										;
+										suiteOneOneTopicParentErrThrown =
+											parent.errThrown()
+										;
+									},
+									argsVer:[ "undef" ],
+									vows:
+									[
+										"suite one one vow one", healthyFunc
+									]
+								}
+							]
+						},
+// suite throws err in topic so child suite can test result
+						"suite two",
+						{
+							conf:
+							{
+								allowThrownErr: true
+							},
+							topic:
+							function()
+							{
+								throw new TestingError();
+							},
+							argsVer:[ TestingError ],
+							next:
+							[
+// suite reads parent results in topic
+								"suite two one",
+								{
+									topic:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteTwoOneTopicParentRes =
+											parent.getTopicRes()
+										;
+										suiteTwoOneTopicParentErrOccurred =
+											parent.errOccurred()
+										;
+										suiteTwoOneTopicParentErrThrown =
+											parent.errThrown()
+										;
+									},
+									argsVer:[ "undef" ],
+									vows:
+									[
+										"suite two one vow one", healthyFunc
+									]
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						suiteOneTopicParentRes.length === 1 &&
+						suiteOneTopicParentRes[ 0 ] === "dingo" &&
+						suiteOneTopicParentErrOccurred === false &&
+						suiteOneTopicParentErrThrown === false &&
+						
+						suiteOneVowOneParentRes.length === 1 &&
+						suiteOneVowOneParentRes[ 0 ] === "dingo" &&
+						suiteOneVowOneParentErrOccurred === false &&
+						suiteOneVowOneParentErrThrown === false &&
+						
+						suiteOneOneTopicParentRes.length === 1 &&
+						suiteOneOneTopicParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteOneOneTopicParentErrOccurred === true &&
+						suiteOneOneTopicParentErrThrown === false &&
+						
+						suiteTwoOneTopicParentRes.length === 1 &&
+						suiteTwoOneTopicParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteTwoOneTopicParentErrOccurred === true &&
+						suiteTwoOneTopicParentErrThrown === true,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with topic that that throws allowed err "+
+	"followed by child suite that has no topic followed "+
+	"by another child suite that reads results propagated by "+
+	"first suite",
+	function()
+	{
+		var suiteOneOneTopicParentRes = undefined;
+		var suiteOneOneTopicParentErrOccurred = undefined;
+		var suiteOneOneTopicParentErrThrown = undefined;
+3		
+		return(
+			{
+				suite:
+				{
+					conf:
+					{
+						allowThrownErr: true
+					},
+					topic:
+					function()
+					{
+						throw new TestingError();
+					},
+					argsVer:[ TestingError ],
+					next:
+					[
+// suite has no topic and so parent suite results are propagated
+// to next child suite in line
+						"suite one",
+						{
+							next:
+							[
+// suite reads results propagated by first suite
+								"suite one one",
+								{
+									topic:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteOneOneTopicParentRes =
+											parent.getTopicRes()
+										;
+										suiteOneOneTopicParentErrOccurred =
+											parent.errOccurred()
+										;
+										suiteOneOneTopicParentErrThrown =
+											parent.errThrown()
+										;
+									},
+									argsVer:[ "undef" ],
+									vows:
+									[
+										"suite one one vow one", healthyFunc
+									]
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						suiteOneOneTopicParentRes.length === 1 &&
+						suiteOneOneTopicParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteOneOneTopicParentErrOccurred === true &&
+						suiteOneOneTopicParentErrThrown === true,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with topicCb that gives allowed cbErr "+
+	"followed by child suite that has no topic followed "+
+	"by another child suite that reads results propagated by "+
+	"first suite",
+	function()
+	{
+		var suiteOneOneTopicParentRes = undefined;
+		var suiteOneOneTopicParentErrOccurred = undefined;
+		var suiteOneOneTopicParentErrThrown = undefined;
+3		
+		return(
+			{
+				suite:
+				{
+					conf:
+					{
+						allowCbErr: true
+					},
+					topicCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						cb( new TestingError() );
+					},
+					argsVer:[ TestingError ],
+					next:
+					[
+// suite has no topic and so parent suite results are propagated
+// to next child suite in line
+						"suite one",
+						{
+							next:
+							[
+// suite reads results propagated by first suite
+								"suite one one",
+								{
+									topic:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteOneOneTopicParentRes =
+											parent.getTopicRes()
+										;
+										suiteOneOneTopicParentErrOccurred =
+											parent.errOccurred()
+										;
+										suiteOneOneTopicParentErrThrown =
+											parent.errThrown()
+										;
+									},
+									argsVer:[ "undef" ],
+									vows:
+									[
+										"suite one one vow one", healthyFunc
+									]
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						suiteOneOneTopicParentRes.length === 1 &&
+						suiteOneOneTopicParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteOneOneTopicParentErrOccurred === true &&
+						suiteOneOneTopicParentErrThrown === false,
+						"run result is invalid"
+					);
+				}
+			}
+		);
 	}
 );
 
