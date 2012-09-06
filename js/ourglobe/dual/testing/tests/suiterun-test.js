@@ -35,18 +35,6 @@ var healthySuite =
 	vows:[ "dango", healthyFunc ]
 };
 
-var expectCbErr =
-function( testName, errClass, errFunc, refFunc )
-{
-	test.expectCbErr(
-		testName,
-		errClass,
-		CbStep.DEFAULT_CB_TIMEOUT + 1000,
-		errFunc,
-		refFunc
-	);
-};
-
 var expectSingleSuiteCbErr =
 getF(
 getV()
@@ -56,7 +44,7 @@ function( testName, errClass, faultySuite, healthySuite )
 	test.expectCbErr(
 		testName,
 		errClass,
-		CbStep.DEFAULT_CB_TIMEOUT + 1000,
+		CbStep.DEFAULT_CB_TIMEOUT + 2000,
 		function( cb )
 		{
 			new SuiteRun( new SuiteHolder( "suite", faultySuite ) )
@@ -130,7 +118,7 @@ getV()
 	.addA( "str", "obj", "func" ),
 function( testName, suite, cb )
 {
-	var cbTime = CbStep.DEFAULT_CB_TIMEOUT + 1000;
+	var cbTime = CbStep.DEFAULT_CB_TIMEOUT + 2000;
 	
 	var suiteRun =
 		new SuiteRun( new SuiteHolder( "suite", suite ) )
@@ -300,7 +288,6 @@ function( testName, testNested, suiteArg, cbArg )
 		}
 	);
 });
-
 
 // testing simple suites with topic and vows
 
@@ -1004,7 +991,7 @@ testSuiteRun(
 					cb();
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+100
+				CbStep.DEFAULT_CB_TIMEOUT+1000
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -2478,7 +2465,7 @@ testSuiteRun(
 testSuiteRun(
 	"suite that uses get()/set() to handle local var, and one "+
 	"nested suite that handles outer local var and another "+
-	"nested suite that handles itw own local vars with a vow "+
+	"nested suite that handles its own local vars with a vow "+
 	"that fails on reading a local var that doesnt exist",
 	function()
 	{
@@ -3282,6 +3269,277 @@ testSuiteRun(
 						suiteThreeVowOneErrOccurred === false &&
 						suiteThreeVowOneErrThrown === false,
 						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// testing suites and child suites with suite step before and
+// verify that suite step before receives its args
+
+testSuiteRun(
+	"healthy suite with suite step before that receives no args",
+	function()
+	{
+		var beforeArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					before:
+					function()
+					{
+						beforeArgs = arguments;
+					},
+					topic: healthyFunc,
+					argsVer:[ "undefined" ],
+					vows:
+					[
+						"vow one", healthyFunc,
+						"vow two", healthyFunc
+					],
+					next:
+					[
+						"suite one", healthySuite
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						run.before.err === undefined &&
+						beforeArgs.length === 0 &&
+						
+						run.topic.stepOk === true &&
+						
+						run.argsVer.stepOk === true &&
+						
+						run.vows[ 0 ].stepOk === true &&
+						run.vows[ 1 ].stepOk === true &&
+						
+						run.next[ 0 ].runOk === true
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with suite step before that returns var and "+
+	"making sure returned var is ignored by suite",
+	function()
+	{
+		var topicArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					before:
+					function()
+					{
+// the return var is ignored by the suite
+						return "dingo";
+					},
+					topic:
+					function()
+					{
+						topicArgs = arguments;
+					},
+					argsVer:[ "undefined" ],
+					vows:
+					[
+						"vow one", healthyFunc
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						run.topic.stepOk === true &&
+						topicArgs.length === 0
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"faulty suite with faulty suite step before",
+	{
+		before: faultyFunc,
+		topic: healthyFunc,
+		argsVer:[ "undefined" ],
+		vows:[ "vow one", healthyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === TestingError &&
+			
+			run.topic.stepOk === undefined &&
+			
+			run.argsVer.stepOk === undefined &&
+			
+			run.vows[ 0 ].stepOk === undefined &&
+			run.next.length === 0
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite without suite step before but making sure "+
+	"the step is marked as ok by suite run",
+	{
+		topic: healthyFunc,
+		argsVer:[ "undefined" ],
+		vows:[ "vow one", healthyFunc ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === true &&
+			run.before.stepOk === true &&
+			run.before.err === undefined &&
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === true &&
+			run.vows[ 0 ].stepOk === true
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with topicCb that passes args to child suite "+
+	"that has suite step before and making sure that child "+
+	"suites suite steps before and topic receive args",
+	function()
+	{
+		var suiteOneBeforeArgs = undefined;
+		var suiteOneTopicArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topicCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						cb( "dingo", 42, true );
+					},
+					argsVer:[ "str", "int", "bool" ],
+					next:
+					[
+						"suite one",
+						{
+							before:
+							function()
+							{
+								suiteOneBeforeArgs = arguments;
+								
+// return var is ignored by child suite
+								return 42;
+							},
+							topic:
+							function()
+							{
+								suiteOneTopicArgs = arguments;
+							},
+							argsVer:[ "undefined" ],
+							vows:[ "suite one vow one", healthyFunc ]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						
+						run.next[ 0 ].before.stepOk === true &&
+						suiteOneBeforeArgs.length === 3 &&
+						suiteOneBeforeArgs[ 0 ] === "dingo" &&
+						suiteOneBeforeArgs[ 1 ] === 42 &&
+						suiteOneBeforeArgs[ 2 ] === true &&
+						
+						run.next[ 0 ].topic.stepOk === true &&
+						suiteOneTopicArgs.length === 3 &&
+						suiteOneTopicArgs[ 0 ] === "dingo" &&
+						suiteOneTopicArgs[ 1 ] === 42 &&
+						suiteOneTopicArgs[ 2 ] === true
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with child suite that has only suite step "+
+	"before and vows and making sure vows get correct args",
+	function()
+	{
+		var suiteOneVowOne = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic:
+					function()
+					{
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					next:
+					[
+						"suite one",
+						{
+							before:
+							function()
+							{
+// return var is ignored by child suite
+								return 42;
+							},
+							vows:
+							[
+								"suite one vow one",
+								function()
+								{
+									suiteOneVowOne = arguments;
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						
+						run.next[ 0 ].before.stepOk === true &&
+						
+						run.next[ 0 ].vows[ 0 ].stepOk === true &&
+						suiteOneVowOne.length === 1 &&
+						suiteOneVowOne[ 0 ] === "dingo"
 					);
 				}
 			}

@@ -32,6 +32,7 @@ function( name, suiteObj, parentSuite )
 	
 	this.name = name;
 	this.parent = parentSuite;
+	this.before = suiteObj.before;
 	this.topic = suiteObj.topic;
 	this.topicCb = suiteObj.topicCb;
 	this.vows = SuiteHolder.orderArr( suiteObj.vows );
@@ -118,6 +119,7 @@ function( name, suiteObj, topicFound )
 		if(
 			prop !== "conf" &&
 			prop !== "local" &&
+			prop !== "before" &&
 			prop !== "topic" &&
 			prop !== "topicCb" &&
 			prop !== "argsVer" &&
@@ -135,6 +137,7 @@ function( name, suiteObj, topicFound )
 	
 	var conf = suiteObj[ "conf" ];
 	var local = suiteObj[ "local" ];
+	var before = suiteObj[ "before" ];
 	var topic = suiteObj[ "topic" ];
 	var topicCb = suiteObj[ "topicCb" ];
 	var argsVer = suiteObj[ "argsVer" ];
@@ -144,6 +147,18 @@ function( name, suiteObj, topicFound )
 	if( topicFound === false )
 	{
 		topicFound = topic !== undefined || topicCb !== undefined;
+	}
+	
+	if(
+		before !== undefined &&
+		sys.hasType( before, "func" ) === false
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop before of a suite must be undef or a func",
+			{ suiteName: name, before: before },
+			"BeforeIsNotValid"
+		);
 	}
 	
 	if(

@@ -105,6 +105,8 @@ function(
 	}
 });
 
+// testing verification of empty suites
+
 expectErr(
 	"A Suite may not be empty",
 	"SuiteHasNoRequiredProp",
@@ -115,6 +117,64 @@ expectErr(
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+// testing verification of suite step before
+
+expectErr(
+	"Suite prop before must be a func",
+	"BeforeIsNotValid",
+	"dingo",
+	{
+		before:[ emptyFunc ],
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	},
+	"dingo",
+	{
+		before: emptyFunc,
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+// testing verification of topic and topicCb
+
+expectErr(
+	"topic may not be null in a Suite",
+	"TopicIsNotValid",
+	"dingo",
+	{
+		topic: null,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectErr(
+	"A Suite may not have both topic and topicCb",
+	"TopicIsNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		topicCb: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dango", emptyFunc ]
 	}
 );
 
@@ -186,43 +246,6 @@ expectErr(
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dango", emptyFunc, "dongo", emptyFunc ]
-	}
-);
-
-// testing verification of topic and topicCb
-
-expectErr(
-	"topic may not be null in a Suite",
-	"TopicIsNotValid",
-	"dingo",
-	{
-		topic: null,
-		argsVer:[ "undef" ],
-		vows:[ "dingo", emptyFunc ]
-	},
-	"dingo",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dingo", emptyFunc ]
-	}
-);
-
-expectErr(
-	"A Suite may not have both topic and topicCb",
-	"TopicIsNotValid",
-	"dingo",
-	{
-		topic: emptyFunc,
-		topicCb: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dango", emptyFunc ]
-	},
-	"dingo",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dango", emptyFunc ]
 	}
 );
 

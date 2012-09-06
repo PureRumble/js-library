@@ -3,6 +3,7 @@ ourglobe.define(
 	"./suiteruntimeerror",
 	"./suiteholder",
 	"./suitestep",
+	"./before",
 	"./topic",
 	"./topiccb",
 	"./argsver",
@@ -15,6 +16,7 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteHolder = mods.get( "suiteholder" );
+var Before = undefined;
 var Topic = undefined;
 var TopicCb = undefined;
 var ArgsVer = undefined;
@@ -23,6 +25,7 @@ var Vow = undefined;
 mods.delay(
 	function()
 	{
+		Before = mods.get( "before" );
 		Topic = mods.get( "topic" );
 		TopicCb = mods.get( "topiccb" );
 		ArgsVer = mods.get( "argsver" );
@@ -48,6 +51,8 @@ function( suiteHolder, parentRun )
 	this.runOk = undefined;
 	
 	this.local = SuiteHolder.copySet( suiteHolder.local );
+	
+	this.before = new Before( this );
 	
 	if( suiteHolder.topic !== undefined )
 	{
@@ -101,6 +106,50 @@ var getV = ourglobe.getV;
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteStep = mods.get( "suitestep" );
 
+SuiteRun.prototype.runAfter =
+getF(
+getV(),
+function()
+{
+	if( this.runOk === undefined )
+	{
+		this.runOk = true;
+	}
+	
+	this.suiteRunCb( undefined, this.runOk );
+});
+
+SuiteRun.prototype.runBefore =
+getF(
+getV(),
+function()
+{
+	var suiteRun = this;
+	
+	this.before.takeStep(
+		getF(
+		SuiteStep.TAKE_STEP_CB_FV,
+		function( err, stepOk )
+		{
+			if( err !== undefined )
+			{
+				suiteRun.suiteRunCb( err );
+				
+				return;
+			}
+			
+			if( stepOk === false )
+			{
+				suiteRun.runAfter();
+				
+				return;
+			}
+			
+			suiteRun.runTopic();
+		})
+	);
+});
+
 SuiteRun.prototype.runNext =
 getF(
 getV(),
@@ -153,12 +202,7 @@ function()
 					
 					if( nrSuitesDone === suiteRun.next.length )
 					{
-						if( suiteRun.runOk === undefined )
-						{
-							suiteRun.runOk = true;
-						}
-						
-						suiteRun.suiteRunCb( undefined, suiteRun.runOk );
+						suiteRun.runAfter();
 					}
 				})
 			);
@@ -166,9 +210,7 @@ function()
 	}
 	else
 	{
-		this.runOk = true;
-		
-		this.suiteRunCb( undefined, true );
+		this.runAfter();
 	}
 });
 
@@ -199,7 +241,7 @@ function()
 	
 	if( argsVerOk === false )
 	{
-		this.suiteRunCb( undefined, false );
+		this.runAfter();
 		
 		return;
 	}
@@ -246,7 +288,7 @@ function()
 	
 	if( vowsOk === false )
 	{
-		this.suiteRunCb( undefined, false );
+		this.runAfter();
 		
 		return;
 	}
@@ -275,7 +317,7 @@ function()
 			
 			if( stepOk === false )
 			{
-				suiteRun.suiteRunCb( undefined, false );
+				suiteRun.runAfter();
 				
 				return;
 			}
@@ -293,7 +335,7 @@ function( cb )
 {
 	this.suiteRunCb = cb;
 	
-	this.runTopic();
+	this.runBefore();
 });
 
 });
