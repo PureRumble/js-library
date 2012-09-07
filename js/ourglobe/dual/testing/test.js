@@ -237,21 +237,25 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 		"An err occurred when testing '"+testName+"':\n"
 	;
 	
-	var errFuncCbCalled = false;
-	var refFuncCbCalled = false;
+	var errFuncCbArgs = undefined;
+	var refFuncCbArgs = undefined;
 	
 	errFunc(
 		function( err )
 		{
-			if( errFuncCbCalled === true )
+			if( errFuncCbArgs !== undefined )
 			{
 				throw new TestRuntimeError(
 					errPrefix+
-					"The cb given to the error func has been called twice"
+					"The cb given to the error func has been called twice",
+					{
+						previousCbArgs: errFuncCbArgs,
+						currentCbArgs: arguments
+					}
 				);
 			}
 			
-			errFuncCbCalled = true;
+			errFuncCbArgs = arguments;
 			
 			if( err instanceof Error === false )
 			{
@@ -277,16 +281,20 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 	refFunc(
 		function( err )
 		{
-			if( refFuncCbCalled === true )
+			if( refFuncCbArgs !== undefined )
 			{
 				throw new TestRuntimeError(
 					errPrefix+
 					"The cb given to the reference func has been called "+
-					"twice"
+					"twice",
+					{
+						previousCbArgs: refFuncCbArgs,
+						currentCbArgs: arguments
+					}
 				);
 			}
 			
-			refFuncCbCalled = true;
+			refFuncCbArgs = arguments;
 			
 			if( err instanceof Error === true )
 			{
@@ -302,7 +310,7 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 	setTimeout(
 		function()
 		{
-			if( errFuncCbCalled === false )
+			if( errFuncCbArgs === undefined )
 			{
 				throw new TestRuntimeError(
 					errPrefix+
@@ -310,7 +318,7 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 				);
 			}
 			
-			if( refFuncCbCalled === false )
+			if( refFuncCbArgs === undefined )
 			{
 				throw new TestRuntimeError(
 					errPrefix+
