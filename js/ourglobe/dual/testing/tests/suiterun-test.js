@@ -25,14 +25,17 @@ var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
 var CbStep = mods.get( "cbstep" );
 
+CbStep.DEFAULT_CB_TIMEOUT = 8000;
+
 var faultyFunc = function() { throw new TestingError(); };
-var healthyFunc = function() {};
+var emptyFunc = function() {};
+var undefVer = [ "undef" ];
 
 var healthySuite =
 {
-	topic: healthyFunc,
+	topic: emptyFunc,
 	argsVer: [ "undef" ],
-	vows:[ "dango", healthyFunc ]
+	vows:[ "dango", emptyFunc ]
 };
 
 var expectSingleSuiteCbErr =
@@ -132,6 +135,9 @@ function( testName, suite, cb )
 		"An err occurred when testing '"+testName+"':\n"
 	;
 	
+	try
+	{
+	
 	suiteRun.run(
 		getF(
 		SuiteRun.RUN_CB_FV,
@@ -139,6 +145,7 @@ function( testName, suite, cb )
 		{
 			if( err !== undefined )
 			{
+				console.log( errPrefix );
 				throw err;
 			}
 			
@@ -153,17 +160,32 @@ function( testName, suite, cb )
 			
 			cbCalled = true;
 			
-			cb( suiteRun );
+			try
+			{
+				cb( suiteRun );
+			}
+			catch( e )
+			{
+				console.log( errPrefix );
+				throw e;
+			}
 		})
 	);
+	
+	}
+	catch( e )
+	{
+		console.log( errPrefix );
+		throw e;
+	}
 	
 	setTimeout(
 		function()
 		{
 			if( cbCalled === false )
 			{
+				console.log( errPrefix );
 				throw new TestRuntimeError(
-					errPrefix+
 					"The cb given to SuiteRun.run() hasnt been called"
 				);
 			}
@@ -309,7 +331,7 @@ testSuiteRun(
 						return "dango";
 					},
 					argsVer:[ "str" ],
-					vows:[ "dongo", healthyFunc ]
+					vows:[ "dongo", emptyFunc ]
 				},
 				cb:
 				function( run )
@@ -338,7 +360,7 @@ testSuiteRun(
 		argsVer: [ "str" ],
 		vows:
 		[
-			"dongo", healthyFunc,
+			"dongo", emptyFunc,
 			"dengo", faultyFunc
 		]
 	},
@@ -570,7 +592,7 @@ testSuiteRun(
 		argsVer: [],
 		vows:[
 			"dingo", faultyFunc,
-			"dango", healthyFunc
+			"dango", emptyFunc
 		]
 	},
 	function( run )
@@ -637,7 +659,7 @@ testSuiteRun(
 		vows:
 		[
 			"dingo", faultyFunc,
-			"dango", healthyFunc
+			"dango", emptyFunc
 		]
 	},
 	function( run )
@@ -839,7 +861,7 @@ expectSuiteCbErr(
 			cb();
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	{
 		topicCb:
@@ -858,14 +880,14 @@ expectSuiteCbErr(
 			);
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
 expectSuiteCbErr(
 	"faulty topicCb calling direct cb(err) and direct cb() "+
 	"(gives err) and another faulty topicCb calling cb(err) "+
-	"and cb(err) (no errs)",
+	"and then delayed cb(err) (no errs)",
 	SuiteRuntimeError,
 	{
 		topicCb:
@@ -878,7 +900,7 @@ expectSuiteCbErr(
 			cb();
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	{
 		topicCb:
@@ -897,7 +919,7 @@ expectSuiteCbErr(
 			);
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
@@ -912,6 +934,9 @@ expectSuiteCbErr(
 		{
 			var cb = this.getCb();
 			
+// The following two setTimeout() calls must differ by a huge
+// time difference in order to make sure they are performed in
+// the correct order
 			setTimeout(
 				function()
 				{
@@ -925,11 +950,11 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				200
+				1000
 			);
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	{
 		topicCb:
@@ -948,7 +973,7 @@ expectSuiteCbErr(
 			throw new TestingError();
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
@@ -959,7 +984,7 @@ testSuiteRun(
 	"faulty topicCb with no call to cb() and faulty "+
 	"cancelled vow",
 	{
-		topicCb: healthyFunc,
+		topicCb: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", faultyFunc ]
 	},
@@ -1016,9 +1041,9 @@ testSuiteRun(
 testSuiteRun(
 	"healthy topic that returns undef and upholds argsVer",
 	{
-		topic: healthyFunc,
+		topic: emptyFunc,
 		argsVer: [ "undef" ],
-		vows: [ "dingo", healthyFunc ]
+		vows: [ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1044,7 +1069,7 @@ testSuiteRun(
 			return "dingo";
 		},
 		argsVer: getV( [ { values:[ "dingo" ] } ] ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1070,7 +1095,7 @@ testSuiteRun(
 			return "dingo";
 		},
 		argsVer: getV( [ { values:[ "dengo" ] } ] ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1105,7 +1130,7 @@ testSuiteRun(
 			);
 		},
 		argsVer: getV( [ "str" ] ).addA(),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1138,7 +1163,7 @@ testSuiteRun(
 			);
 		},
 		argsVer: getV( [ "str" ] ).addA( "str", "int", "bool" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1171,7 +1196,7 @@ testSuiteRun(
 			);
 		},
 		argsVer: getV( [] ).addA( "int" ).addA( "bool" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1203,7 +1228,7 @@ testSuiteRun(
 			return "dingo";
 		},
 		argsVer: undefined,
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1241,7 +1266,7 @@ expectErr(
 						cb();
 					},
 					argsVer:[],
-					vows:[ "dingo", healthyFunc ]
+					vows:[ "dingo", emptyFunc ]
 				}
 			)
 		)
@@ -1272,7 +1297,7 @@ expectErr(
 						cb();
 					},
 					argsVer:[],
-					vows:[ "dingo", healthyFunc ]
+					vows:[ "dingo", emptyFunc ]
 				}
 			)
 		)
@@ -1320,7 +1345,7 @@ expectErr(
 								cb();
 							},
 							argsVer:[],
-							vows:[ "dingo", healthyFunc ]
+							vows:[ "dingo", emptyFunc ]
 						}
 					]
 				}
@@ -1365,7 +1390,7 @@ expectErr(
 								cb();
 							},
 							argsVer:[],
-							vows:[ "dingo", healthyFunc ]
+							vows:[ "dingo", emptyFunc ]
 						}
 					]
 				}
@@ -1442,7 +1467,7 @@ testSuiteRun(
 		},
 		topic: faultyFunc,
 		argsVer:[ "undef" ],
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1538,7 +1563,7 @@ testSuiteRun(
 			throw new TestingError();
 		},
 		argsVer: getV().addA( TestingError ).addA(),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1581,7 +1606,7 @@ expectSuiteCbErr(
 			throw new TestingError();
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	{
 		topicCb:
@@ -1600,7 +1625,7 @@ expectSuiteCbErr(
 			throw new TestingError();
 		},
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
@@ -1626,7 +1651,7 @@ testSuiteRun(
 			);
 		},
 		argsVer:[ TestingError ],
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1664,7 +1689,7 @@ testSuiteRun(
 			);
 		},
 		argsVer:[ TestingError ],
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1688,9 +1713,9 @@ testSuiteRun(
 			allowThrownErr: true,
 			allowCbErr: true
 		},
-		topicCb: healthyFunc,
+		topicCb: emptyFunc,
 		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", healthyFunc ]
+		vows:[ "dingo", emptyFunc ]
 	},
 	function( run )
 	{
@@ -1718,9 +1743,9 @@ testSuiteRun(
 		{
 			suite:
 			{
-				topic: healthyFunc,
+				topic: emptyFunc,
 				argsVer:[ "undef" ],
-				vows:[ "dingo", healthyFunc ],
+				vows:[ "dingo", emptyFunc ],
 				next:
 				[
 					"dingo",
@@ -1731,7 +1756,7 @@ testSuiteRun(
 							betaTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -1772,7 +1797,7 @@ testSuiteRun(
 					return "dango";
 				},
 				argsVer:[ "str" ],
-				vows:[ "dingo", healthyFunc ],
+				vows:[ "dingo", emptyFunc ],
 				next:
 				[
 					"dingo",
@@ -1783,7 +1808,7 @@ testSuiteRun(
 							charlieTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -1826,7 +1851,7 @@ testSuiteRun(
 					cb( "dingo", "dango", "dongo" );
 				},
 				argsVer:[ "str", "str", "str" ],
-				vows:[ "dingo", healthyFunc ],
+				vows:[ "dingo", emptyFunc ],
 				next:
 				[
 					"dingo",
@@ -1837,7 +1862,7 @@ testSuiteRun(
 							deltaTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -1889,7 +1914,7 @@ testSuiteRun(
 					);
 				},
 				argsVer:[ "str", "str", "str" ],
-				vows:[ "dingo", healthyFunc ],
+				vows:[ "dingo", emptyFunc ],
 				next:
 				[
 					"dingo",
@@ -1900,7 +1925,7 @@ testSuiteRun(
 							echoTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -1930,19 +1955,19 @@ testSuiteRun(
 testSuiteRun(
 	"faulty suite with faulty vow and cancelled child suite",
 	{
-		topic: healthyFunc,
+		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[
 			"dengo", faultyFunc,
-			"dango", healthyFunc
+			"dango", emptyFunc
 		],
 		next:
 		[
 			"dingo",
 			{
-				topic: healthyFunc,
+				topic: emptyFunc,
 				argsVer:[ "undef" ],
-				vows:[ "dingo", healthyFunc ]
+				vows:[ "dingo", emptyFunc ]
 			}
 		]
 	},
@@ -1980,7 +2005,7 @@ testSuiteRun(
 							fargoTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -2140,7 +2165,7 @@ testSuiteRun(
 			"dingo",
 			{
 				argsVer:[ "str", "int" ],
-				vows:[ "dingo", healthyFunc ]
+				vows:[ "dingo", emptyFunc ]
 			}
 		]
 	},
@@ -2284,7 +2309,7 @@ testSuiteRun(
 							gammaTopicArgs = arguments;
 						},
 						argsVer:[ "undef" ],
-						vows:[ "dingo", healthyFunc ]
+						vows:[ "dingo", emptyFunc ]
 					}
 				]
 			},
@@ -2338,7 +2363,7 @@ testSuiteRun(
 						{
 							topicArgsOne = arguments;
 							
-							return healthyFunc;
+							return emptyFunc;
 						},
 						argsVer:[ "func" ],
 						vows:
@@ -2809,7 +2834,7 @@ testSuiteRun(
 									argsVer:[ "undef" ],
 									vows:
 									[
-										"suite one one vow one", healthyFunc
+										"suite one one vow one", emptyFunc
 									]
 								}
 							]
@@ -2850,7 +2875,7 @@ testSuiteRun(
 									argsVer:[ "undef" ],
 									vows:
 									[
-										"suite two one vow one", healthyFunc
+										"suite two one vow one", emptyFunc
 									]
 								}
 							]
@@ -2946,7 +2971,7 @@ testSuiteRun(
 									argsVer:[ "undef" ],
 									vows:
 									[
-										"suite one one vow one", healthyFunc
+										"suite one one vow one", emptyFunc
 									]
 								}
 							]
@@ -3027,7 +3052,7 @@ testSuiteRun(
 									argsVer:[ "undef" ],
 									vows:
 									[
-										"suite one one vow one", healthyFunc
+										"suite one one vow one", emptyFunc
 									]
 								}
 							]
@@ -3276,8 +3301,9 @@ testSuiteRun(
 	}
 );
 
-// testing suites and child suites with suite step before and
-// verify that suite step before receives its args
+// testing suites and child suites with suite step before and it
+// in relation to other suite steps (in the same suite or parent
+// suite)
 
 testSuiteRun(
 	"healthy suite with suite step before that receives no args",
@@ -3294,12 +3320,12 @@ testSuiteRun(
 					{
 						beforeArgs = arguments;
 					},
-					topic: healthyFunc,
+					topic: emptyFunc,
 					argsVer:[ "undefined" ],
 					vows:
 					[
-						"vow one", healthyFunc,
-						"vow two", healthyFunc
+						"vow one", emptyFunc,
+						"vow two", emptyFunc
 					],
 					next:
 					[
@@ -3322,7 +3348,8 @@ testSuiteRun(
 						run.vows[ 0 ].stepOk === true &&
 						run.vows[ 1 ].stepOk === true &&
 						
-						run.next[ 0 ].runOk === true
+						run.next[ 0 ].runOk === true,
+						"run result is invalid"
 					);
 				}
 			}
@@ -3355,7 +3382,7 @@ testSuiteRun(
 					argsVer:[ "undefined" ],
 					vows:
 					[
-						"vow one", healthyFunc
+						"vow one", emptyFunc
 					]
 				},
 				cb:
@@ -3365,7 +3392,8 @@ testSuiteRun(
 						run.runOk === true &&
 						run.before.stepOk === true &&
 						run.topic.stepOk === true &&
-						topicArgs.length === 0
+						topicArgs.length === 0,
+						"run result is invalid"
 					);
 				}
 			}
@@ -3377,9 +3405,9 @@ testSuiteRun(
 	"faulty suite with faulty suite step before",
 	{
 		before: faultyFunc,
-		topic: healthyFunc,
+		topic: emptyFunc,
 		argsVer:[ "undefined" ],
-		vows:[ "vow one", healthyFunc ],
+		vows:[ "vow one", emptyFunc ],
 		next:[ "suite one", healthySuite ]
 	},
 	function( run )
@@ -3394,7 +3422,8 @@ testSuiteRun(
 			run.argsVer.stepOk === undefined &&
 			
 			run.vows[ 0 ].stepOk === undefined &&
-			run.next.length === 0
+			run.next.length === 0,
+			"run result is invalid"
 		);
 	}
 );
@@ -3403,9 +3432,9 @@ testSuiteRun(
 	"healthy suite without suite step before but making sure "+
 	"the step is marked as ok by suite run",
 	{
-		topic: healthyFunc,
+		topic: emptyFunc,
 		argsVer:[ "undefined" ],
-		vows:[ "vow one", healthyFunc ]
+		vows:[ "vow one", emptyFunc ]
 	},
 	function( run )
 	{
@@ -3415,7 +3444,8 @@ testSuiteRun(
 			run.before.err === undefined &&
 			run.topic.stepOk === true &&
 			run.argsVer.stepOk === true &&
-			run.vows[ 0 ].stepOk === true
+			run.vows[ 0 ].stepOk === true,
+			"run result is invalid"
 		);
 	}
 );
@@ -3459,7 +3489,7 @@ testSuiteRun(
 								suiteOneTopicArgs = arguments;
 							},
 							argsVer:[ "undefined" ],
-							vows:[ "suite one vow one", healthyFunc ]
+							vows:[ "suite one vow one", emptyFunc ]
 						}
 					]
 				},
@@ -3481,7 +3511,8 @@ testSuiteRun(
 						suiteOneTopicArgs.length === 3 &&
 						suiteOneTopicArgs[ 0 ] === "dingo" &&
 						suiteOneTopicArgs[ 1 ] === 42 &&
-						suiteOneTopicArgs[ 2 ] === true
+						suiteOneTopicArgs[ 2 ] === true,
+						"run result is invalid"
 					);
 				}
 			}
@@ -3539,11 +3570,397 @@ testSuiteRun(
 						
 						run.next[ 0 ].vows[ 0 ].stepOk === true &&
 						suiteOneVowOne.length === 1 &&
-						suiteOneVowOne[ 0 ] === "dingo"
+						suiteOneVowOne[ 0 ] === "dingo",
+						"run result is invalid"
 					);
 				}
 			}
 		);
+	}
+);
+
+// testing suites with beforeCb and it in relation to other
+// suite steps
+
+testSuiteRun(
+	"healthy suite with beforeCb that receives args and making "+
+	"sure the args passed to cb by beforeCb are ignored",
+	function()
+	{
+		var suiteOneBeforeCbArgs = undefined;
+		var suiteOneTopicArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					beforeCb:
+					function()
+					{
+						suiteOneBeforeCbArgs = arguments;
+						
+						var cb = this.getCb();
+// args given to cb are ignored
+						cb( "dingo", "dango", "dongo" );
+					},
+					topic:
+					function()
+					{
+						suiteOneTopicArgs = arguments;
+					},
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						
+						run.before.stepOk === true &&
+						run.before.err === undefined &&
+						suiteOneBeforeCbArgs.length === 0 &&
+						
+						run.topic.stepOk === true &&
+						suiteOneTopicArgs.length === 0,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with beforeCb that makes delayed call to cb()",
+	{
+		beforeCb:
+		function()
+		{
+			var beforeCb = this;
+			
+			setTimeout(
+				function()
+				{
+					var cb = beforeCb.getCb();
+					
+// Passing err as second arg doesnt make beforeCb to break
+					cb( "dingo", new TestingError() );
+				},
+				100
+			);
+		},
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === true &&
+			
+			run.before.stepOk === true &&
+			run.before.err === undefined &&
+			
+			run.topic.stepOk === true,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"faulty suite with faulty beforeCb that passes err to "+
+	"delayed cb()",
+	{
+		beforeCb:
+		function()
+		{
+			var beforeCb = this;
+			
+			setTimeout(
+				function()
+				{
+					var cb = beforeCb.getCb();
+					
+					cb( new TestingError() );
+				},
+				100
+			);
+		},
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			
+			run.before.stepOk === false &&
+			run.before.err.constructor === TestingError &&
+			
+			run.topic.stepOk === undefined &&
+			run.argsVer.stepOk === undefined &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.next.length === 0,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"faulty suite with faulty beforeCb that never calls cb()",
+	{
+		beforeCb: emptyFunc,
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			
+			run.before.stepOk === false &&
+			run.before.err.constructor === SuiteRuntimeError &&
+			run.before.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			
+			run.topic.stepOk === undefined &&
+			run.argsVer.stepOk === undefined &&
+			run.vows[ 0 ].stepOk === undefined &&
+			run.next.length === 0,
+			"run result is invalid"
+		);
+	}
+);
+
+// testing suites with beforeCb that signals it is done many
+// times by throwing err and calling cb once or many times
+
+testSuiteRun(
+	"Testing faulty suite with faulty beforeCb that directly "+
+	"passes err to cb and then calls delayed cb again. Making "+
+	"sure the second call to cb doesnt terminate the suite run "+
+	"even if there's already been a cb call",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+// This call doesnt halt the suite run even if there has been a
+// call to cb since the first call made the suite step and its
+// suite to fail, and so the second call is ignored
+					cb();
+				},
+				200
+			);
+			
+			cb( new TestingError() );
+		},
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === TestingError &&
+			run.topic.stepOk === undefined,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"Testing faulty suite with faulty beforeCb that throws err "+
+	"and then calls delayed cb. Making sure the delayed cb call "+
+	"doesnt terminate the suite run even if beforeCb is already "+
+	"done due to the thrown err",
+	{
+		beforeCb:
+		function()
+		{
+			var beforeCb = this;
+			
+			setTimeout(
+				function()
+				{
+					var cb = beforeCb.getCb();
+					
+// This call doesnt halt the suite run even if the suite step has
+// already marked to be done by throwing an err, and so the call
+// is ignored
+					cb();
+				},
+				200
+			);
+			
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === TestingError &&
+			run.topic.stepOk === undefined,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"Testing faulty suite with faulty beforeCb that makes direct "+
+	"call to cb and throws err. Making sure direct call to cb is "+
+	"ok even if an err is also thrown",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === TestingError &&
+			run.topic.stepOk === undefined,
+			"run result is invalid"
+		);
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb with two direct calls to cb() "+
+	"(terminates  with err) and another faulty beforeCb with "+
+	"direct call to cb(err) and delayed call to cb() "+
+	"(doesnt terminate)",
+	SuiteRuntimeError,
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			
+			cb();
+		},
+		topic: emptyFunc,
+		argsVer: undefVer,
+		vows:[ "vow one", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb( new TestingError() );
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+		},
+		topic: emptyFunc,
+		argsVer: undefVer,
+		vows:[ "vow one", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"Testing faulty beforeCb with two calls to delayed cb() "+
+	"(terminates with err) and another faulty beforeCb with "+
+	"delayed call to cb with err and another delayed call to "+
+	"cb() (doesnt terminate)",
+	SuiteRuntimeError,
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+// The following two setTimeout() calls must differ by a huge
+// time difference in order to make sure they are performed in
+// the correct order
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				1000
+			);
+		},
+		topic: emptyFunc,
+		argsVer: undefVer,
+		vows:[ "vow one", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			var beforeCb = this;
+			
+// The following two setTimeout() calls must differ by a huge
+// time difference in order to make sure they are performed in
+// the correct order
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				1000
+			);
+		},
+		topic: emptyFunc,
+		argsVer: undefVer,
+		vows:[ "vow one", emptyFunc ]
 	}
 );
 

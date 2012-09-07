@@ -120,7 +120,7 @@ expectErr(
 	}
 );
 
-// testing verification of suite step before
+// testing verification of suite steps before and beforeCb
 
 expectErr(
 	"Suite prop before must be a func",
@@ -141,10 +141,49 @@ expectErr(
 	}
 );
 
+expectErr(
+	"Suite prop beforeCb must be a func",
+	"BeforeIsNotValid",
+	"dingo",
+	{
+		beforeCb:[ emptyFunc ],
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	},
+	"dingo",
+	{
+		beforeCb: emptyFunc,
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectErr(
+	"A suite may not have both props before and beforeCb set",
+	"BeforeIsNotValid",
+	"dingo",
+	{
+		before: emptyFunc,
+		beforeCb: emptyFunc,
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	},
+	"dingo",
+	{
+		before: emptyFunc,
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
 // testing verification of topic and topicCb
 
 expectErr(
-	"topic may not be null in a Suite",
+	"topic must be a func",
 	"TopicIsNotValid",
 	"dingo",
 	{

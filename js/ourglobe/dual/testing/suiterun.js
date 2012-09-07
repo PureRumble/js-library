@@ -4,6 +4,7 @@ ourglobe.define(
 	"./suiteholder",
 	"./suitestep",
 	"./before",
+	"./beforecb",
 	"./topic",
 	"./topiccb",
 	"./argsver",
@@ -15,8 +16,9 @@ function( mods )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
-var SuiteHolder = mods.get( "suiteholder" );
+var SuiteHolder = undefined;
 var Before = undefined;
+var BeforeCb = undefined;
 var Topic = undefined;
 var TopicCb = undefined;
 var ArgsVer = undefined;
@@ -25,7 +27,9 @@ var Vow = undefined;
 mods.delay(
 	function()
 	{
+		SuiteHolder = mods.get( "suiteholder" );
 		Before = mods.get( "before" );
+		BeforeCb = mods.get( "beforecb" );
 		Topic = mods.get( "topic" );
 		TopicCb = mods.get( "topiccb" );
 		ArgsVer = mods.get( "argsver" );
@@ -52,7 +56,17 @@ function( suiteHolder, parentRun )
 	
 	this.local = SuiteHolder.copySet( suiteHolder.local );
 	
-	this.before = new Before( this );
+	if( suiteHolder.beforeCb !== undefined )
+	{
+		this.before = new BeforeCb( this );
+	}
+	else
+	{
+// class Before makes sure suite step before is set to
+// the default empty func if suiteHolder doesnt have the suite
+// step set
+		this.before = new Before( this );
+	}
 	
 	if( suiteHolder.topic !== undefined )
 	{

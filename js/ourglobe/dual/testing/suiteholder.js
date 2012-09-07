@@ -33,6 +33,7 @@ function( name, suiteObj, parentSuite )
 	this.name = name;
 	this.parent = parentSuite;
 	this.before = suiteObj.before;
+	this.beforeCb = suiteObj.beforeCb;
 	this.topic = suiteObj.topic;
 	this.topicCb = suiteObj.topicCb;
 	this.vows = SuiteHolder.orderArr( suiteObj.vows );
@@ -120,6 +121,7 @@ function( name, suiteObj, topicFound )
 			prop !== "conf" &&
 			prop !== "local" &&
 			prop !== "before" &&
+			prop !== "beforeCb" &&
 			prop !== "topic" &&
 			prop !== "topicCb" &&
 			prop !== "argsVer" &&
@@ -138,6 +140,7 @@ function( name, suiteObj, topicFound )
 	var conf = suiteObj[ "conf" ];
 	var local = suiteObj[ "local" ];
 	var before = suiteObj[ "before" ];
+	var beforeCb = suiteObj[ "beforeCb" ];
 	var topic = suiteObj[ "topic" ];
 	var topicCb = suiteObj[ "topicCb" ];
 	var argsVer = suiteObj[ "argsVer" ];
@@ -157,6 +160,28 @@ function( name, suiteObj, topicFound )
 		throw new SuiteRuntimeError(
 			"Prop before of a suite must be undef or a func",
 			{ suiteName: name, before: before },
+			"BeforeIsNotValid"
+		);
+	}
+	
+	if(
+		beforeCb !== undefined &&
+		sys.hasType( beforeCb, "func" ) === false
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop beforeCb of a suite must be undef or a func",
+			{ suiteName: name, beforeCb: beforeCb },
+			"BeforeIsNotValid"
+		);
+	}
+	
+	if( before !== undefined && beforeCb !== undefined )
+	{
+		throw new SuiteRuntimeError(
+			"A suite cant have both props before and "+
+			"beforeCb set",
+			{ suiteName: name, before: before, beforeCb: beforeCb },
 			"BeforeIsNotValid"
 		);
 	}
