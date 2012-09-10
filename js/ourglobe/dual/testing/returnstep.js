@@ -50,6 +50,9 @@ getF(
 SuiteStep.LAND_RETURN_STEP_FV,
 function( returnVar, thrownErr )
 {
+	this.returnVar = returnVar;
+	this.thrownErr = thrownErr;
+	
 	this.landStep(
 		undefined, this.evaluate( returnVar, thrownErr )
 	);

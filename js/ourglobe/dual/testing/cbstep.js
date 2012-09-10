@@ -30,10 +30,12 @@ function( suiteRun, func )
 	this.stepCbCalled = false;
 	this.cbTimedOut = false;
 	this.cbStepDone = false;
+	this.cbStepErrGiven = false;
+	this.cbStepDone = false;
 	
-	this.cbStepReturnVar = undefined;
-	this.cbStepThrownErr = undefined;
-	this.cbStepCbArgs = undefined;
+	this.cbArgs = undefined;
+	this.thrownErr = undefined;
+	this.cbErr = undefined;
 	this.cbTimeoutId = undefined;
 	
 	this.storedCbThrownErr = undefined;
@@ -48,8 +50,8 @@ CbStep.GET_CB_TIMEOUT_FV =
 
 CbStep.EVALUATE_FV =
 	getV()
-		.addA( "any", "undef", "arr" )
-		.addA( "undef", Error, "undef/arr" )
+		.addA( Error, "undef", "undef" )
+		.addA( "undef", [ Error, "undef" ], "arr" )
 		.setR( [ Error, "undef" ] )
 ;
 
@@ -69,6 +71,82 @@ var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 
 var SuiteStep = mods.get( "suitestep" );
 var CbStepObject = mods.get( "cbstepobject" );
+
+CbStep.prototype.evaluateCbStep =
+getF(
+getV()
+	.addA( [ Error, "undef" ] ),
+function( err )
+{
+// If an err has occurred then give it to landStep() but only if
+// no such err has already been handed over
+	if( err !== undefined )
+	{
+		if( this.cbStepErrGiven === false )
+		{
+			this.cbStepErrGiven = true;
+			this.landStep( err );
+		}
+		
+		return;
+	}
+	
+// So no err has occurred, but if such an err has previously
+// occurred, or if evaluateCbStep() is already done evaluating
+// the CbStep, then do nothing
+	if( this.cbStepErrGiven === true || this.cbStepDone === true )
+	{
+		return;
+	}
+	
+// Do nothing if all necessary data hasnt been set before
+// evaluation can take place
+	if(
+// Continue with evaluation if an err has been thrown by the
+// CbStep
+		this.thrownErr === undefined &&
+// Otherwise continue if the cb has been called (or timed out)
+// _and_ the CbStep has returned
+		(
+			(
+				this.cbTimedOut === false && this.stepCbCalled === false
+			)
+			||
+			this.stepReturned === false
+		)
+	)
+	{
+		return;
+	}
+	
+// Mark that evaluation is done, since this will be the case once
+// this call of evaluateCbStep() is done
+	this.cbStepDone = true;
+	
+	if( this.thrownErr !== undefined )
+	{
+		this.landStep( undefined, this.evaluate( this.thrownErr ) );
+	}
+	else if( this.cbTimedOut === true )
+	{
+		this.landStep(
+			undefined, 
+			new SuiteRuntimeError(
+				"The cb of Suite step '"+this.stepName+"' hasnt "+
+				"been called within the allowed time limit",
+				{ stepName: this.stepName },
+				"SuiteStepCbNotCalled"
+			)
+		);
+	}
+	else
+	{
+		this.landStep(
+			undefined,
+			this.evaluate( undefined, this.cbErr, this.cbArgs )
+		);
+	}
+});
 
 CbStep.prototype.getStepObj =
 getF(
@@ -90,8 +168,6 @@ function( cb )
 	setTimeout(
 		function()
 		{
-			cbStep.cbTimeoutId = undefined;
-			
 			cbStep.markCbTimedOut();
 		},
 		timeout
@@ -109,9 +185,6 @@ function( returnVar, thrownErr )
 	
 	this.handleCbThrownErr();
 	
-	this.cbStepReturnVar = returnVar;
-	this.cbStepThrownErr = thrownErr;
-	
 // A cb call isnt expected of the suite step if an err has been
 // thrown
 	if( thrownErr !== undefined )
@@ -122,6 +195,27 @@ function( returnVar, thrownErr )
 			
 			this.cbTimeoutId = undefined;
 		}
+		
+		if( this.stepCbCalled === true )
+		{
+			this.evaluateCbStep(
+				new SuiteRuntimeError(
+					"The cb of suite step '"+this.stepName+"' has thrown "+
+					"an err after having called its cb. Due to this all "+
+					"running suites must be terminated",
+					{
+						stepName: this.stepName,
+						thrownErr: thrownErr,
+						cbArgs: this.cbArgs
+					},
+					"SuiteStepCbCalledAndErrThrown"
+				)
+			);
+			
+			return;
+		}
+		
+		this.thrownErr = thrownErr;
 	}
 	
 	this.evaluateCbStep();
@@ -132,7 +226,12 @@ getF(
 getV(),
 function()
 {
-	this.cbTimedOut = true;
+	this.cbTimeoutId = undefined;
+	
+	if( this.stepCbCalled === false )
+	{
+		this.cbTimedOut = true;
+	}
 	
 	this.evaluateCbStep();
 });
@@ -166,30 +265,58 @@ function( err, cbArgs )
 // If the step's cb has already been called, or the CbStep has
 // thrown an err when executed by the suite
 	if(
-		this.stepCbCalled === true ||
-		this.cbStepThrownErr !== undefined
+		this.stepCbCalled === true || this.thrownErr !== undefined
 	)
 	{
-		this.evaluateCbStep(
-			new SuiteRuntimeError(
-				"The cb of Suite step '"+this.stepName+"' has been "+
-				"called twice or the cb has been called after that "+
-				"the Suite step has thrown an err. Due to this all "+
-				"running suites must be terminated",
-				{
-					stepName: this.stepName,
-					currentCbCallArgs: cbArgs,
-					previousCbCallArgs: this.cbStepCbArgs,
-					suiteStepThrownErr: this.cbStepThrownErr
-				}
-			)
-		);
+		var errCode = undefined;
+		
+		if( this.stepCbCalled === true )
+		{
+			this.evaluateCbStep(
+				new SuiteRuntimeError(
+					"The cb of suite step '"+this.stepName+"' has been "+
+					"called twice. Due to this all running suites must "+
+					"be terminated",
+					{
+						stepName: this.stepName,
+						currentCbArgs: cbArgs,
+						previousCbArgs: this.cbArgs
+					},
+					"SuiteStepCbCalledTwice"
+				)
+			);
+		}
+		else
+		{
+			this.evaluateCbStep(
+				new SuiteRuntimeError(
+					"The cb of suite step '"+this.stepName+"' has been "+
+					"called after that the step has thrown an err. Due "+
+					"to this all running suites must be terminated",
+					{
+						stepName: this.stepName,
+						thrownErr: this.thrownErr,
+						cbArgs: cbArgs
+					},
+					"SuiteStepCbCalledAndErrThrown"
+				)
+			);
+		}
 		
 		return;
 	}
 	
+	var cbErr = undefined;
+	if(
+		cbArgs.length > 0 && cbArgs[ 0 ] instanceof Error === true
+	)
+	{
+		cbErr = cbArgs[ 0 ];
+	}
+	
 	this.stepCbCalled = true;
-	this.cbStepCbArgs = cbArgs;
+	this.cbArgs = cbArgs;
+	this.cbErr = cbErr;
 	
 	this.evaluateCbStep();
 });
@@ -202,81 +329,19 @@ function()
 	return CbStep.DEFAULT_CB_TIMEOUT;
 });
 
-CbStep.prototype.evaluateCbStep =
-getF(
-getV()
-	.addA( [ Error, "undef" ] ),
-function( err )
-{
-	if( err !== undefined )
-	{
-		this.landStep( err );
-		
-		return;
-	}
-	
-	if( this.cbStepDone === true )
-	{
-		return;
-	}
-	
-	if(
-		this.cbStepThrownErr === undefined &&
-		(
-			(
-				this.stepCbCalled === false && this.cbTimedOut === false
-			)
-			||
-			this.stepReturned === false
-		)
-	)
-	{
-		return;
-	}
-	
-	this.cbStepDone = true;
-	
-	if( this.cbTimedOut === true )
-	{
-		this.landStep(
-			undefined,
-			new SuiteRuntimeError(
-				"The cb of Suite step '"+this.stepName+"' hasnt "+
-				"been called within the allowed time limit",
-				{ stepName: this.stepName },
-				"SuiteStepCbNotCalled"
-			)
-		);
-		
-		return;
-	}
-	
-	this.landStep(
-		undefined,
-		this.evaluate(
-			this.cbStepReturnVar,
-			this.cbStepThrownErr,
-			this.cbStepCbArgs
-		)
-	);
-});
-
 CbStep.prototype.evaluate =
 getF(
 CbStep.EVALUATE_FV,
-function( returnVar, thrownErr, cbArgs )
+function( thrownErr, cbErr, cbArgs )
 {
 	if( thrownErr !== undefined )
 	{
 		return thrownErr;
 	}
 	
-	if(
-		cbArgs.length !== 0 &&
-		cbArgs[ 0 ] instanceof Error === true
-	)
+	if( cbErr !== undefined )
 	{
-		return cbArgs[ 0 ];
+		return cbErr;
 	}
 	
 	return undefined;

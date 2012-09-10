@@ -39,13 +39,16 @@ var healthySuite =
 var expectSingleSuiteCbErr =
 getF(
 getV()
-	.addA( "str", "func", "obj", "obj" ),
-function( testName, errClass, faultySuite, healthySuite )
+	.addA( "str", "func", "str", "obj", "obj" ),
+function(
+	testName, errClass, errCode, faultySuite, healthySuite
+)
 {
 	test.expectCbErr(
 		testName,
 		errClass,
-		CbStep.DEFAULT_CB_TIMEOUT + 2000,
+		errCode,
+		CbStep.DEFAULT_CB_TIMEOUT+2000,
 		function( cb )
 		{
 			new SuiteRun( new SuiteHolder( "suite", faultySuite ) )
@@ -72,12 +75,15 @@ function( testName, errClass, faultySuite, healthySuite )
 var expectSuiteCbErr =
 getF(
 getV()
-	.addA( "str", "func", "obj", "obj" ),
-function( testName, errClass, faultySuiteObj, healthySuiteObj )
+	.addA( "str", "func", "str", "obj", "obj" ),
+function(
+	testName, errClass, errCode, faultySuiteObj, healthySuiteObj
+)
 {
 	expectSingleSuiteCbErr(
 		testName+" - plain suite",
 		errClass,
+		errCode,
 		faultySuiteObj,
 		healthySuiteObj
 	);
@@ -85,6 +91,7 @@ function( testName, errClass, faultySuiteObj, healthySuiteObj )
 	expectSingleSuiteCbErr(
 		testName+" - nested suite",
 		errClass,
+		errCode,
 		{
 			next:[ "nested suite", faultySuiteObj ]
 		},
@@ -96,6 +103,7 @@ function( testName, errClass, faultySuiteObj, healthySuiteObj )
 	expectSingleSuiteCbErr(
 		testName+" - two nested suites",
 		errClass,
+		errCode,
 		{
 			next:
 			[
@@ -149,7 +157,7 @@ getV()
 	.addA( "str", "obj", "func" ),
 function( testName, suite, verify )
 {
-	var cbTime = CbStep.DEFAULT_CB_TIMEOUT + 2000;
+	var cbTime = CbStep.DEFAULT_CB_TIMEOUT+2000;
 	
 	var suiteRun =
 		new SuiteRun( new SuiteHolder( "suite", suite ) )
@@ -425,7 +433,7 @@ testSuiteRun(
 		assert(
 			run.runOk === false &&
 			run.topic.err.constructor === TestingError &&
-			run.topic.thrownErr === undefined &&
+			run.topic.thrownErr.constructor === TestingError &&
 			run.topic.result === undefined &&
 			run.vows.length === 1 &&
 			run.vows[ 0 ].err === undefined &&
@@ -451,7 +459,7 @@ testSuiteRun(
 		assert(
 			run.runOk === false &&
 			run.topic.err instanceof Error === true &&
-			run.topic.thrownErr === undefined &&
+			run.topic.thrownErr instanceof Error === true &&
 			run.topic.result === undefined &&
 			run.vows.length === 1 &&
 			run.vows[ 0 ].err === undefined &&
@@ -661,8 +669,7 @@ testSuiteRun(
 			run.runOk === false &&
 			run.topic.stepOk === false &&
 			run.topic.err.constructor === TestingError &&
-			run.topic.thrownErr === undefined &&
-			run.topic.cbErr === undefined &&
+			run.topic.cbErr.constructor === TestingError &&
 			run.topic.result === undefined &&
 			run.vows[ 0 ].stepOk === undefined &&
 			run.vows[ 0 ].err === undefined,
@@ -806,44 +813,12 @@ testSuiteRun(
 // testing suites with topicCb that signals it is done many times
 // by a combination of call(s) to cb() and throwing err
 
-testSuiteRun(
-	"faulty topicCb with cb(err) followed by "+
-	"throwing an err and faulty cancelled vow",
-	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb( new TestingError( undefined, undefined, "cbErr" ) );
-			
-			throw new TestingError(
-				undefined, undefined, "thrownErr"
-			);
-		},
-		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", faultyFunc ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.topic.stepOk === false &&
-			run.topic.err.constructor === TestingError &&
-			run.topic.err.ourGlobeCode === "thrownErr" &&
-			run.vows[ 0 ].stepOk === undefined &&
-			run.vows[ 0 ].err === undefined,
-			"run result is invalid"
-		);
-	}
-);
-
 expectSuiteCbErr(
 	"testing faulty topicCb with two direct calls to cb() "+
 	"(terminates suite test with err) and another faulty topicCb "+
-	"with direct call to cb() and then throws an err (doesnt "+
-	"terminate tests)",
+	"with direct call to cb() (doesnt terminate tests)",
 	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		topicCb:
 		function()
@@ -851,7 +826,6 @@ expectSuiteCbErr(
 			var cb = this.getCb();
 			
 			cb();
-			
 			cb();
 		},
 		argsVer: getV().setE( "any" ),
@@ -862,8 +836,6 @@ expectSuiteCbErr(
 		function()
 		{
 			var cb = this.getCb();
-			
-			throw new TestingError();
 			
 			cb();
 		},
@@ -877,6 +849,7 @@ expectSuiteCbErr(
 	"cb() (terminates suite test with err) and another faulty "+
 	"topicCb calling direct cb(err) (doesnt terminate test)",
 	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		topicCb:
 		function()
@@ -904,10 +877,11 @@ expectSuiteCbErr(
 );
 
 expectSuiteCbErr(
-	"testing faulty topicCb with two calls to delayed cb() "+
+	"testing faulty topicCb with two delayed calls to cb() "+
 	"(terminates suite test with err) and another faulty topicCb "+
-	"calling delayed cb(err) (doesnt terminate test)",
+	"calling delayed cb() (doesnt terminate test)",
 	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		topicCb:
 		function()
@@ -942,9 +916,273 @@ expectSuiteCbErr(
 			setTimeout(
 				function()
 				{
+					cb();
+				},
+				100
+			);
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty topicCb allowed to throw err and give cb err "+
+	"and that throws err and calls direct cb() (terminates "+
+	"suite test with err) and faulty topicCb that throws err "+
+	"(doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		conf:
+		{
+			allowThrownErr: true,
+			allowCbErr: true
+		},
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			
+			throw new TestingError();
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			throw new TestingError();
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty topicCb allowed to throw err and give cb err "+
+	"and that throws err and calls delayed cb() (terminates "+
+	"suite test with err) and faulty topicCb that throws err "+
+	"(doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		conf:
+		{
+			allowThrownErr: true,
+			allowCbErr: true
+		},
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+			
+			throw new TestingError();
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			throw new TestingError();
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty topicCb allowed to throw err and give cb err "+
+	"and that throws err and gives delayed cb err (terminates "+
+	"suite test with err) and faulty topicCb that gives delayed "+
+	"cb err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		conf:
+		{
+			allowThrownErr: true,
+			allowCbErr: true
+		},
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
 					cb( new TestingError() );
 				},
 				100
+			);
+			
+			throw new TestingError();
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty topicCb allowed to throw err and give cb "+
+	"err but never calls cb within timeout limit and then gives "+
+	"errs to two delayed cbs (terminates all tests with err) and "+
+	"another faulty topicCb that also never calls cb within "+
+	"allowed timeout period and then calls delayed cb (doesnt "+
+	"terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		conf:
+		{
+			allowThrownErr: true,
+			allowCbErr: true
+		},
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1500
+			);
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty topicCb allowed to throw err and give cb "+
+	"err and that makes multiple calls to delayed cbs with and "+
+	"without errs (terminates all tests with err, but yields "+
+	"only one such err) and another faulty topicCb that also "+
+	"never calls cb within allowed timeout period and then calls "+
+	"delayed cb (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		conf:
+		{
+			allowThrownErr: true,
+			allowCbErr: true
+		},
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+100
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+200
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+300
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+400
+			);
+		},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		topicCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -977,8 +1215,8 @@ testSuiteRun(
 );
 
 testSuiteRun(
-	"faulty topicCb with no call to cb() within timeout limit "+
-	"and delayed call cb() and cb(err) and faulty cancelled vow",
+	"testing faulty topicCb with no call to cb() within timeout "+
+	"limit and then delayed call cb() and faulty cancelled vow",
 	{
 		topicCb:
 		function()
@@ -1521,90 +1759,6 @@ testSuiteRun(
 );
 
 testSuiteRun(
-	"faulty topicCb throws allowed err and calls cb",
-	{
-		conf:
-		{
-			allowThrownErr: true
-		},
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-			
-			throw new TestingError();
-		},
-		argsVer: getV().addA( TestingError ).addA(),
-		vows:[ "dingo", emptyFunc ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.topic.stepOk === false &&
-			run.topic.err.constructor === SuiteRuntimeError &&
-			run.topic.err.ourGlobeCode === "ErrThrownAndCbCalled" &&
-			run.topic.result === undefined &&
-			run.topic.thrownErr === undefined &&
-			run.topic.cbErr === undefined &&
-			run.argsVer.stepOk === undefined,
-			"run result is invalid"
-		);
-	}
-);
-
-expectSuiteCbErr(
-	"testing faulty topicCb allowed to throw err but calls "+
-	"delayed cb too (terminates suite test with err) and faulty "+
-	"topicCb allowed to throw err and give cb err and directly "+
-	"calls cb(err) and throws err (doesnt terminate tests)",
-	SuiteRuntimeError,
-	{
-		conf:
-		{
-			allowThrownErr: true
-		},
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-			
-			throw new TestingError();
-		},
-		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", emptyFunc ]
-	},
-	{
-		conf:
-		{
-			allowThrownErr: true,
-			allowCbErr: true
-		},
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb( new TestingError() );
-			
-			throw new TestingError();
-		},
-		argsVer: getV().setE( "any" ),
-		vows:[ "dingo", emptyFunc ]
-	}
-);
-
-testSuiteRun(
 	"faulty topicCb allowed to throw err but instead gives err "+
 	"to cb and healthy vow",
 	{
@@ -1635,7 +1789,7 @@ testSuiteRun(
 			run.topic.stepOk === false &&
 			run.topic.err.constructor === TestingError &&
 			run.topic.result === undefined &&
-			run.topic.cbErr === undefined &&
+			run.topic.cbErr.constructor === TestingError &&
 			run.topic.thrownErr === undefined &&
 			run.argsVer.stepOk === undefined &&
 			run.vows[ 0 ].stepOk === undefined,
@@ -1645,8 +1799,8 @@ testSuiteRun(
 );
 
 testSuiteRun(
-	"faulty topicCb allowed to give err to cb but instead "+
-	"throws err and healthy vow",
+	"testing faulty topicCb and healthy vow where topicCb is "+
+	"allowed to give cb err but instead throws err",
 	{
 		conf:
 		{
@@ -1657,11 +1811,7 @@ testSuiteRun(
 		{
 			var cb = this.getCb();
 			
-			cb( new TestingError( undefined, undefined, "cbErr" ) );
-			
-			throw new TestingError(
-				undefined, undefined, "thrownErr"
-			);
+			throw new TestingError();
 		},
 		argsVer:[ TestingError ],
 		vows:[ "dingo", emptyFunc ]
@@ -1672,7 +1822,8 @@ testSuiteRun(
 			run.runOk === false &&
 			run.topic.stepOk === false &&
 			run.topic.err.constructor === TestingError &&
-			run.topic.err.ourGlobeCode === "thrownErr" &&
+			run.topic.cbErr === undefined &&
+			run.topic.thrownErr.constructor === TestingError &&
 			run.argsVer.stepOk === undefined,
 			"run result is invalid"
 		);
@@ -1680,8 +1831,9 @@ testSuiteRun(
 );
 
 testSuiteRun(
-	"faulty topicCb allowed to throw and give err to cb but "+
-	"never calls cb and healthy vow",
+	"testing faulty topicCb and healthy cancelled vow where "+
+	"topicCb is allowed to throw and give cb er but never calls "+
+	"cb",
 	{
 		conf:
 		{
@@ -3712,118 +3864,14 @@ testSuiteRun(
 );
 
 // testing suites with beforeCb that signals it is done many
-// times by throwing err and calling cb once or many times
-
-testSuiteRun(
-	"Testing faulty suite with faulty beforeCb that directly "+
-	"passes err to cb and then calls delayed cb again. Making "+
-	"sure the second call to cb doesnt terminate the suite run "+
-	"even if there's already been a cb call",
-	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb( new TestingError() );
-		},
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "vow one", emptyFunc ],
-		next:[ "suite one", healthySuite ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.before.stepOk === false &&
-			run.before.err.constructor === TestingError &&
-			run.topic.stepOk === undefined,
-			"run result is invalid"
-		);
-	}
-);
-
-testSuiteRun(
-	"Testing faulty suite with faulty beforeCb that throws err "+
-	"and then calls delayed cb. Making sure the delayed cb call "+
-	"doesnt terminate the suite run even if beforeCb is already "+
-	"done due to the thrown err",
-	{
-		beforeCb:
-		function()
-		{
-			var beforeCb = this;
-			
-			setTimeout(
-				function()
-				{
-					var cb = beforeCb.getCb();
-					
-// This call doesnt halt the suite run even if the suite step has
-// already marked to be done by throwing an err, and so the call
-// is ignored
-					cb();
-				},
-				200
-			);
-			
-			throw new TestingError();
-		},
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "vow one", emptyFunc ],
-		next:[ "suite one", healthySuite ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.before.stepOk === false &&
-			run.before.err.constructor === TestingError &&
-			run.topic.stepOk === undefined,
-			"run result is invalid"
-		);
-	}
-);
-
-testSuiteRun(
-	"Testing faulty suite with faulty beforeCb that makes direct "+
-	"call to cb and throws err. Making sure direct call to cb is "+
-	"ok even if an err is also thrown",
-	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-			
-			throw new TestingError();
-		},
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "vow one", emptyFunc ],
-		next:[ "suite one", healthySuite ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			run.before.stepOk === false &&
-			run.before.err.constructor === TestingError &&
-			run.topic.stepOk === undefined,
-			"run result is invalid"
-		);
-	}
-);
+// times by a combination of call(s) to cb() and throwing err
 
 expectSuiteCbErr(
 	"testing faulty beforeCb with two direct calls to cb() "+
-	"(terminates tests with err) and another faulty beforeCb "+
-	"with direct call to cb(err) throws err (doesnt terminate "+
-	"tests)",
+	"(terminates suite test with err) and another faulty "+
+	"beforeCb with direct call to cb() (doesnt terminate tests)",
 	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		beforeCb:
 		function()
@@ -3831,13 +3879,32 @@ expectSuiteCbErr(
 			var cb = this.getCb();
 			
 			cb();
+			cb();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
 			
 			cb();
 		},
 		topic: emptyFunc,
-		argsVer: undefVer,
-		vows:[ "vow one", emptyFunc ]
-	},
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb calling direct cb(err) and direct "+
+	"cb() (terminates suite test with err) and another faulty "+
+	"beforeCb calling direct cb(err) (doesnt terminate test)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		beforeCb:
 		function()
@@ -3846,19 +3913,32 @@ expectSuiteCbErr(
 			
 			cb( new TestingError() );
 			
-			throw new TestingError();
+			cb();
 		},
 		topic: emptyFunc,
-		argsVer: undefVer,
-		vows:[ "vow one", emptyFunc ]
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb( new TestingError() );
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
 	}
 );
 
 expectSuiteCbErr(
-	"Testing faulty beforeCb with two calls to delayed cb() "+
-	"(terminates tests with err) and another faulty beforeCb "+
-	"with delayed call to cb() (doesnt terminate)",
+	"testing faulty beforeCb with two delayed calls to cb() "+
+	"(terminates suite test with err) and another faulty "+
+	"beforeCb calling delayed cb() (doesnt terminate test)",
 	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
 	{
 		beforeCb:
 		function()
@@ -3882,8 +3962,8 @@ expectSuiteCbErr(
 			);
 		},
 		topic: emptyFunc,
-		argsVer: undefVer,
-		vows:[ "vow one", emptyFunc ]
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
 	},
 	{
 		beforeCb:
@@ -3900,8 +3980,307 @@ expectSuiteCbErr(
 			);
 		},
 		topic: emptyFunc,
-		argsVer: undefVer,
-		vows:[ "vow one", emptyFunc ]
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb that throws err and calls direct "+
+	"cb() (terminates suite test with err) and another faulty "+
+	"beforeCb that throws err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb that throws err and calls delayed "+
+	"cb() (terminates suite test with err) and another faulty "+
+	"beforeCb that throws err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+			
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb that throws err and gives delayed "+
+	"cb err (terminates suite test with err) and another faulty "+
+	"beforeCb that gives delayed cb err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+			
+			throw new TestingError();
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb "+
+	"that never calls cb within timeout limit and then gives "+
+	"errs to two delayed cbs (terminates all tests with err) and "+
+	"another faulty beforeCb that also never calls cb within "+
+	"allowed timeout period and then calls delayed cb (doesnt "+
+	"terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1500
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty beforeCb that makes multiple calls to "+
+	"delayed cbs with and without errs (terminates all tests "+
+	"with err, but yields only one such err) and another faulty "+
+	"beforeCb that also never calls cb within allowed timeout "+
+	"period and then calls delayed cb (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+100
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+200
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+300
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+400
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	},
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ]
+	}
+);
+
+// testing suites with beforeCb that doesnt call cb() within
+// allowed timeout limit
+
+testSuiteRun(
+	"testing faulty beforeCb that makes no call to cb()",
+	{
+		beforeCb: emptyFunc,
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", faultyFunc ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === SuiteRuntimeError &&
+			run.before.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			run.topic.stepOk === undefined,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty beforeCb with no call to cb within timeout "+
+	"limit and then calls delayed cb",
+	{
+		beforeCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		},
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", faultyFunc ]
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === false &&
+			run.before.err.constructor === SuiteRuntimeError &&
+			run.before.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
+			run.topic.stepOk === undefined,
+			"run result is invalid"
+		);
 	}
 );
 

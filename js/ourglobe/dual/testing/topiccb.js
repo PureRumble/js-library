@@ -34,8 +34,6 @@ function()
 function( suiteRun, topicCb )
 {
 	this.result = undefined;
-	this.thrownErr = undefined;
-	this.cbErr = undefined;
 	
 	if( topicCb !== undefined )
 	{
@@ -114,51 +112,39 @@ function( cb )
 TopicCb.prototype.evaluate =
 getF(
 CbStep.EVALUATE_FV,
-function( returnVar, thrownErr, cbArgs )
+function( thrownErr, cbErr, cbArgs )
 {
 	var conf = this.suiteRun.suiteHolder.conf;
 	
-	if( thrownErr !== undefined && conf.allowThrownErr === false )
+	if( thrownErr !== undefined )
 	{
-		return thrownErr;
+		if( conf.allowThrownErr === true )
+		{
+			this.result = [ thrownErr ];
+			
+			return undefined;
+		}
+		else
+		{
+			return thrownErr;
+		}
 	}
 	
-	var cbErr = undefined;
-	
-	if(
-		cbArgs !== undefined &&
-		cbArgs.length > 0 &&
-		cbArgs[ 0 ] instanceof Error === true
-	)
+	if( cbErr !== undefined )
 	{
-		cbErr = cbArgs[ 0 ];
+		if( conf.allowCbErr === true )
+		{
+			this.result = cbArgs;
+			
+			return undefined;
+		}
+		else
+		{
+			return cbErr;
+		}
 	}
 	
-	if( cbErr !== undefined && conf.allowCbErr === false )
-	{
-		return cbErr;
-	}
-	
-	if( thrownErr !== undefined && cbArgs !== undefined )
-	{
-		return(
-			new SuiteRuntimeError(
-				"Suite step 'topicCb' may not both throw an err"+
-				"err and call its cb, but it is allowed to do so if "+
-				"the prop 'conf' forbids thrown errs or if there is a "+
-				"cb err that 'conf' forbids (in such case 'topicCb' "+
-				"fails)",
-				{ thrownErr: thrownErr, cbArgs: cbArgs },
-				"ErrThrownAndCbCalled"
-			)
-		);
-	}
-	
-	var result = thrownErr !== undefined ? [ thrownErr ] : cbArgs;
-	
-	this.result = result;
-	this.thrownErr = thrownErr;
-	this.cbErr = cbErr;
+	this.result = cbArgs;
 	
 	return undefined;
 });

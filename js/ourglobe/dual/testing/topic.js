@@ -33,7 +33,6 @@ function()
 function( suiteRun, topic )
 {
 	this.result = undefined;
-	this.thrownErr = undefined;
 	
 	if( topic !== undefined )
 	{
@@ -99,12 +98,9 @@ function( returnVar, thrownErr )
 		return thrownErr;
 	}
 	
-	var result =
+	this.result =
 		thrownErr !== undefined ? [ thrownErr ] : [ returnVar ]
 	;
-	
-	this.result = result;
-	this.thrownErr = thrownErr;
 	
 	return undefined;
 });
