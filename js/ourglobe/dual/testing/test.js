@@ -174,14 +174,30 @@ function(
 };
 
 Test.expectCbErr =
-function( testName, errClass, cbTime, errFunc, refFunc )
+function( testName, errClass, errCode, cbTime, errFunc, refFunc )
 {
-	if( arguments.length < 4 || arguments.length > 5 )
+	if( arguments.length < 4 || arguments.length > 6 )
 	{
 		throw new TestRuntimeError(
-			"Between four and five args must be provided",
+			"Between four and six args must be provided",
 			{ providedArgs: arguments }
 		);
+	}
+	
+	if(
+		refFunc === undefined &&
+		( errFunc === undefined || errFunc instanceof Function ) &&
+		cbTime instanceof Function === true &&
+		(
+			typeof( errCode ) === "number" ||
+			errCode instanceof Function === true
+		)
+	)
+	{
+		refFunc = errFunc;
+		errFunc = cbTime;
+		cbTime = errCode;
+		errCode = undefined;
 	}
 	
 	if(
@@ -231,6 +247,13 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 		);
 	}
 	
+	if( errCode !== undefined && typeof( errCode ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg errCode must be a str or undef", { errCode: errCode }
+		);
+	}
+	
 	console.log( testName );
 	
 	var errPrefix =
@@ -272,7 +295,17 @@ function( testName, errClass, cbTime, errFunc, refFunc )
 					errPrefix+
 					"The error given to the cb of the error func isnt of "+
 					"expected class",
-					{ givenErr: err }
+					{ cbErr: err }
+				);
+			}
+			
+			if( errCode !== undefined && err.ourGlobeCode !== errCode )
+			{
+				throw new TestRuntimeError(
+					errPrefix+
+					"The error thrown by the error func doesnt have "+
+					"the expected error code",
+					{ expectedCode: errCode, cbErr: err }
 				);
 			}
 		}
