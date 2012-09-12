@@ -40,6 +40,7 @@ function( name, suiteObj, parentSuite )
 	this.vows = SuiteHolder.orderArr( suiteObj.vows );
 	this.next = SuiteHolder.orderArr( suiteObj.next );
 	this.after = suiteObj.after;
+	this.afterCb = suiteObj.afterCb;
 	
 	if( sys.hasType( suiteObj.argsVer, "arr" ) === true )
 	{
@@ -128,7 +129,8 @@ function( name, suiteObj, topicFound )
 			prop !== "argsVer" &&
 			prop !== "vows" &&
 			prop !== "next" &&
-			prop !== "after"
+			prop !== "after" &&
+			prop !== "afterCb"
 		)
 		{
 			throw new SuiteRuntimeError(
@@ -149,6 +151,7 @@ function( name, suiteObj, topicFound )
 	var vows = suiteObj[ "vows" ];
 	var next = suiteObj[ "next" ];
 	var after = suiteObj[ "after" ];
+	var afterCb = suiteObj[ "afterCb" ];
 	
 	if( topicFound === false )
 	{
@@ -307,6 +310,28 @@ function( name, suiteObj, topicFound )
 		throw new SuiteRuntimeError(
 			"Prop after of a suite must be undef or a func",
 			{ suiteName: name, after: after },
+			"AfterIsNotValid"
+		);
+	}
+	
+	if(
+		afterCb !== undefined &&
+		sys.hasType( afterCb, "func" ) === false
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop afterCb of a suite must be undef or a func",
+			{ suiteName: name, afterCb: afterCb },
+			"AfterIsNotValid"
+		);
+	}
+	
+	if( after !== undefined && afterCb !== undefined )
+	{
+		throw new SuiteRuntimeError(
+			"A suite cant have both props after and "+
+			"afterCb set",
+			{ suiteName: name, after: after, afterCb: afterCb },
 			"AfterIsNotValid"
 		);
 	}

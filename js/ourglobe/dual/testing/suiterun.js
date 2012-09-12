@@ -9,7 +9,8 @@ ourglobe.define(
 	"./topiccb",
 	"./argsver",
 	"./vow",
-	"./after"
+	"./after",
+	"./aftercb"
 ],
 function( mods )
 {
@@ -25,6 +26,7 @@ var TopicCb = undefined;
 var ArgsVer = undefined;
 var Vow = undefined;
 var After = undefined;
+var AfterCb = undefined;
 
 mods.delay(
 	function()
@@ -37,6 +39,7 @@ mods.delay(
 		ArgsVer = mods.get( "argsver" );
 		Vow = mods.get( "vow" );
 		After = mods.get( "after" );
+		AfterCb = mods.get( "aftercb" );
 	}
 );
 
@@ -106,7 +109,14 @@ function( suiteHolder, parentRun )
 	
 	this.next = [];
 	
-	this.after = new After( this );
+	if( suiteHolder.afterCb !== undefined )
+	{
+		this.after = new AfterCb( this );
+	}
+	else
+	{
+		this.after = new After( this );
+	}
 });
 
 SuiteRun.RUN_CB_FV =

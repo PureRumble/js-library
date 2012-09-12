@@ -845,7 +845,7 @@ expectErr(
 	false
 );
 
-// testing verification of suite step after
+// testing verification of suite steps after and afterCb
 
 expectErr(
 	"Suite prop after must be a func",
@@ -863,6 +863,34 @@ expectErr(
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
 		after: emptyFunc
+	}
+);
+
+expectErr(
+	"A suite may not have both props after and afterCb set",
+	"AfterIsNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		after: emptyFunc,
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+		}
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+		}
 	}
 );
 

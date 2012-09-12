@@ -1487,6 +1487,13 @@ expectErr(
 						
 						cb();
 					},
+					afterCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						cb();
+					},
 					argsVer:[],
 					vows:[ "dingo", emptyFunc ],
 					next:
@@ -1501,6 +1508,13 @@ expectErr(
 								cb();
 							},
 							topicCb:
+							function()
+							{
+								var cb = this.getCb();
+								
+								cb();
+							},
+							afterCb:
 							function()
 							{
 								var cb = this.getCb();
@@ -1529,9 +1543,11 @@ expectErr(
 						run.runOk === true &&
 						run.before.stepOk === true &&
 						run.topic.stepOk === true &&
+						run.after.stepOk === true &&
 						run.next[ 0 ].runOk === true &&
 						run.next[ 0 ].before.stepOk === true &&
-						run.next[ 0 ].topic.stepOk === true,
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].after.stepOk === true,
 						"run result is invalid"
 					);
 					
@@ -2547,18 +2563,23 @@ testSuiteRun(
 		var beforeWritten = undefined;
 		var topicRead = undefined;
 		var topicWritten = undefined;
+		
+		var vowOneRead = undefined;
+		var vowOneWritten = undefined;
+		var vowTwoRead = undefined;
+		var vowTwoWritten = undefined;
+		
 		var suiteOneBeforeRead = undefined;
 		var suiteOneBeforeWritten = undefined;
 		var suiteOneTopicRead = undefined;
 		var suiteOneTopicWritten = undefined;
 		var suiteOneTopicDelayedRead = undefined;
 		var suiteOneTopicDelayedWritten = undefined;
-		var vowOneRead = undefined;
-		var vowOneWritten = undefined;
-		var vowTwoRead = undefined;
-		var vowTwoWritten = undefined;
 		var suiteOneVowOneRead = undefined;
 		var suiteOneVowOneWritten = undefined;
+		var suiteOneAfterRead = undefined;
+		var suiteOneAfterWritten = undefined;
+		
 		var suiteTwoBeforeRead = undefined;
 		var suiteTwoBeforeWritten = undefined;
 		var suiteTwoTopicRead = undefined;
@@ -2674,10 +2695,17 @@ testSuiteRun(
 								this.set( "dingo", "suiteOneVowOneWasHere" );
 								suiteOneVowOneWritten = this.get( "dingo" );
 							}
-						]
-// todo
-// add afterCb here that does the same thing as
-// beforeCb
+						],
+						afterCb:
+						function()
+						{
+							suiteOneAfterRead = this.get( "dingo" );
+							this.set( "dingo", "suiteOneAfterWasHere" );
+							suiteOneAfterWritten = this.get( "dingo" );
+							
+							var cb = this.getCb();
+							cb();
+						},
 					},
 // this suite over shadows its parent suite's local var and
 // also handles another local var of its own
@@ -2764,6 +2792,7 @@ testSuiteRun(
 					vowOneWritten === "vowOneWasHere" &&
 					vowTwoRead === "vowOneWasHere" &&
 					vowTwoWritten === "vowTwoWasHere" &&
+					
 					suiteOneBeforeRead === "vowTwoWasHere" &&
 					suiteOneBeforeWritten === "suiteOneBeforeWasHere" &&
 					suiteOneTopicRead === "suiteOneBeforeWasHere" &&
@@ -2774,6 +2803,9 @@ testSuiteRun(
 					&&
 					suiteOneVowOneRead === "suiteOneTopicDelayedWasHere" &&
 					suiteOneVowOneWritten === "suiteOneVowOneWasHere" &&
+					suiteOneAfterRead === "suiteOneVowOneWasHere" &&
+					suiteOneAfterWritten === "suiteOneAfterWasHere" &&
+					
 					suiteTwoBeforeRead === "suiteTwoBeforeGoesFirst" &&
 					suiteTwoBeforeWritten === "suiteTwoBeforeWasHere" &&
 					suiteTwoTopicRead === "suiteTwoBeforeWasHere" &&
@@ -2825,6 +2857,7 @@ testSuiteRun(
 		var suiteOneBeforeHasParent = undefined;
 		var suiteOneTopicHasParent = undefined;
 		var suiteOneVowOneHasParent = undefined;
+		var suiteOneAfterHasParent = undefined;
 		
 		return(
 			{
@@ -2882,9 +2915,15 @@ testSuiteRun(
 								{
 									suiteOneVowOneHasParent = this.hasParent();
 								}
-							]
-// todo
-// add afterCb here that does the same as beforeCb
+							],
+							afterCb:
+							function()
+							{
+								suiteOneAfterHasParent = this.hasParent();
+								
+								var cb = this.getCb();
+								cb();
+							}
 						}
 					]
 				},
@@ -2898,7 +2937,8 @@ testSuiteRun(
 						vowOneHasParent === false &&
 						suiteOneBeforeHasParent === true &&
 						suiteOneTopicHasParent === true &&
-						suiteOneVowOneHasParent === true,
+						suiteOneVowOneHasParent === true &&
+						suiteOneAfterHasParent === true,
 						"run result is invalid"
 					);
 				}
@@ -2922,6 +2962,10 @@ testSuiteRun(
 		var suiteOneTopicParentRes = undefined;
 		var suiteOneTopicParentErrOccurred = undefined;
 		var suiteOneTopicParentErrThrown = undefined;
+		
+		var suiteOneAfterParentRes = undefined;
+		var suiteOneAfterParentErrOccurred = undefined;
+		var suiteOneAfterParentErrThrown = undefined;
 		
 		var suiteOneOneTopicParentRes = undefined;
 		var suiteOneOneTopicParentErrOccurred = undefined;
@@ -2996,9 +3040,22 @@ testSuiteRun(
 // gives cb err so child suite can test this result
 								cb( new TestingError() );
 							},
-// todo
-// add afterCb here and make it to do the same
-// thing as beforeCb
+							afterCb:
+							function()
+							{
+								var parent = this.getParent();
+								
+								suiteOneAfterParentRes = parent.getTopicRes();
+								suiteOneAfterParentErrOccurred =
+									parent.topicErrOccurred()
+								;
+								suiteOneAfterParentErrThrown =
+									parent.topicErrThrown()
+								;
+								
+								var cb = this.getCb();
+								cb();
+							},
 							argsVer:[ TestingError ],
 							vows:
 							[
@@ -3130,6 +3187,11 @@ testSuiteRun(
 						suiteOneTopicParentRes[ 0 ] === "dingo" &&
 						suiteOneTopicParentErrOccurred === false &&
 						suiteOneTopicParentErrThrown === false &&
+						
+						suiteOneAfterParentRes.length === 1 &&
+						suiteOneAfterParentRes[ 0 ] === "dingo" &&
+						suiteOneAfterParentErrOccurred === false &&
+						suiteOneAfterParentErrThrown === false &&
 						
 						suiteOneVowOneParentRes.length === 1 &&
 						suiteOneVowOneParentRes[ 0 ] === "dingo" &&
@@ -3954,33 +4016,6 @@ testSuiteRun(
 			
 			run.before.stepOk === false &&
 			run.before.err.constructor === TestingError &&
-			
-			run.topic.stepOk === undefined &&
-			run.argsVer.stepOk === undefined &&
-			run.vows[ 0 ].stepOk === undefined &&
-			run.next.length === 0,
-			"run result is invalid"
-		);
-	}
-);
-
-testSuiteRun(
-	"faulty suite with faulty beforeCb that never calls cb()",
-	{
-		beforeCb: emptyFunc,
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "vow one", emptyFunc ],
-		next:[ "suite one", healthySuite ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === false &&
-			
-			run.before.stepOk === false &&
-			run.before.err.constructor === SuiteRuntimeError &&
-			run.before.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
 			
 			run.topic.stepOk === undefined &&
 			run.argsVer.stepOk === undefined &&
@@ -5099,6 +5134,430 @@ testSuiteRun(
 					);
 				}
 			}
+		);
+	}
+);
+
+// test group
+// testing suites with suite step afterCb and it in relation to
+// other suite steps
+
+testSuiteRun(
+	"healthy suite with afterCb that receives args and making "+
+	"sure the args passed to cb by afterCb are ignored",
+	function()
+	{
+		var suiteOneAfterCbArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "suite one", healthySuite ],
+					afterCb:
+					function()
+					{
+						suiteOneAfterCbArgs = arguments;
+						
+						var cb = this.getCb();
+						cb();
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						
+						run.topic.stepOk === true &&
+						run.argsVer.stepOk === true &&
+						run.vows[ 0 ].stepOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].before.stepOk === true &&
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].argsVer.stepOk === true &&
+						run.next[ 0 ].vows[ 0 ].stepOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.after.stepOk === true &&
+						run.after.err === undefined &&
+						suiteOneAfterCbArgs.length === 0,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"healthy suite with afterCb that makes delayed call to cb()",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var afterCb = this;
+			
+			setTimeout(
+				function()
+				{
+					var cb = afterCb.getCb();
+					
+// Passing err as second arg doesnt make afterCb to fail
+					cb( "dingo", new TestingError() );
+				},
+				100
+			);
+		},
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === true &&
+			
+			run.after.stepOk === true &&
+			run.after.err === undefined,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"faulty suite with faulty afterCb that passes err to "+
+	"delayed cb()",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ],
+		afterCb:
+		function()
+		{
+			var afterCb = this;
+			
+			setTimeout(
+				function()
+				{
+					var cb = afterCb.getCb();
+					
+					cb( new TestingError() );
+				},
+				100
+			);
+		}
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			
+			run.after.stepOk === false &&
+			run.after.err.constructor === TestingError,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"faulty suite with faulty afterCb that never calls cb()",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ],
+		afterCb: emptyFunc
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			
+			run.after.stepOk === false &&
+			run.after.err.constructor === SuiteRuntimeError &&
+			run.after.err.ourGlobeCode === "SuiteStepCbNotCalled",
+			"run result is invalid"
+		);
+	}
+);
+
+// testing suites with afterCb that signals it is done many
+// times by a combination of call(s) to cb() and throwing err
+
+expectSuiteCbErr(
+	"testing faulty afterCb with two direct calls to cb() "+
+	"(terminates suite test with err) and a healthy afterCb "+
+	"with direct call to cb() (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			cb();
+		}
+	},
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+		}
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty afterCb with two delayed calls to cb() "+
+	"(terminates suite test with err) and a healthy afterCb "+
+	"calling delayed cb() (doesnt terminate test)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				300
+			);
+		}
+	},
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				100
+			);
+		}
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty afterCb that throws err and calls direct "+
+	"cb() (terminates suite test with err) and a healthy afterCb "+
+	"that throws err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			cb();
+			throw new TestingError();
+		}
+	},
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			throw new TestingError();
+		},
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty afterCb that throws err and gives delayed "+
+	"cb err (terminates suite test with err) and another faulty "+
+	"afterCb that gives delayed cb err (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledAndErrThrown",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+			
+			throw new TestingError();
+		},
+	},
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				100
+			);
+		},
+	}
+);
+
+expectSuiteCbErr(
+	"testing faulty afterCb that never calls cb within timeout "+
+	"limit and then gives errs to two delayed cbs (terminates "+
+	"all tests with err) and another faulty afterCb that also "+
+	"never calls cb within allowed timeout period and then calls "+
+	"delayed cb (doesnt terminate tests)",
+	SuiteRuntimeError,
+	"SuiteStepCbCalledTwice",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+			
+			setTimeout(
+				function()
+				{
+					cb( new TestingError() );
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1500
+			);
+		}
+	},
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", emptyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		}
+	}
+);
+
+// testing suites with afterCb that doesnt call cb() within
+// allowed timeout limit
+
+testSuiteRun(
+	"testing faulty afterCb that makes no call to cb()",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", faultyFunc ],
+		afterCb: emptyFunc
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.after.stepOk === false &&
+			run.after.err.constructor === SuiteRuntimeError &&
+			run.after.err.ourGlobeCode === "SuiteStepCbNotCalled",
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty afterCb with no call to cb within timeout "+
+	"limit and then calls delayed cb",
+	{
+		topic: emptyFunc,
+		argsVer: getV().setE( "any" ),
+		vows:[ "dingo", faultyFunc ],
+		afterCb:
+		function()
+		{
+			var cb = this.getCb();
+			
+			setTimeout(
+				function()
+				{
+					cb();
+				},
+				CbStep.DEFAULT_CB_TIMEOUT+1000
+			);
+		}
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.after.stepOk === false &&
+			run.after.err.constructor === SuiteRuntimeError &&
+			run.after.err.ourGlobeCode === "SuiteStepCbNotCalled",
+			"run result is invalid"
 		);
 	}
 );
