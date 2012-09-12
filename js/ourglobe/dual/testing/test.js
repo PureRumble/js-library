@@ -366,6 +366,30 @@ function( testName, errClass, errCode, cbTime, errFunc, refFunc )
 Test.assert =
 function( boolVar, msg )
 {
+	if( arguments.length !== 2 )
+	{
+		throw new TestRuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if( typeof( boolVar ) !== "boolean" )
+	{
+		throw new TestRuntimeError(
+			"Arg boolVar must be a bool",
+			{ boolVar: boolVar }
+		);
+	}
+	
+	if( typeof( msg ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg msg must be a str",
+			{ msg: msg }
+		);
+	}
+	
 	if( boolVar === false )
 	{
 		throw new TestRuntimeError( msg );
