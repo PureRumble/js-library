@@ -45,6 +45,7 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
+var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteResult = mods.get( "suiteresult" );
 
 SuiteStepObject.prototype.getLocalByVar =
@@ -73,7 +74,7 @@ function( varName )
 				"This suite has no local var named '"+varName+"' and "+
 				"neither does any of its parent suites",
 				undefined,
-				"LocalVarNotFound"
+				"LocalVarNotDeclared"
 			);
 		}
 	}

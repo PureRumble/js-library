@@ -39,13 +39,13 @@ SuiteResult.GET_TOPIC_RES_FV =
 		.setR( "arr" )
 ;
 
-SuiteResult.ERR_THROWN_FV =
+SuiteResult.TOPIC_ERR_THROWN_FV =
 	getV()
 		.setE( "any" )
 		.setR( "bool" )
 ;
 
-SuiteResult.ERR_OCCURRED_FV =
+SuiteResult.TOPIC_ERR_OCCURRED_FV =
 	getV()
 		.setE( "any" )
 		.setR( "bool" )
@@ -118,9 +118,9 @@ function()
 	return new SuiteResult( this.suiteRun.parentRun );
 });
 
-SuiteResult.prototype.errThrown =
+SuiteResult.prototype.topicErrThrown =
 getF(
-SuiteResult.ERR_THROWN_FV,
+SuiteResult.TOPIC_ERR_THROWN_FV,
 function()
 {
 	if( arguments.length !== 0 )
@@ -135,9 +135,9 @@ function()
 	return this.suiteRun.topic.thrownErr !== undefined;
 });
 
-SuiteResult.prototype.errOccurred =
+SuiteResult.prototype.topicErrOccurred =
 getF(
-SuiteResult.ERR_OCCURRED_FV,
+SuiteResult.TOPIC_ERR_OCCURRED_FV,
 function()
 {
 	if( arguments.length !== 0 )

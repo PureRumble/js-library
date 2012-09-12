@@ -179,7 +179,7 @@ function( testName, suite, verify )
 			suiteRun.run(
 				getF(
 				SuiteRun.RUN_CB_FV,
-				function( err, res )
+				function( err, resSuiteRun )
 				{
 					if( err !== undefined )
 					{
@@ -1455,14 +1455,17 @@ testSuiteRun(
 	}
 );
 
-// testing that err thrown by cb given to SuiteRuns bubble up
+// testing that err thrown by cb given to SuiteRun bubble up
 // through suite steps that use direct call to their own cb funcs
-// and that err reaches the call of SuiteRun.run()
+// and that the err reaches the call of SuiteRun.run()
 
 expectErr(
-	"SuiteRun given faulty cb and topicCb with direct call of cb "+
-	"(gives err) and SuiteRun given healthy cb "+
-	"(no err)",
+	"Testing SuiteRun given a faulty cb when calling run(). "+
+	"The suite is healthy and and it and its child suite have "+
+	"all cb suite steps, and they all make direct calls to their "+
+	"cb. Making sure the err thrown by the cb given to run() "+
+	"bubbles all the way up, trough all cb suite steps, "+
+	"to the call of run()",
 	TestingError,
 	function()
 	{
@@ -1470,6 +1473,13 @@ expectErr(
 			new SuiteHolder(
 				"suite",
 				{
+					beforeCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						cb();
+					},
 					topicCb:
 					function()
 					{
@@ -1478,77 +1488,18 @@ expectErr(
 						cb();
 					},
 					argsVer:[],
-					vows:[ "dingo", emptyFunc ]
-				}
-			)
-		)
-			.run(
-				function( err )
-				{
-					if( err !== undefined )
-					{
-						throw err;
-					}
-					
-					throw new TestingError();
-				}
-			)
-		;
-	},
-	function()
-	{
-		new SuiteRun(
-			new SuiteHolder(
-				"suite",
-				{
-					topicCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
-					argsVer:[],
-					vows:[ "dingo", emptyFunc ]
-				}
-			)
-		)
-			.run(
-				function( err )
-				{
-					if( err !== undefined )
-					{
-						throw err;
-					}
-				}
-			)
-		;
-	}
-);
-
-expectErr(
-	"SuiteRun given faulty cb and nested suites with topicCbs "+
-	"with direct calls cb() (gives err) and SuiteRun given "+
-	"healthy cb (no err)",
-	TestingError,
-	function()
-	{
-		new SuiteRun(
-			new SuiteHolder(
-				"suite",
-				{
-					topicCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
-					argsVer:[],
+					vows:[ "dingo", emptyFunc ],
 					next:
 					[
-						"suite",
+						"suite one",
 						{
+							beforeCb:
+							function()
+							{
+								var cb = this.getCb();
+								
+								cb();
+							},
 							topicCb:
 							function()
 							{
@@ -1564,61 +1515,32 @@ expectErr(
 			)
 		)
 			.run(
-				function( err )
+				function( err, run )
 				{
 					if( err !== undefined )
 					{
 						throw err;
 					}
 					
+// Making sure all cb suite steps were executed successfully.
+// assert() throws a TestRuntimeError which this call to
+// expectErr() doesnt expect
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						run.topic.stepOk === true &&
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].before.stepOk === true &&
+						run.next[ 0 ].topic.stepOk === true,
+						"run result is invalid"
+					);
+					
 					throw new TestingError();
 				}
 			)
 		;
 	},
-	function()
-	{
-		new SuiteRun(
-			new SuiteHolder(
-				"suite",
-				{
-					topicCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
-					argsVer:[],
-					next:
-					[
-						"suite",
-						{
-							topicCb:
-							function()
-							{
-								var cb = this.getCb();
-								
-								cb();
-							},
-							argsVer:[],
-							vows:[ "dingo", emptyFunc ]
-						}
-					]
-				}
-			)
-		)
-			.run(
-				function( err )
-				{
-					if( err !== undefined )
-					{
-						throw err;
-					}
-				}
-			)
-		;
-	}
+	function() { }
 );
 
 // testing suites with conf prop allowThrownErr set and topic
@@ -2621,22 +2543,32 @@ testSuiteRun(
 	"that fails on reading a local var that doesnt exist",
 	function()
 	{
-		var topicOneBefore = undefined;
-		var topicOneAfter = undefined;
-		var topicTwoBefore = undefined;
-		var topicTwoAfter = undefined;
-		var topicThreeBefore = undefined;
-		var topicThreeAfter = undefined;
-		var vowOneBefore = undefined;
-		var vowOneAfter = undefined;
-		var vowTwoBefore = undefined;
-		var vowTwoAfter = undefined;
-		var vowThreeBefore = undefined;
-		var vowThreeAfter = undefined;
-		var vowFourBefore = undefined;
-		var vowFourAfter = undefined;
-		var vowFiveBefore = undefined;
-		var vowFiveAfter = undefined;
+		var beforeRead = undefined;
+		var beforeWritten = undefined;
+		var topicRead = undefined;
+		var topicWritten = undefined;
+		var suiteOneBeforeRead = undefined;
+		var suiteOneBeforeWritten = undefined;
+		var suiteOneTopicRead = undefined;
+		var suiteOneTopicWritten = undefined;
+		var suiteOneTopicDelayedRead = undefined;
+		var suiteOneTopicDelayedWritten = undefined;
+		var vowOneRead = undefined;
+		var vowOneWritten = undefined;
+		var vowTwoRead = undefined;
+		var vowTwoWritten = undefined;
+		var suiteOneVowOneRead = undefined;
+		var suiteOneVowOneWritten = undefined;
+		var suiteTwoBeforeRead = undefined;
+		var suiteTwoBeforeWritten = undefined;
+		var suiteTwoTopicRead = undefined;
+		var suiteTwoTopicWritten = undefined;
+		var suiteTwoVowOneRead = undefined;
+		var suiteTwoVowOneWritten = undefined;
+		var suiteTwoVowTwoRead = undefined;
+		var suiteTwoVowTwoWritten = undefined;
+		var suiteTwoAfterRead = undefined;
+		var suiteTwoAfterWritten = undefined;
 		
 		return(
 		{
@@ -2644,18 +2576,27 @@ testSuiteRun(
 			{
 				local:
 				{
-					dingo: "topicOneGoesFirst"
+					dingo: "beforeGoesFirst"
+				},
+				before:
+				function()
+				{
+					beforeRead = this.get( "dingo" );
+					
+					this.set( "dingo", "beforeWasHere" );
+					
+					beforeWritten = this.get( "dingo" );
 				},
 				topic:
 				function()
 				{
-					topicOneBefore = this.get( "dingo" );
+					topicRead = this.get( "dingo" );
 					
 					this.set( "dingo", "toBeOverWritten" );
 					this.set( "dingo", "toBeOverWrittenAgain" );
-					this.set( "dingo", "topicOneWasHere" );
+					this.set( "dingo", "topicWasHere" );
 					
-					topicOneAfter = this.get( "dingo" );
+					topicWritten = this.get( "dingo" );
 				},
 				argsVer:[ "undef" ],
 				vows:
@@ -2663,44 +2604,59 @@ testSuiteRun(
 					"vow one",
 					function()
 					{
-						vowOneBefore = this.get( "dingo" );
+						vowOneRead = this.get( "dingo" );
 						this.set( "dingo", "vowOneWasHere" );
-						vowOneAfter = this.get( "dingo" );
+						vowOneWritten = this.get( "dingo" );
 					},
 					"vow two",
 					function()
 					{
-						vowTwoBefore = this.get( "dingo" );
+						vowTwoRead = this.get( "dingo" );
 						this.set( "dingo", "vowTwoWasHere" );
-						vowTwoAfter = this.get( "dingo" );
+						vowTwoWritten = this.get( "dingo" );
 					}
 				],
 				next:
 				[
-					"next suite one",
+// this suite reads only local vars of its parent suite
+					"suite one",
 					{
+						beforeCb:
+						function()
+						{
+							suiteOneBeforeRead = this.get( "dingo" );
+							this.set( "dingo", "suiteOneBeforeWasHere" );
+							suiteOneBeforeWritten = this.get( "dingo" );
+							
+							var cb = this.getCb();
+							cb();
+						},
 						topicCb:
 						function()
 						{
-							topicTwoBefore = this.get( "dingo" );
-							this.set( "dingo", "localTopicTwoWasHere" );
-							topicTwoAfter = this.get( "dingo" );
+							suiteOneTopicRead = this.get( "dingo" );
+							this.set( "dingo", "suiteOneTopicWasHere" );
+							suiteOneTopicWritten = this.get( "dingo" );
 							
 							var topicCb = this;
 							
 							setTimeout(
 								function()
 								{
-									topicThreeBefore = topicCb.get( "dingo" );
+									suiteOneTopicDelayedRead =
+										topicCb.get( "dingo" )
+									;
 									
 									topicCb.set(
 										"dingo", "will be overwritten"
 									);
 									topicCb.set(
-										"dingo", "localTopicThreeWasHere"
+										"dingo", "suiteOneTopicDelayedWasHere"
 									);
 									
-									topicThreeAfter = topicCb.get( "dingo" );
+									suiteOneTopicDelayedWritten =
+										topicCb.get( "dingo" )
+									;
 									
 									var cb = topicCb.getCb();
 									cb();
@@ -2711,50 +2667,83 @@ testSuiteRun(
 						argsVer:[],
 						vows:
 						[
-							"local vow three",
+							"suite one vow one",
 							function()
 							{
-								vowThreeBefore = this.get( "dingo" );
-								this.set( "dingo", "localVowThreeWasHere" );
-								vowThreeAfter = this.get( "dingo" );
+								suiteOneVowOneRead = this.get( "dingo" );
+								this.set( "dingo", "suiteOneVowOneWasHere" );
+								suiteOneVowOneWritten = this.get( "dingo" );
 							}
 						]
+// todo
+// add afterCb here that does the same thing as
+// beforeCb
 					},
-					"next suite two",
+// this suite over shadows its parent suite's local var and
+// also handles another local var of its own
+					"suite two",
 					{
 						local:
 						{
-							dingo: "localTopicFourGoesFirst",
-							dango: "localVowFiveGoesFirst"
+							dingo: "suiteTwoBeforeGoesFirst",
+							dango: "suiteTwoVowTwoGoesFirst"
+						},
+						before:
+						function()
+						{
+							suiteTwoBeforeRead = this.get( "dingo" );
+							this.set( "dingo", "suiteTwoBeforeWasHere" );
+							suiteTwoBeforeWritten = this.get( "dingo" );
 						},
 						topic:
 						function()
 						{
-							topicFourBefore = this.get( "dingo" );
-							this.set( "dingo", "localTopicFourWasHere" );
-							topicFourAfter = this.get( "dingo" );
+							suiteTwoTopicRead = this.get( "dingo" );
+							this.set( "dingo", "suiteTwoTopicWasHere" );
+							suiteTwoTopicWritten = this.get( "dingo" );
 						},
 						argsVer:[ "undef" ],
 						vows:
 						[
-							"local vow four",
+							"suite two vow one",
 							function()
 							{
-								vowFourBefore = this.get( "dingo" );
-								this.set( "dingo", "localVowFourWasHere" );
-								vowFourAfter = this.get( "dingo" );
+								suiteTwoVowOneRead = this.get( "dingo" );
+								this.set( "dingo", "suiteTwoVowOneWasHere" );
+								suiteTwoVowOneWritten = this.get( "dingo" );
 							},
-							"local vow five",
+							"suite two vow two",
 							function()
 							{
-								vowFiveBefore = this.get( "dango" );
+								suiteTwoVowTwoRead = this.get( "dango" );
 								
 								this.set( "dango", "will be overwritten..." );
-								this.set( "dango", "localVowFiveWasHere" );
+								this.set( "dango", "suiteTwoVowTwoWasHere" );
 								
-								vowFiveAfter = this.get( "dango" );
+								suiteTwoVowTwoWritten = this.get( "dango" );
+							}
+						],
+						after:
+						function()
+						{
+							suiteTwoAfterRead = this.get( "dango" );
+							this.set( "dango", "suiteTwoAfterWasHere" );
+							suiteTwoAfterWritten = this.get( "dango" );
+						},
+					},
+// This suite fails in one vow when trying to read a local var
+// that doesnt exist and also in another vow where it tries to
+// write to a local var that doesnt exist
+					"suite three",
+					{
+						vows:
+						[
+							"suite three vow one",
+							function()
+							{
+								this.set( "dengo", "cant write this.." );
 							},
-							"failing local vow six",
+							"suite three vow two",
 							function()
 							{
 								this.get( "dengo" );
@@ -2767,25 +2756,52 @@ testSuiteRun(
 			function( run )
 			{
 				assert(
-					topicOneBefore === "topicOneGoesFirst" &&
-					topicOneAfter === "topicOneWasHere" &&
-					vowOneBefore === "topicOneWasHere" &&
-					vowOneAfter === "vowOneWasHere" &&
-					vowTwoBefore === "vowOneWasHere" &&
-					vowTwoAfter === "vowTwoWasHere" &&
-					topicTwoBefore === "vowTwoWasHere" &&
-					topicTwoAfter === "localTopicTwoWasHere" &&
-					topicThreeBefore === "localTopicTwoWasHere" &&
-					topicThreeAfter === "localTopicThreeWasHere" &&
-					vowThreeBefore === "localTopicThreeWasHere" &&
-					vowThreeAfter === "localVowThreeWasHere" &&
-					topicFourBefore === "localTopicFourGoesFirst" &&
-					topicFourAfter === "localTopicFourWasHere" &&
-					vowFourBefore === "localTopicFourWasHere" &&
-					vowFourAfter === "localVowFourWasHere" &&
-					vowFiveBefore === "localVowFiveGoesFirst" &&
-					vowFiveAfter === "localVowFiveWasHere" &&
-					run.next[ 1 ].vows[ 2 ].stepOk === false,
+					beforeRead === "beforeGoesFirst" &&
+					beforeWritten === "beforeWasHere" &&
+					topicRead === "beforeWasHere" &&
+					topicWritten === "topicWasHere" &&
+					vowOneRead === "topicWasHere" &&
+					vowOneWritten === "vowOneWasHere" &&
+					vowTwoRead === "vowOneWasHere" &&
+					vowTwoWritten === "vowTwoWasHere" &&
+					suiteOneBeforeRead === "vowTwoWasHere" &&
+					suiteOneBeforeWritten === "suiteOneBeforeWasHere" &&
+					suiteOneTopicRead === "suiteOneBeforeWasHere" &&
+					suiteOneTopicWritten === "suiteOneTopicWasHere" &&
+					suiteOneTopicDelayedRead === "suiteOneTopicWasHere" &&
+					suiteOneTopicDelayedWritten ===
+						"suiteOneTopicDelayedWasHere"
+					&&
+					suiteOneVowOneRead === "suiteOneTopicDelayedWasHere" &&
+					suiteOneVowOneWritten === "suiteOneVowOneWasHere" &&
+					suiteTwoBeforeRead === "suiteTwoBeforeGoesFirst" &&
+					suiteTwoBeforeWritten === "suiteTwoBeforeWasHere" &&
+					suiteTwoTopicRead === "suiteTwoBeforeWasHere" &&
+					suiteTwoTopicWritten === "suiteTwoTopicWasHere" &&
+					suiteTwoVowOneRead === "suiteTwoTopicWasHere" &&
+					suiteTwoVowOneWritten === "suiteTwoVowOneWasHere" &&
+					suiteTwoVowTwoRead === "suiteTwoVowTwoGoesFirst" &&
+					suiteTwoVowTwoWritten === "suiteTwoVowTwoWasHere" &&
+					suiteTwoVowTwoRead === "suiteTwoVowTwoGoesFirst" &&
+					suiteTwoVowTwoWritten === "suiteTwoVowTwoWasHere" &&
+					suiteTwoAfterRead === "suiteTwoVowTwoWasHere" &&
+					suiteTwoAfterWritten === "suiteTwoAfterWasHere" &&
+					
+					run.next[ 2 ].vows[ 0 ].stepOk === false &&
+					run.next[ 2 ].vows[ 0 ].err.constructor ===
+						SuiteRuntimeError
+					&&
+					run.next[ 2 ].vows[ 0 ].err.ourGlobeCode ===
+						"LocalVarNotDeclared"
+					&&
+					
+					run.next[ 2 ].vows[ 1 ].stepOk === false &&
+					run.next[ 2 ].vows[ 1 ].err.constructor ===
+						SuiteRuntimeError
+					&&
+					run.next[ 2 ].vows[ 1 ].err.ourGlobeCode ===
+						"LocalVarNotDeclared"
+					,
 					"run result is invalid"
 				);
 			}
@@ -2797,12 +2813,16 @@ testSuiteRun(
 // parent suite result if there is a parent
 
 testSuiteRun(
-	"healthy suites at many levels that check if they hasParent()",
+	"testing healthy suites at many levels that check if they "+
+	"have a parent",
 	false,
 	function()
 	{
+		var beforeHasParent = undefined;
 		var topicHasParent = undefined;
+		var afterHasParent = undefined;
 		var vowOneHasParent = undefined;
+		var suiteOneBeforeHasParent = undefined;
 		var suiteOneTopicHasParent = undefined;
 		var suiteOneVowOneHasParent = undefined;
 		
@@ -2810,10 +2830,20 @@ testSuiteRun(
 			{
 				suite:
 				{
+					before:
+					function()
+					{
+						beforeHasParent = this.hasParent();
+					},
 					topic:
 					function()
 					{
 						topicHasParent = this.hasParent();
+					},
+					after:
+					function()
+					{
+						afterHasParent = this.hasParent();
 					},
 					argsVer:[ "undef" ],
 					vows:
@@ -2828,10 +2858,21 @@ testSuiteRun(
 					[
 						"suiteOne",
 						{
-							topic:
+							beforeCb:
+							function()
+							{
+								suiteOneBeforeHasParent = this.hasParent();
+								
+								var cb = this.getCb();
+								cb();
+							},
+							topicCb:
 							function()
 							{
 								suiteOneTopicHasParent = this.hasParent();
+								
+								var cb = this.getCb();
+								cb();
 							},
 							argsVer:[ "undef" ],
 							vows:
@@ -2842,6 +2883,8 @@ testSuiteRun(
 									suiteOneVowOneHasParent = this.hasParent();
 								}
 							]
+// todo
+// add afterCb here that does the same as beforeCb
 						}
 					]
 				},
@@ -2849,8 +2892,11 @@ testSuiteRun(
 				function( run )
 				{
 					assert(
+						beforeHasParent === false &&
 						topicHasParent === false &&
+						afterHasParent === false &&
 						vowOneHasParent === false &&
+						suiteOneBeforeHasParent === true &&
 						suiteOneTopicHasParent === true &&
 						suiteOneVowOneHasParent === true,
 						"run result is invalid"
@@ -2862,12 +2908,17 @@ testSuiteRun(
 );
 
 testSuiteRun(
-	"healthy suite with healthy child suites that getParent() "+
-	"and read parent suite results at various suite steps and "+
-	"another level of child suites that in turn getParent() and "+
-	"read parent suite results",
+	"testing healthy suite with healthy child suites that "+
+	"getParent() and read parent suite results at various suite "+
+	"steps and another level of child suites that in turn "+
+	"getParent() and read parent suite results. Making suire "+
+	"results are correct even if topic/topicCb throws/gives err",
 	function()
 	{
+		var suiteOneBeforeParentRes = undefined;
+		var suiteOneBeforeParentErrOccurred = undefined;
+		var suiteOneBeforeParentErrThrown = undefined;
+		
 		var suiteOneTopicParentRes = undefined;
 		var suiteOneTopicParentErrOccurred = undefined;
 		var suiteOneTopicParentErrThrown = undefined;
@@ -2880,9 +2931,17 @@ testSuiteRun(
 		var suiteOneVowOneParentErrOccurred = undefined;
 		var suiteOneVowOneParentErrThrown = undefined;
 		
+		var suiteTwoOneBeforeParentRes = undefined;
+		var suiteTwoOneBeforeParentErrOccurred = undefined;
+		var suiteTwoOneBeforeParentErrThrown = undefined;
+		
 		var suiteTwoOneTopicParentRes = undefined;
 		var suiteTwoOneTopicParentErrOccurred = undefined;
 		var suiteTwoOneTopicParentErrThrown = undefined;
+		
+		var suiteTwoOneAfterParentRes = undefined;
+		var suiteTwoOneAfterParentErrOccurred = undefined;
+		var suiteTwoOneAfterParentErrThrown = undefined;
 		
 		return(
 			{
@@ -2896,12 +2955,28 @@ testSuiteRun(
 					argsVer:[ "str" ],
 					next:
 					[
-// suite reads parent results in steps topic and vow
+// suite reads parent results
 						"suite one",
 						{
 							conf:
 							{
 								allowCbErr: true
+							},
+							beforeCb:
+							function()
+							{
+								var parent = this.getParent();
+								
+								suiteOneBeforeParentRes = parent.getTopicRes();
+								suiteOneBeforeParentErrOccurred =
+									parent.topicErrOccurred()
+								;
+								suiteOneBeforeParentErrThrown =
+									parent.topicErrThrown()
+								;
+								
+								var cb = this.getCb();
+								cb();
 							},
 							topicCb:
 							function()
@@ -2910,10 +2985,10 @@ testSuiteRun(
 								
 								suiteOneTopicParentRes = parent.getTopicRes();
 								suiteOneTopicParentErrOccurred =
-									parent.errOccurred()
+									parent.topicErrOccurred()
 								;
 								suiteOneTopicParentErrThrown =
-									parent.errThrown()
+									parent.topicErrThrown()
 								;
 								
 								var cb = this.getCb();
@@ -2921,6 +2996,9 @@ testSuiteRun(
 // gives cb err so child suite can test this result
 								cb( new TestingError() );
 							},
+// todo
+// add afterCb here and make it to do the same
+// thing as beforeCb
 							argsVer:[ TestingError ],
 							vows:
 							[
@@ -2931,10 +3009,10 @@ testSuiteRun(
 									
 									suiteOneVowOneParentRes = parent.getTopicRes();
 									suiteOneVowOneParentErrOccurred =
-										parent.errOccurred()
+										parent.topicErrOccurred()
 									;
 									suiteOneVowOneParentErrThrown =
-										parent.errThrown()
+										parent.topicErrThrown()
 									;
 								}
 							],
@@ -2952,10 +3030,10 @@ testSuiteRun(
 											parent.getTopicRes()
 										;
 										suiteOneOneTopicParentErrOccurred =
-											parent.errOccurred()
+											parent.topicErrOccurred()
 										;
 										suiteOneOneTopicParentErrThrown =
-											parent.errThrown()
+											parent.topicErrThrown()
 										;
 									},
 									argsVer:[ "undef" ],
@@ -2984,6 +3062,21 @@ testSuiteRun(
 // suite reads parent results in topic
 								"suite two one",
 								{
+									before:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteTwoOneBeforeParentRes =
+											parent.getTopicRes()
+										;
+										suiteTwoOneBeforeParentErrOccurred =
+											parent.topicErrOccurred()
+										;
+										suiteTwoOneBeforeParentErrThrown =
+											parent.topicErrThrown()
+										;
+									},
 									topic:
 									function()
 									{
@@ -2993,10 +3086,25 @@ testSuiteRun(
 											parent.getTopicRes()
 										;
 										suiteTwoOneTopicParentErrOccurred =
-											parent.errOccurred()
+											parent.topicErrOccurred()
 										;
 										suiteTwoOneTopicParentErrThrown =
-											parent.errThrown()
+											parent.topicErrThrown()
+										;
+									},
+									after:
+									function()
+									{
+										var parent = this.getParent();
+										
+										suiteTwoOneAfterParentRes =
+											parent.getTopicRes()
+										;
+										suiteTwoOneAfterParentErrOccurred =
+											parent.topicErrOccurred()
+										;
+										suiteTwoOneAfterParentErrThrown =
+											parent.topicErrThrown()
 										;
 									},
 									argsVer:[ "undef" ],
@@ -3013,6 +3121,11 @@ testSuiteRun(
 				function( run )
 				{
 					assert(
+						suiteOneBeforeParentRes.length === 1 &&
+						suiteOneBeforeParentRes[ 0 ] === "dingo" &&
+						suiteOneBeforeParentErrOccurred === false &&
+						suiteOneBeforeParentErrThrown === false &&
+						
 						suiteOneTopicParentRes.length === 1 &&
 						suiteOneTopicParentRes[ 0 ] === "dingo" &&
 						suiteOneTopicParentErrOccurred === false &&
@@ -3030,12 +3143,27 @@ testSuiteRun(
 						suiteOneOneTopicParentErrOccurred === true &&
 						suiteOneOneTopicParentErrThrown === false &&
 						
+						suiteTwoOneBeforeParentRes.length === 1 &&
+						suiteTwoOneBeforeParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteTwoOneBeforeParentErrOccurred === true &&
+						suiteTwoOneBeforeParentErrThrown === true &&
+						
 						suiteTwoOneTopicParentRes.length === 1 &&
 						suiteTwoOneTopicParentRes[ 0 ].constructor ===
 							TestingError
 						&&
 						suiteTwoOneTopicParentErrOccurred === true &&
-						suiteTwoOneTopicParentErrThrown === true,
+						suiteTwoOneTopicParentErrThrown === true &&
+						
+						suiteTwoOneAfterParentRes.length === 1 &&
+						suiteTwoOneAfterParentRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteTwoOneAfterParentErrOccurred === true &&
+						suiteTwoOneAfterParentErrThrown === true
+						,
 						"run result is invalid"
 					);
 				}
@@ -3089,10 +3217,10 @@ testSuiteRun(
 											parent.getTopicRes()
 										;
 										suiteOneOneTopicParentErrOccurred =
-											parent.errOccurred()
+											parent.topicErrOccurred()
 										;
 										suiteOneOneTopicParentErrThrown =
-											parent.errThrown()
+											parent.topicErrThrown()
 										;
 									},
 									argsVer:[ "undef" ],
@@ -3170,10 +3298,10 @@ testSuiteRun(
 											parent.getTopicRes()
 										;
 										suiteOneOneTopicParentErrOccurred =
-											parent.errOccurred()
+											parent.topicErrOccurred()
 										;
 										suiteOneOneTopicParentErrThrown =
-											parent.errThrown()
+											parent.topicErrThrown()
 										;
 									},
 									argsVer:[ "undef" ],
@@ -3248,8 +3376,8 @@ testSuiteRun(
 						function()
 						{
 							vowOneTopicRes = this.getTopicRes();
-							vowOneErrOccurred = this.errOccurred();
-							vowOneErrThrown = this.errThrown();
+							vowOneErrOccurred = this.topicErrOccurred();
+							vowOneErrThrown = this.topicErrThrown();
 						}
 					],
 					next:
@@ -3269,8 +3397,8 @@ testSuiteRun(
 								function()
 								{
 									suiteOneVowOneTopicRes = this.getTopicRes();
-									suiteOneVowOneErrOccurred = this.errOccurred();
-									suiteOneVowOneErrThrown = this.errThrown();
+									suiteOneVowOneErrOccurred = this.topicErrOccurred();
+									suiteOneVowOneErrThrown = this.topicErrThrown();
 								}
 							],
 							next:
@@ -3288,10 +3416,10 @@ testSuiteRun(
 												this.getTopicRes()
 											;
 											suiteOneOneVowOneErrOccurred =
-												this.errOccurred()
+												this.topicErrOccurred()
 											;
 											suiteOneOneVowOneErrThrown =
-												this.errThrown()
+												this.topicErrThrown()
 											;
 										}
 									]
@@ -3319,8 +3447,8 @@ testSuiteRun(
 								function()
 								{
 									suiteTwoVowOneTopicRes = this.getTopicRes();
-									suiteTwoVowOneErrOccurred = this.errOccurred();
-									suiteTwoVowOneErrThrown = this.errThrown();
+									suiteTwoVowOneErrOccurred = this.topicErrOccurred();
+									suiteTwoVowOneErrThrown = this.topicErrThrown();
 								}
 							],
 							next:
@@ -3338,10 +3466,10 @@ testSuiteRun(
 												this.getTopicRes()
 											;
 											suiteTwoOneVowOneErrOccurred =
-												this.errOccurred()
+												this.topicErrOccurred()
 											;
 											suiteTwoOneVowOneErrThrown =
-												this.errThrown()
+												this.topicErrThrown()
 											;
 										}
 									]
@@ -3359,9 +3487,9 @@ testSuiteRun(
 								{
 									suiteThreeVowOneTopicRes = this.getTopicRes();
 									suiteThreeVowOneErrOccurred =
-										this.errOccurred()
+										this.topicErrOccurred()
 									;
-									suiteThreeVowOneErrThrown = this.errThrown();
+									suiteThreeVowOneErrThrown = this.topicErrThrown();
 								}
 							]
 						}
@@ -4280,6 +4408,697 @@ testSuiteRun(
 			run.before.err.ourGlobeCode === "SuiteStepCbNotCalled" &&
 			run.topic.stepOk === undefined,
 			"run result is invalid"
+		);
+	}
+);
+
+// testing suites with suite step after
+
+testSuiteRun(
+	"testing healthy suite with suite step after that receives "+
+	"no args",
+	function()
+	{
+		var afterArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "undefined" ],
+					vows:[ "vow one", emptyFunc, ],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterArgs = arguments;
+					},
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						
+						run.topic.stepOk === true &&
+						
+						run.argsVer.stepOk === true &&
+						
+						run.vows[ 0 ].stepOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.after.stepOk === true &&
+						run.after.err === undefined &&
+						afterArgs.length === 0,
+						
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty suite with faulty suite step after",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undefined" ],
+		vows:[ "vow one", emptyFunc ],
+		next:[ "suite one", healthySuite ],
+		after: faultyFunc
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === false &&
+			run.before.stepOk === true &&
+			
+			run.topic.stepOk === true &&
+			
+			run.argsVer.stepOk === true &&
+			
+			run.vows[ 0 ].stepOk === true &&
+			
+			run.next[ 0 ].runOk === true &&
+			
+			run.after.stepOk === false &&
+			run.after.err.constructor === TestingError,
+			
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRun(
+	"testing healthy suite with topicCb that passes args to "+
+	"child suite that has suite step after, making sure that "+
+	"step after receives args",
+	function()
+	{
+		var suiteOneAfterArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topicCb:
+					function()
+					{
+						var cb = this.getCb();
+						
+						cb( "dingo", 42 );
+					},
+					argsVer:[ "str", "int" ],
+					next:
+					[
+						"suite one",
+						{
+							vows:[ "suite one vow one", emptyFunc ],
+							after:
+							function()
+							{
+								suiteOneAfterArgs = arguments;
+							},
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						
+						run.next[ 0 ].vows[ 0 ].stepOk === true &&
+						
+						run.next[ 0 ].after.stepOk === true &&
+						suiteOneAfterArgs.length === 2 &&
+						suiteOneAfterArgs[ 0 ] === "dingo" &&
+						suiteOneAfterArgs[ 1 ] === 42,
+						
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// testing suites with suite step after where the step reads the
+// suite's results
+
+testSuiteRun(
+	"testing suite with suite step after that reads its own "+
+	"suite's results",
+	function()
+	{
+		var afterTopicRes = undefined;
+		var afterErrOccurred = undefined;
+		var afterErrThrown = undefined;
+		var suiteOneAfterTopicRes = undefined;
+		var suiteOneAfterErrOccurred = undefined;
+		var suiteOneAfterErrThrown = undefined;
+		var suiteTwoAfterTopicRes = undefined;
+		var suiteTwoAfterErrOccurred = undefined;
+		var suiteTwoAfterErrThrown = undefined;
+		var suiteThreeAfterTopicRes = undefined;
+		var suiteThreeAfterErrOccurred = undefined;
+		var suiteThreeAfterErrThrown = undefined;
+		
+		return(
+			{
+// topic returns simple result and suite step after reads the
+// result
+				suite:
+				{
+					topic:
+					function()
+					{
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					vows:[ "vow one", emptyFunc ],
+					after:
+					function()
+					{
+						afterTopicRes = this.getTopicRes();
+						afterErrOccurred = this.topicErrOccurred();
+						afterErrThrown = this.topicErrThrown();
+					},
+					next:
+					[
+// topic throws allowed err and suite step after reads topic
+// results
+						"suite one",
+						{
+							conf:
+							{
+								allowThrownErr: true
+							},
+							topic: faultyFunc,
+							argsVer:[ TestingError ],
+							vows:[ "vow one", emptyFunc ],
+							after:
+							function()
+							{
+								suiteOneAfterTopicRes = this.getTopicRes();
+								suiteOneAfterErrOccurred =
+									this.topicErrOccurred()
+								;
+								suiteOneAfterErrThrown =
+									this.topicErrThrown()
+								;
+							}
+						},
+// topicCb gives allowed err and suite step after reads topic
+// results
+						"suite two",
+						{
+							conf:
+							{
+								allowCbErr: true
+							},
+							topicCb:
+							function()
+							{
+								var cb = this.getCb();
+								
+								cb( new TestingError(), 43 );
+							},
+							argsVer:[ TestingError, "int" ],
+							vows:[ "vow one", emptyFunc ],
+							after:
+							function()
+							{
+								suiteTwoAfterTopicRes = this.getTopicRes();
+								suiteTwoAfterErrOccurred =
+									this.topicErrOccurred()
+								;
+								suiteTwoAfterErrThrown =
+									this.topicErrThrown()
+								;
+							}
+						},
+// suite has no topic and suite step after reads topic results
+// propagated from parent suite
+						"suite three",
+						{
+							vows:[ "vow one", emptyFunc ],
+							after:
+							function()
+							{
+								suiteThreeAfterTopicRes = this.getTopicRes();
+								suiteThreeAfterErrOccurred =
+									this.topicErrOccurred()
+								;
+								suiteThreeAfterErrThrown =
+									this.topicErrThrown()
+								;
+							}
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterTopicRes.length === 1 &&
+						afterTopicRes[ 0 ] === "dingo" &&
+						afterErrOccurred === false &&
+						afterErrThrown === false &&
+						
+						suiteOneAfterTopicRes.length === 1 &&
+						suiteOneAfterTopicRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteOneAfterErrOccurred === true &&
+						suiteOneAfterErrThrown === true &&
+						
+						suiteTwoAfterTopicRes.length === 2 &&
+						suiteTwoAfterTopicRes[ 0 ].constructor ===
+							TestingError
+						&&
+						suiteTwoAfterTopicRes[ 1 ] === 43 &&
+						suiteTwoAfterErrOccurred === true &&
+						suiteTwoAfterErrThrown === false &&
+						
+						suiteThreeAfterTopicRes.length === 1 &&
+						suiteThreeAfterTopicRes[ 0 ] === "dingo" &&
+						suiteThreeAfterErrOccurred === false &&
+						suiteThreeAfterErrThrown === false,
+						
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// test group
+// testing suites with suite step after where the suite fails at
+// some step and step after commences and reads the results
+
+testSuiteRun(
+	"testing faulty suite that fails at step before and suite "+
+	"step after reads the results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterBeforeCbOk = undefined;
+		var afterTopicOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterNextOk = undefined;
+		var afterGetTopicResErr = undefined;
+		var afterErrOccurredErr = undefined;
+		var afterErrThrownErr = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					before: faultyFunc,
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterBeforeCbOk = this.stepOk( "beforeCb" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+						
+						try
+						{
+							this.getTopicRes();
+						}
+						catch( e )
+						{
+							afterGetTopicResErr = e;
+						}
+						
+						try
+						{
+							this.topicErrOccurred();
+						}
+						catch( e )
+						{
+							afterErrOccurredErr = e;
+						}
+						
+						try
+						{
+							this.topicErrThrown();
+						}
+						catch( e )
+						{
+							afterErrThrownErr = e;
+						}
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === false &&
+						afterBeforeOk === false &&
+						afterBeforeCbOk === false &&
+						afterTopicOk === undefined &&
+						afterArgsVerOk === undefined &&
+						afterVowsOk === undefined &&
+						afterNextOk === undefined &&
+						afterGetTopicResErr.constructor ===
+							SuiteRuntimeError
+						&&
+						afterErrOccurredErr.constructor ===
+							SuiteRuntimeError
+						&&
+						afterErrThrownErr.constructor ===
+							SuiteRuntimeError,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty suite that fails at step topic and suite "+
+	"step after reads the results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterTopicOk = undefined;
+		var afterTopicCbOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterNextOk = undefined;
+		var afterGetTopicResErr = undefined;
+		var afterErrOccurredErr = undefined;
+		var afterErrThrownErr = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: faultyFunc,
+					argsVer:[ TestingError ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterTopicCbOk = this.stepOk( "topicCb" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+						
+						try
+						{
+							this.getTopicRes();
+						}
+						catch( e )
+						{
+							afterGetTopicResErr = e;
+						}
+						
+						try
+						{
+							this.topicErrOccurred();
+						}
+						catch( e )
+						{
+							afterErrOccurredErr = e;
+						}
+						
+						try
+						{
+							this.topicErrThrown();
+						}
+						catch( e )
+						{
+							afterErrThrownErr = e;
+						}
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === false &&
+						afterBeforeOk === true &&
+						afterTopicOk === false &&
+						afterTopicCbOk === false &&
+						afterArgsVerOk === undefined &&
+						afterVowsOk === undefined &&
+						afterNextOk === undefined &&
+						afterGetTopicResErr.constructor ===
+							SuiteRuntimeError
+						&&
+						afterErrOccurredErr.constructor ===
+							SuiteRuntimeError
+						&&
+						afterErrThrownErr.constructor ===
+							SuiteRuntimeError,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty suite that fails at step argsVer and suite "+
+	"step after reads the results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterTopicOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterNextOk = undefined;
+		var afterGetTopicRes = undefined;
+		var afterErrOccurred = undefined;
+		var afterErrThrown = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "str" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+						afterGetTopicRes = this.getTopicRes();
+						afterErrOccurred = this.topicErrOccurred();
+						afterErrThrown = this.topicErrThrown();
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === false &&
+						afterBeforeOk === true &&
+						afterTopicOk === true &&
+						afterArgsVerOk === false &&
+						afterVowsOk === undefined &&
+						afterNextOk === undefined &&
+						afterGetTopicRes.length === 1 &&
+						afterErrOccurred === false &&
+						afterErrThrown === false,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty suite that fails at step vows and suite "+
+	"step after reads the results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterTopicOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterVowOk = undefined;
+		var afterNextOk = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:
+					[
+						"vow one", emptyFunc,
+						"vow two", faultyFunc
+					],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowOk = this.stepOk( "vow" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === false &&
+						afterBeforeOk === true &&
+						afterTopicOk === true &&
+						afterArgsVerOk === true &&
+						afterVowOk === false &&
+						afterVowsOk === false &&
+						afterNextOk === undefined,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing faulty suite that fails at step next and suite "+
+	"step after reads the results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterTopicOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterNextOk = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:
+					[
+						"suite one", healthySuite,
+						"suite two",
+						{
+							vows:[ "suite two vow one", faultyFunc ]
+						}
+					],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === false &&
+						afterBeforeOk === true &&
+						afterTopicOk === true &&
+						afterArgsVerOk === true &&
+						afterVowsOk === true &&
+						afterNextOk === false,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRun(
+	"testing healthy suite and suite step after that reads the "+
+	"results",
+	function()
+	{
+		var afterSuiteOk = undefined;
+		var afterBeforeOk = undefined;
+		var afterTopicOk = undefined;
+		var afterArgsVerOk = undefined;
+		var afterVowsOk = undefined;
+		var afterNextOk = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "suite one", healthySuite ],
+					after:
+					function()
+					{
+						afterSuiteOk = this.suiteOk();
+						afterBeforeOk = this.stepOk( "before" );
+						afterTopicOk = this.stepOk( "topic" );
+						afterArgsVerOk = this.stepOk( "argsVer" );
+						afterVowsOk = this.stepOk( "vows" );
+						afterNextOk = this.stepOk( "next" );
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						afterSuiteOk === true &&
+						afterBeforeOk === true &&
+						afterTopicOk === true &&
+						afterArgsVerOk === true &&
+						afterVowsOk === true &&
+						afterNextOk === true,
+						"run result is invalid"
+					);
+				}
+			}
 		);
 	}
 );

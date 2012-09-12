@@ -845,4 +845,25 @@ expectErr(
 	false
 );
 
+// testing verification of suite step after
+
+expectErr(
+	"Suite prop after must be a func",
+	"AfterIsNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		after:{ func: emptyFunc }
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		after: emptyFunc
+	}
+);
+
 });

@@ -144,11 +144,6 @@ function( err, stepErr )
 	
 	this.stepOk = this.err === undefined;
 	
-	if( this.stepOk === false )
-	{
-		this.suiteRun.runOk = false;
-	}
-	
 	this.suiteStepCb( undefined, this.stepOk );
 });
 

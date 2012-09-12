@@ -49,23 +49,27 @@ var sys = ourglobe.sys;
 
 var SuiteResult = mods.get( "suiteresult" );
 
-VowObject.prototype.errThrown =
+VowObject.prototype.topicErrThrown =
 getF(
-SuiteResult.ERR_THROWN_FV,
+SuiteResult.TOPIC_ERR_THROWN_FV,
 function()
 {
 	return(
-		this.suiteRes.errThrown.apply( this.suiteRes, arguments )
+		this.suiteRes.topicErrThrown.apply(
+			this.suiteRes, arguments
+		)
 	);
 });
 
-VowObject.prototype.errOccurred =
+VowObject.prototype.topicErrOccurred =
 getF(
-SuiteResult.ERR_OCCURRED_FV,
+SuiteResult.TOPIC_ERR_OCCURRED_FV,
 function()
 {
 	return(
-		this.suiteRes.errOccurred.apply( this.suiteRes, arguments )
+		this.suiteRes.topicErrOccurred.apply(
+			this.suiteRes, arguments
+		)
 	);
 });
 

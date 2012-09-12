@@ -36,9 +36,10 @@ function( name, suiteObj, parentSuite )
 	this.beforeCb = suiteObj.beforeCb;
 	this.topic = suiteObj.topic;
 	this.topicCb = suiteObj.topicCb;
+	this.argsVer = suiteObj.argsVer;
 	this.vows = SuiteHolder.orderArr( suiteObj.vows );
 	this.next = SuiteHolder.orderArr( suiteObj.next );
-	this.argsVer = suiteObj.argsVer;
+	this.after = suiteObj.after;
 	
 	if( sys.hasType( suiteObj.argsVer, "arr" ) === true )
 	{
@@ -126,7 +127,8 @@ function( name, suiteObj, topicFound )
 			prop !== "topicCb" &&
 			prop !== "argsVer" &&
 			prop !== "vows" &&
-			prop !== "next"
+			prop !== "next" &&
+			prop !== "after"
 		)
 		{
 			throw new SuiteRuntimeError(
@@ -146,6 +148,7 @@ function( name, suiteObj, topicFound )
 	var argsVer = suiteObj[ "argsVer" ];
 	var vows = suiteObj[ "vows" ];
 	var next = suiteObj[ "next" ];
+	var after = suiteObj[ "after" ];
 	
 	if( topicFound === false )
 	{
@@ -293,6 +296,18 @@ function( name, suiteObj, topicFound )
 			"Prop local of a suite must be undef or an obj",
 			{ suiteName: name, local: local },
 			"LocalIsNotValid"
+		);
+	}
+	
+	if(
+		after !== undefined &&
+		sys.hasType( after, "func" ) === false
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop after of a suite must be undef or a func",
+			{ suiteName: name, after: after },
+			"AfterIsNotValid"
 		);
 	}
 	
