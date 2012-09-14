@@ -17,12 +17,7 @@ var TestRuntimeError = mods.get( "testruntimeerror" );
 
 Test.expectErr =
 function(
-	testName,
-	errClass,
-	errCode,
-	verError,
-	errFunc,
-	refFunc
+	testName, errClass, errCode, verError, errFunc, refFunc
 )
 {
 	if( arguments.length < 4 || arguments.length > 6 )
@@ -174,37 +169,35 @@ function(
 };
 
 Test.expectCbErr =
-function( testName, errClass, errCode, cbTime, errFunc, refFunc )
+function(
+	testName, errClass, errCode, cbTime, errFunc, refFunc, cb
+)
 {
-	if( arguments.length < 4 || arguments.length > 6 )
+	if( arguments.length < 5 || arguments.length > 7 )
 	{
 		throw new TestRuntimeError(
-			"Between four and six args must be provided",
+			"Between five and seven args must be provided",
 			{ providedArgs: arguments }
 		);
 	}
 	
 	if(
-		refFunc === undefined &&
-		( errFunc === undefined || errFunc instanceof Function ) &&
-		cbTime instanceof Function === true &&
 		(
 			typeof( errCode ) === "number" ||
 			errCode instanceof Function === true
 		)
+		&&
+		cb === undefined
 	)
 	{
+		cb = refFunc;
 		refFunc = errFunc;
 		errFunc = cbTime;
 		cbTime = errCode;
 		errCode = undefined;
 	}
 	
-	if(
-		cbTime instanceof Function === true &&
-		errFunc instanceof Function === true &&
-		refFunc === undefined
-	)
+	if( cbTime instanceof Function === true && cb === undefined )
 	{
 		refFunc = errFunc;
 		errFunc = cbTime;
@@ -254,6 +247,13 @@ function( testName, errClass, errCode, cbTime, errFunc, refFunc )
 		);
 	}
 	
+	if( cb !== undefined && typeof( cb ) !== "function" )
+	{
+		throw new TestRuntimeError(
+			"Arg cb must be a func or undef", { cb: cb }
+		);
+	}
+	
 	console.log( testName );
 	
 	var errPrefix =
@@ -261,85 +261,8 @@ function( testName, errClass, errCode, cbTime, errFunc, refFunc )
 	;
 	
 	var errFuncCbArgs = undefined;
-	var refFuncCbArgs = undefined;
 	
-	errFunc(
-		function( err )
-		{
-			if( errFuncCbArgs !== undefined )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The cb given to the error func has been called twice",
-					{
-						previousCbArgs: errFuncCbArgs,
-						currentCbArgs: arguments
-					}
-				);
-			}
-			
-			errFuncCbArgs = arguments;
-			
-			if( err instanceof Error === false )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"An err was expected to be given to the cb of the "+
-					"error func but this didnt happen"
-				);
-			}
-			
-			if( err.__proto__ !== errClass.prototype )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The error given to the cb of the error func isnt of "+
-					"expected class",
-					{ cbErr: err }
-				);
-			}
-			
-			if( errCode !== undefined && err.ourGlobeCode !== errCode )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The error thrown by the error func doesnt have "+
-					"the expected error code",
-					{ expectedCode: errCode, cbErr: err }
-				);
-			}
-		}
-	);
-	
-	refFunc(
-		function( err )
-		{
-			if( refFuncCbArgs !== undefined )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The cb given to the reference func has been called "+
-					"twice",
-					{
-						previousCbArgs: refFuncCbArgs,
-						currentCbArgs: arguments
-					}
-				);
-			}
-			
-			refFuncCbArgs = arguments;
-			
-			if( err instanceof Error === true )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The reference func may not cause an error but an "+
-					"error was handed to its cb"
-				);
-			}
-		}
-	);
-	
+	var errTimeout =
 	setTimeout(
 		function()
 		{
@@ -350,17 +273,111 @@ function( testName, errClass, errCode, cbTime, errFunc, refFunc )
 					"The cb given to the error func hasnt been called"
 				);
 			}
-			
-			if( refFuncCbArgs === undefined )
-			{
-				throw new TestRuntimeError(
-					errPrefix+
-					"The cb given to the reference func hasnt been called"
-				);
-			}
 		},
 		cbTime
 	);
+	
+	errFunc(
+	function( err )
+	{
+		if( errFuncCbArgs !== undefined )
+		{
+			throw new TestRuntimeError(
+				errPrefix+
+				"The cb given to the error func has been called twice",
+				{
+					previousCbArgs: errFuncCbArgs,
+					currentCbArgs: arguments
+				}
+			);
+		}
+		
+		errFuncCbArgs = arguments;
+		
+		clearTimeout( errTimeout );
+		
+		if( err instanceof Error === false )
+		{
+			throw new TestRuntimeError(
+				errPrefix+
+				"An err was expected to be given to the cb of the "+
+				"error func but this didnt happen"
+			);
+		}
+		
+		if( err.__proto__ !== errClass.prototype )
+		{
+			throw new TestRuntimeError(
+				errPrefix+
+				"The error given to the cb of the error func isnt of "+
+				"expected class",
+				{ cbErr: err }
+			);
+		}
+		
+		if( errCode !== undefined && err.ourGlobeCode !== errCode )
+		{
+			throw new TestRuntimeError(
+				errPrefix+
+				"The error thrown by the error func doesnt have "+
+				"the expected error code",
+				{ expectedCode: errCode, cbErr: err }
+			);
+		}
+		
+		var refFuncCbArgs = undefined;
+		
+		var refTimeout =
+		setTimeout(
+			function()
+			{
+				if( refFuncCbArgs === undefined )
+				{
+					throw new TestRuntimeError(
+						errPrefix+
+						"The cb given to the reference func hasnt been "+
+						"called"
+					);
+				}
+			},
+			cbTime
+		);
+		
+		refFunc(
+		function( err )
+		{
+			if( refFuncCbArgs !== undefined )
+			{
+				throw new TestRuntimeError(
+					errPrefix+
+					"The cb given to the reference func has been "+
+					"called twice",
+					{
+						previousCbArgs: refFuncCbArgs,
+						currentCbArgs: arguments
+					}
+				);
+			}
+			
+			refFuncCbArgs = arguments;
+			
+			clearTimeout( refTimeout );
+			
+			if( err instanceof Error === true )
+			{
+				throw new TestRuntimeError(
+					errPrefix+
+					"The reference func may not cause an error but an "+
+					"error was handed to its cb"
+				);
+			}
+			
+			if( cb !== undefined )
+			{
+				cb();
+			}
+		});
+	});
 };
 
 Test.assert =
