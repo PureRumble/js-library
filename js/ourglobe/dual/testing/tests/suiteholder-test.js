@@ -521,6 +521,27 @@ expectErr(
 	}
 );
 
+// testing verification of conf flag sequential
+
+expectErr(
+	"sequential of conf must be undef or a bool",
+	"ConfIsNotValid",
+	"dingo",
+	{
+		conf:{ sequential: 1 },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	},
+	"dingo",
+	{
+		conf:{ sequential: false },
+		topic: emptyFunc,
+		argsVer: [ "undef" ],
+		vows:[ "dango", emptyFunc ]
+	}
+);
+
 // testing verification of suite prop next
 
 expectErr(
@@ -863,6 +884,25 @@ expectErr(
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
 		after: emptyFunc
+	}
+);
+
+expectErr(
+	"Suite prop afterCb must be a func",
+	"AfterIsNotValid",
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		afterCb:{ func: emptyFunc }
+	},
+	"dingo",
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ],
+		vows:[ "dingo", emptyFunc ],
+		afterCb: emptyFunc
 	}
 );
 

@@ -68,6 +68,9 @@ function( suiteHolder, parentRun )
 	this.parentRun = parentRun;
 	this.suiteHolder = suiteHolder;
 	
+	this.nrChildSuitesDone = 0;
+	this.suiteErrOccurred = false;
+	
 	this.suiteRunCb = undefined;
 	this.runOk = undefined;
 	this.failedSuiteStep = undefined;
@@ -159,6 +162,65 @@ var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteStep = mods.get( "suitestep" );
 var After = mods.get( "after" );
 
+SuiteRun.prototype.markChildSuiteDone =
+getF(
+getV()
+	.addA( Error, "undef" )
+	.addA( "undef", SuiteRun ),
+function( err, childSuiteRun )
+{
+	if( this.suiteErrOccurred === true )
+	{
+		return;
+	}
+	
+	if( err !== undefined )
+	{
+		this.suiteErrOccurred = true;
+		
+		this.suiteRunCb( err );
+		
+		return;
+	}
+	
+	if( childSuiteRun.runOk === false )
+	{
+		this.markRunFailed( childSuiteRun );
+	}
+	
+	this.nrChildSuitesDone++;
+	
+	if(
+		this.suiteHolder.conf.sequential === true &&
+		this.nrChildSuitesDone < this.next.length
+	)
+	{
+		this.runChildSuite( this.nrChildSuitesDone );
+	}
+	else if( this.nrChildSuitesDone === this.next.length )
+	{
+		this.runAfter();
+	}
+});
+
+SuiteRun.prototype.runChildSuite =
+getF(
+getV()
+	.addA( { gte: 0 } ),
+function( item )
+{
+	var suiteRun = this;
+	
+	this.next[ item ].run(
+		getF(
+		SuiteRun.RUN_CB_FV,
+		function( err, childSuiteRun )
+		{
+			suiteRun.markChildSuiteDone( err, childSuiteRun );
+		})
+	);
+});
+
 SuiteRun.prototype.runAfter =
 getF(
 getV(),
@@ -244,44 +306,18 @@ function()
 			this.next[ item ] = currSuiteRun;
 		}
 		
-		var outerSuiteRun = this;
-		var nrSuitesDone = 0;
-		var suiteErrOccurred = false;
+		var suiteRun = this;
 		
-		for( var item = 0; item < suiteHolder.next.length; item++ )
+		if( suiteHolder.conf.sequential === false )
 		{
-			this.next[ item ].run(
-				getF(
-				SuiteRun.RUN_CB_FV,
-				function( err, currSuiteRun )
-				{
-					if( suiteErrOccurred === true )
-					{
-						return;
-					}
-					
-					if( err !== undefined )
-					{
-						suiteErrOccurred = true;
-						
-						outerSuiteRun.suiteRunCb( err );
-						
-						return;
-					}
-					
-					if( currSuiteRun.runOk === false )
-					{
-						outerSuiteRun.markRunFailed( currSuiteRun );
-					}
-					
-					nrSuitesDone++;
-					
-					if( nrSuitesDone === outerSuiteRun.next.length )
-					{
-						outerSuiteRun.runAfter();
-					}
-				})
-			);
+			for( var item = 0; item < suiteHolder.next.length; item++ )
+			{
+				this.runChildSuite( item );
+			}
+		}
+		else
+		{
+			this.runChildSuite( 0 );
 		}
 	}
 	else

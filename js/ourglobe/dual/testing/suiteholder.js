@@ -78,6 +78,11 @@ function( name, suiteObj, parentSuite )
 		this.conf.allowCbErr = false;
 	}
 	
+	if( this.conf.sequential === undefined )
+	{
+		this.conf.sequential = false;
+	}
+	
 	if( this.next !== undefined )
 	{
 		for( var item = 0; item < this.next.length; item++ )
@@ -346,7 +351,8 @@ function( name, suiteObj, topicFound )
 		if(
 			prop !== "verifyArgs" &&
 			prop !== "allowThrownErr" &&
-			prop !== "allowCbErr"
+			prop !== "allowCbErr" &&
+			prop !== "sequential"
 		)
 		{
 			throw new SuiteRuntimeError(
@@ -361,6 +367,7 @@ function( name, suiteObj, topicFound )
 	var verifyArgs = conf[ "verifyArgs" ];
 	var allowThrownErr = conf[ "allowThrownErr" ];
 	var allowCbErr = conf[ "allowCbErr" ];
+	var sequential = conf[ "sequential" ];
 	
 	if(
 		verifyArgs !== undefined &&
@@ -422,6 +429,19 @@ function( name, suiteObj, topicFound )
 			"if the suite has a topicCb",
 			{ suiteName: name },
 			"AllowCbErrWithoutTopicCb"
+		);
+	}
+	
+	if(
+		sequential !== undefined &&
+		typeof( sequential ) !== "boolean"
+	)
+	{
+		throw new SuiteRuntimeError(
+			"Prop sequential of suite prop conf "+
+			"must be undef or a bool",
+			{ suiteName: name, sequential: sequential },
+			"ConfIsNotValid"
 		);
 	}
 	

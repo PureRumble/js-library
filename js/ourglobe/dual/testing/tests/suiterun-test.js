@@ -11,44 +11,6 @@ ourglobe.require(
 function( mods )
 {
 
-var originalSetTimeout = setTimeout;
-var originalClearTimeout = clearTimeout;
-
-var nrTimers = 0;
-var maxNrTimers = 0;
-
-setTimeout =
-function( cb, time )
-{
-	nrTimers++;
-	
-	if( nrTimers > maxNrTimers )
-	{
-		maxNrTimers = nrTimers;
-		console.log( maxNrTimers );
-	}
-	
-	return(
-		originalSetTimeout(
-			function()
-			{
-				nrTimers--;
-				
-				cb();
-			},
-			time
-		)
-	);
-};
-
-clearTimeout =
-function( timeoutId )
-{
-	nrTimers--;
-	
-	originalClearTimeout( timeoutId );
-};
-
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
@@ -287,7 +249,7 @@ function( testName, suite, nrSlots, verify )
 	
 	console.log( testName );
 	
-	var cbCalled = false;
+	var cbArgs = undefined;
 	
 	var errPrefix =
 		"An err occurred when testing '"+testName+"':\n"
@@ -300,7 +262,7 @@ function( testName, suite, nrSlots, verify )
 		setTimeout(
 			function()
 			{
-				if( cbCalled === false )
+				if( cbArgs === undefined )
 				{
 					console.log( errPrefix );
 					throw new TestRuntimeError(
@@ -324,18 +286,18 @@ function( testName, suite, nrSlots, verify )
 						throw err;
 					}
 					
-					if( cbCalled === true )
+					if( cbArgs !== undefined )
 					{
 						throw new TestRuntimeError(
 							errPrefix+
 							"The cb given to SuiteRun.run() has been called "+
 							"twice",
-							{ providedArgs: arguments }
+							{ currentArgs: arguments, previousArgs: cbArgs }
 						);
 					}
 					
 					clearTimeout( testTimeout );
-					cbCalled = true;
+					cbArgs = arguments;
 					
 					try
 					{
@@ -663,13 +625,7 @@ testSuiteRunWithCb(
 		{
 			suite:
 			{
-				topicCb:
-				function()
-				{
-					var cb = this.getCb();
-					
-					cb();
-				},
+				topicCb: getCbFunc(),
 				argsVer: [],
 				vows:[
 					"dingo",
@@ -781,13 +737,7 @@ testSuiteRun(
 	"healthy topicCb with call cb() and with faulty vow "+
 	"and healthy vow",
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-		},
+		topicCb: getCbFunc(),
 		argsVer: [],
 		vows:[
 			"dingo", faultyFunc,
@@ -840,19 +790,7 @@ testSuiteRun(
 	"healthy topicCb with delayed call cb() and with "+
 	"faulty vow and healthy vow",
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-		},
+		topicCb: getCbFunc( 100 ),
 		argsVer:[],
 		vows:
 		[
@@ -991,13 +929,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-		},
+		topicCb: getCbFunc(),
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
 	}
@@ -1067,19 +999,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-		},
+		topicCb: getCbFunc( 100 ),
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
 	}
@@ -1257,19 +1177,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		topicCb: getCbFunc( CB_TIMES_OUT ),
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
 	}
@@ -1331,19 +1239,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		topicCb: getCbFunc( CB_TIMES_OUT ),
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
 	}
@@ -1378,19 +1274,7 @@ testSuiteRun(
 	"testing faulty topicCb with no call to cb() within timeout "+
 	"limit and then delayed call cb() and faulty cancelled vow",
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		topicCb: getCbFunc( CB_TIMES_OUT ),
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", faultyFunc ]
 	},
@@ -1489,19 +1373,7 @@ testSuiteRun(
 testSuiteRun(
 	"healthy topicCb with delayed call cb() that upholds argsVer",
 	{
-		topicCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-		},
+		topicCb: getCbFunc( 100 ),
 		argsVer: getV( [ "str" ] ).addA(),
 		vows:[ "dingo", emptyFunc ]
 	},
@@ -1636,54 +1508,18 @@ expectErr(
 			new SuiteHolder(
 				"suite",
 				{
-					beforeCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
-					topicCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
-					afterCb:
-					function()
-					{
-						var cb = this.getCb();
-						
-						cb();
-					},
+					beforeCb: getCbFunc(),
+					topicCb: getCbFunc(),
+					afterCb: getCbFunc(),
 					argsVer:[],
 					vows:[ "dingo", emptyFunc ],
 					next:
 					[
 						"suite one",
 						{
-							beforeCb:
-							function()
-							{
-								var cb = this.getCb();
-								
-								cb();
-							},
-							topicCb:
-							function()
-							{
-								var cb = this.getCb();
-								
-								cb();
-							},
-							afterCb:
-							function()
-							{
-								var cb = this.getCb();
-								
-								cb();
-							},
+							beforeCb: getCbFunc(),
+							topicCb: getCbFunc(),
+							afterCb: getCbFunc(),
 							argsVer:[],
 							vows:[ "dingo", emptyFunc ]
 						}
@@ -4222,13 +4058,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-		},
+		beforeCb: getCbFunc(),
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
@@ -4302,19 +4132,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-		},
+		beforeCb: getCbFunc( 100 ),
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
@@ -4473,19 +4291,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		beforeCb: getCbFunc( CB_TIMES_OUT ),
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
@@ -4535,19 +4341,7 @@ expectSuiteCbErr(
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		beforeCb: getCbFunc( CB_TIMES_OUT ),
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ]
@@ -4583,19 +4377,7 @@ testSuiteRun(
 	"testing faulty beforeCb with no call to cb within timeout "+
 	"limit and then calls delayed cb",
 	{
-		beforeCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		},
+		beforeCb: getCbFunc( CB_TIMES_OUT ),
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", faultyFunc ]
@@ -5482,13 +5264,7 @@ expectSuiteCbErr(
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ],
-		afterCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			cb();
-		}
+		afterCb: getCbFunc()
 	}
 );
 
@@ -5528,19 +5304,7 @@ expectSuiteCbErr(
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ],
-		afterCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				100
-			);
-		}
+		afterCb: getCbFunc( 100 )
 	}
 );
 
@@ -5659,19 +5423,7 @@ expectSuiteCbErr(
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", emptyFunc ],
-		afterCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		}
+		afterCb: getCbFunc( CB_TIMES_OUT )
 	}
 );
 
@@ -5706,19 +5458,7 @@ testSuiteRun(
 		topic: emptyFunc,
 		argsVer: getV().setE( "any" ),
 		vows:[ "dingo", faultyFunc ],
-		afterCb:
-		function()
-		{
-			var cb = this.getCb();
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CB_TIMES_OUT
-			);
-		}
+		afterCb: getCbFunc( CB_TIMES_OUT )
 	},
 	function( run )
 	{
@@ -5736,6 +5476,57 @@ testSuiteRun(
 // testing suites where nr concurrent cb suite step calls is
 // limited
 
+var ConcVer =
+getF(
+getV(),
+function()
+{
+	this.seq = [];
+	this.maxNrConcCbs = 0;
+	this.nrConcCbs = 0;
+});
+
+ConcVer.prototype.getConcFunc =
+getF(
+getV()
+	.addA( "int/undef", "str/undef" )
+	.addA( "str/undef" )
+	.setR( "func" ),
+function( cbTime, testStr )
+{
+	if( sys.hasType( cbTime, "str" ) === true )
+	{
+		testStr = cbTime;
+		cbTime = undefined;
+	}
+	
+	var concVer = this;
+	
+	return(
+		getCbFunc(
+			cbTime,
+			function()
+			{
+				concVer.nrConcCbs++;
+				
+				if( concVer.nrConcCbs > concVer.maxNrConcCbs )
+				{
+					concVer.maxNrConcCbs = concVer.nrConcCbs;
+				}
+			},
+			function()
+			{
+				concVer.nrConcCbs--;
+				
+				if( testStr !== undefined )
+				{
+					concVer.seq.push( testStr );
+				}
+			}
+		)
+	);
+});
+
 testSuiteRunWithCb(
 	"Testing a great limit on the nr of conc cb steps when "+
 	"running suite with many child suites at many levels where "+
@@ -5745,36 +5536,7 @@ testSuiteRunWithCb(
 	{ testAsChild: false, nrSlots: 10 },
 	function()
 	{
-		var maxNrConcCbs = 0;
-		var nrConcCbs = 0;
-		
-		var getConcFunc =
-		getF(
-			getV()
-				.addA( "int/undef" )
-				.setR( "func" ),
-			function( cbTime )
-			{
-				return(
-					getCbFunc(
-						cbTime,
-						function()
-						{
-							nrConcCbs++;
-							
-							if( nrConcCbs > maxNrConcCbs )
-							{
-								maxNrConcCbs = nrConcCbs;
-							}
-						},
-						function()
-						{
-							nrConcCbs--;
-						}
-					)
-				);
-			}
-		);
+		var concVer = new ConcVer();
 		
 		return(
 			{
@@ -5784,50 +5546,50 @@ testSuiteRunWithCb(
 					[
 						"suite one",
 						{
-							beforeCb: getConcFunc( 1000 ),
-							topicCb: getConcFunc( 1000 ),
-							afterCb: getConcFunc( 1000 ),
+							beforeCb: concVer.getConcFunc( 1000 ),
+							topicCb: concVer.getConcFunc( 1000 ),
+							afterCb: concVer.getConcFunc( 1000 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite one vow one", emptyFunc ]
 						},
 						"suite two",
 						{
-							beforeCb: getConcFunc(),
-							topicCb: getConcFunc(),
-							afterCb: getConcFunc(),
+							beforeCb: concVer.getConcFunc(),
+							topicCb: concVer.getConcFunc(),
+							afterCb: concVer.getConcFunc(),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite one vow one", emptyFunc ],
 							next:
 							[
 								"suite two one",
 								{
-									beforeCb: getConcFunc( 500 ),
-									topicCb: getConcFunc( 500 ),
-									afterCb: getConcFunc( 500 ),
+									beforeCb: concVer.getConcFunc( 500 ),
+									topicCb: concVer.getConcFunc( 500 ),
+									afterCb: concVer.getConcFunc( 500 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite two one vow one", emptyFunc ]
 								},
 								"suite two two",
 								{
-									beforeCb: getConcFunc( 300 ),
-									topicCb: getConcFunc( 300 ),
-									afterCb: getConcFunc( 300 ),
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite two two vow one", emptyFunc ]
 								},
 								"suite two three",
 								{
-									beforeCb: getConcFunc( 100 ),
-									topicCb: getConcFunc( 100 ),
-									afterCb: getConcFunc( 100 ),
+									beforeCb: concVer.getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc( 100 ),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite two three vow one", emptyFunc ]
 								},
 								"suite two four",
 								{
-									beforeCb: getConcFunc( 200 ),
-									topicCb: getConcFunc( 200 ),
-									afterCb: getConcFunc( 200 ),
+									beforeCb: concVer.getConcFunc( 200 ),
+									topicCb: concVer.getConcFunc( 200 ),
+									afterCb: concVer.getConcFunc( 200 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite two four vow one", emptyFunc ]
 								}
@@ -5844,25 +5606,25 @@ testSuiteRunWithCb(
 							[
 								"suite three one",
 								{
-									beforeCb: getConcFunc( 500 ),
-									topicCb: getConcFunc( 500 ),
-									afterCb: getConcFunc( 500 ),
+									beforeCb: concVer.getConcFunc( 500 ),
+									topicCb: concVer.getConcFunc( 500 ),
+									afterCb: concVer.getConcFunc( 500 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite three one vow one", emptyFunc ]
 								},
 								"suite three two",
 								{
-									beforeCb: getConcFunc( 300 ),
-									topicCb: getConcFunc( 300 ),
-									afterCb: getConcFunc( 300 ),
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite three two vow one", emptyFunc ]
 								},
 								"suite three three",
 								{
-									beforeCb: getConcFunc( 100 ),
-									topicCb: getConcFunc( 100 ),
-									afterCb: getConcFunc( 100 ),
+									beforeCb: concVer.getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc( 100 ),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite three three vow one", emptyFunc ]
 								}
@@ -5870,9 +5632,9 @@ testSuiteRunWithCb(
 						},
 						"suite four",
 						{
-							beforeCb: getConcFunc( 100 ),
-							topicCb: getConcFunc( 100 ),
-							afterCb: getConcFunc( 100 ),
+							beforeCb: concVer.getConcFunc( 100 ),
+							topicCb: concVer.getConcFunc( 100 ),
+							afterCb: concVer.getConcFunc( 100 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite four vow one", emptyFunc ]
 						},
@@ -5885,33 +5647,33 @@ testSuiteRunWithCb(
 							[
 								"suite five one",
 								{
-									beforeCb: getConcFunc( 2000 ),
-									topicCb: getConcFunc( 2000 ),
-									afterCb: getConcFunc( 200 ),
+									beforeCb: concVer.getConcFunc( 2000 ),
+									topicCb: concVer.getConcFunc( 2000 ),
+									afterCb: concVer.getConcFunc( 200 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite five one vow one", emptyFunc ]
 								},
 								"suite five two",
 								{
-									beforeCb: getConcFunc( 2000 ),
-									topicCb: getConcFunc( 2000 ),
-									afterCb: getConcFunc( 2000 ),
+									beforeCb: concVer.getConcFunc( 2000 ),
+									topicCb: concVer.getConcFunc( 2000 ),
+									afterCb: concVer.getConcFunc( 2000 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite five two vow one", emptyFunc ]
 								},
 								"suite five three",
 								{
-									beforeCb: getConcFunc( 2000 ),
-									topicCb: getConcFunc( 2000 ),
-									afterCb: getConcFunc( 2000 ),
+									beforeCb: concVer.getConcFunc( 2000 ),
+									topicCb: concVer.getConcFunc( 2000 ),
+									afterCb: concVer.getConcFunc( 2000 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite five three vow one", emptyFunc ]
 								},
 								"suite two five",
 								{
-									beforeCb: getConcFunc( 2000 ),
-									topicCb: getConcFunc( 2000 ),
-									afterCb: getConcFunc( 2000 ),
+									beforeCb: concVer.getConcFunc( 2000 ),
+									topicCb: concVer.getConcFunc( 2000 ),
+									afterCb: concVer.getConcFunc( 2000 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite five four vow one", emptyFunc ]
 								}
@@ -5923,7 +5685,7 @@ testSuiteRunWithCb(
 				function( run )
 				{
 					assert(
-						maxNrConcCbs === 10 &&
+						concVer.maxNrConcCbs === 10 &&
 						
 						run.runOk === true &&
 						
@@ -6022,36 +5784,7 @@ testSuiteRunWithCb(
 	{ testAsChild: false, nrSlots: 2 },
 	function()
 	{
-		var maxNrConcCbs = 0;
-		var nrConcCbs = 0;
-		
-		var getConcFunc =
-		getF(
-			getV()
-				.addA( "int/undef" )
-				.setR( "func" ),
-			function( cbTime )
-			{
-				return(
-					getCbFunc(
-						cbTime,
-						function()
-						{
-							nrConcCbs++;
-							
-							if( nrConcCbs > maxNrConcCbs )
-							{
-								maxNrConcCbs = nrConcCbs;
-							}
-						},
-						function()
-						{
-							nrConcCbs--;
-						}
-					)
-				);
-			}
-		);
+		var concVer = new ConcVer();
 		
 		return(
 			{
@@ -6061,42 +5794,42 @@ testSuiteRunWithCb(
 					[
 						"suite one",
 						{
-							beforeCb: getConcFunc( 1000 ),
-							topicCb: getConcFunc( 1000 ),
-							afterCb: getConcFunc( 1000 ),
+							beforeCb: concVer.getConcFunc( 1000 ),
+							topicCb: concVer.getConcFunc( 1000 ),
+							afterCb: concVer.getConcFunc( 1000 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite one vow one", emptyFunc ]
 						},
 						"suite two",
 						{
-							beforeCb: getConcFunc( 500 ),
-							topicCb: getConcFunc( 500 ),
-							afterCb: getConcFunc( 500 ),
+							beforeCb: concVer.getConcFunc( 500 ),
+							topicCb: concVer.getConcFunc( 500 ),
+							afterCb: concVer.getConcFunc( 500 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite two vow one", emptyFunc ]
 						},
 						"suite three",
 						{
-							beforeCb: getConcFunc(),
-							topicCb: getConcFunc(),
-							afterCb: getConcFunc(),
+							beforeCb: concVer.getConcFunc(),
+							topicCb: concVer.getConcFunc(),
+							afterCb: concVer.getConcFunc(),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite three vow one", emptyFunc ],
 							next:
 							[
 								"suite three one",
 								{
-									beforeCb: getConcFunc( 100 ),
-									topicCb: getConcFunc( 100 ),
-									afterCb: getConcFunc( 100 ),
+									beforeCb: concVer.getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc( 100 ),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite three one vow one", emptyFunc ]
 								},
 								"suite three two",
 								{
-									beforeCb: getConcFunc( 100 ),
-									topicCb: getConcFunc( 100 ),
-									afterCb: getConcFunc( 100 ),
+									beforeCb: concVer.getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc( 100 ),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "suite three two vow one", emptyFunc ]
 								}
@@ -6112,17 +5845,17 @@ testSuiteRunWithCb(
 						},
 						"suite five",
 						{
-							beforeCb: getConcFunc( 300 ),
-							topicCb: getConcFunc( 300 ),
-							afterCb: getConcFunc( 300 ),
+							beforeCb: concVer.getConcFunc( 300 ),
+							topicCb: concVer.getConcFunc( 300 ),
+							afterCb: concVer.getConcFunc( 300 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite five vow one", emptyFunc ]
 						},
 						"suite six",
 						{
-							beforeCb: getConcFunc( 100 ),
-							topicCb: getConcFunc( 100 ),
-							afterCb: getConcFunc( 100 ),
+							beforeCb: concVer.getConcFunc( 100 ),
+							topicCb: concVer.getConcFunc( 100 ),
+							afterCb: concVer.getConcFunc( 100 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "suite six vow one", emptyFunc ]
 						}
@@ -6132,7 +5865,7 @@ testSuiteRunWithCb(
 				function( run )
 				{
 					assert(
-						maxNrConcCbs === 2 &&
+						concVer.maxNrConcCbs === 2 &&
 						run.runOk === true &&
 						
 						run.next[ 0 ].runOk === true &&
@@ -6173,36 +5906,7 @@ testSuiteRunWithCb(
 	{ testAsChild: false, nrSlots: 1 },
 	function()
 	{
-		var maxNrConcCbs = 0;
-		var nrConcCbs = 0;
-		
-		var getConcFunc =
-		getF(
-			getV()
-				.addA( "int/undef" )
-				.setR( "func" ),
-			function( cbTime )
-			{
-				return(
-					getCbFunc(
-						cbTime,
-						function()
-						{
-							nrConcCbs++;
-							
-							if( nrConcCbs > maxNrConcCbs )
-							{
-								maxNrConcCbs = nrConcCbs;
-							}
-						},
-						function()
-						{
-							nrConcCbs--;
-						}
-					)
-				);
-			}
-		);
+		var concVer = new ConcVer();
 		
 		return(
 			{
@@ -6212,34 +5916,34 @@ testSuiteRunWithCb(
 					[
 						"suite one",
 						{
-							beforeCb: getConcFunc( 1000 ),
-							topicCb: getConcFunc( 1000 ),
-							afterCb: getConcFunc( 1000 ),
+							beforeCb: concVer.getConcFunc( 1000 ),
+							topicCb: concVer.getConcFunc( 1000 ),
+							afterCb: concVer.getConcFunc( 1000 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "vow", emptyFunc ],
 							next:
 							[
 								"suite one one",
 								{
-									beforeCb: getConcFunc( 100 ),
-									topicCb: getConcFunc( 100 ),
-									afterCb: getConcFunc( 100 ),
+									beforeCb: concVer.getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc( 100 ),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "vow", emptyFunc ]
 								},
 								"suite one two",
 								{
-									beforeCb: getConcFunc(),
-									topicCb: getConcFunc(),
-									afterCb: getConcFunc(),
+									beforeCb: concVer.getConcFunc(),
+									topicCb: concVer.getConcFunc(),
+									afterCb: concVer.getConcFunc(),
 									argsVer: getV().setE( "any" ),
 									vows:[ "vow", emptyFunc ]
 								},
 								"suite one three",
 								{
 									before: emptyFunc,
-									topicCb: getConcFunc(),
-									afterCb: getConcFunc( 100 ),
+									topicCb: concVer.getConcFunc(),
+									afterCb: concVer.getConcFunc( 100 ),
 									argsVer: getV().setE( "any" ),
 									vows:[ "vow", emptyFunc ]
 								}
@@ -6248,24 +5952,24 @@ testSuiteRunWithCb(
 						"suite two",
 						{
 							before: emptyFunc,
-							topicCb: getConcFunc( 100 ),
-							afterCb: getConcFunc(),
+							topicCb: concVer.getConcFunc( 100 ),
+							afterCb: concVer.getConcFunc(),
 							argsVer: getV().setE( "any" ),
 							vows:[ "vow", emptyFunc ]
 						},
 						"suite three",
 						{
-							beforeCb: getConcFunc(),
-							topicCb: getConcFunc(),
-							afterCb: getConcFunc(),
+							beforeCb: concVer.getConcFunc(),
+							topicCb: concVer.getConcFunc(),
+							afterCb: concVer.getConcFunc(),
 							argsVer: getV().setE( "any" ),
 							vows:[ "vow", emptyFunc ]
 						},
 						"suite four",
 						{
-							beforeCb: getConcFunc( 100 ),
-							topicCb: getConcFunc( 100 ),
-							afterCb: getConcFunc( 100 ),
+							beforeCb: concVer.getConcFunc( 100 ),
+							topicCb: concVer.getConcFunc( 100 ),
+							afterCb: concVer.getConcFunc( 100 ),
 							argsVer: getV().setE( "any" ),
 							vows:[ "vow", emptyFunc ]
 						}
@@ -6275,7 +5979,7 @@ testSuiteRunWithCb(
 				function( run )
 				{
 					assert(
-						maxNrConcCbs === 1 &&
+						concVer.maxNrConcCbs === 1 &&
 						
 						run.next[ 0 ].runOk === true &&
 						run.next[ 0 ].after.stepOk === true &&
@@ -6297,6 +6001,351 @@ testSuiteRunWithCb(
 						
 						run.next[ 3 ].runOk === true &&
 						run.next[ 3 ].after.stepOk === true
+						,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// test group
+// testing suites with the conf flag sequential set
+
+testSuiteRunWithCb(
+	"Testing suite that executes its child suites sequentially, "+
+	"and where one child suites has its own child suites and "+
+	"it too executes them sequentially. Making sure the suites "+
+	"are executed in correct order and that the max nr "+
+	"concurrent cb steps is one",
+	{ testAsChild: false, nrSlots: 10 },
+	function()
+	{
+		var concVer = new ConcVer();
+		
+		return(
+			{
+				suite:
+				{
+					conf:{ sequential: true },
+					next:
+					[
+						"suite one",
+						{
+							beforeCb: concVer.getConcFunc( 3000 ),
+							topicCb: concVer.getConcFunc( 3000 ),
+							afterCb: concVer.getConcFunc( 3000, "SuiteOne" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite two",
+						{
+							conf:{ sequential: true },
+							beforeCb: concVer.getConcFunc( 1000 ),
+							topicCb: concVer.getConcFunc( 1000 ),
+							afterCb: concVer.getConcFunc( 1000, "SuiteTwo" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ],
+							next:
+							[
+								"suite two one",
+								{
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300, "SuiteTwoOne" ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite two two",
+								{
+									beforeCb: concVer.getConcFunc(),
+									topicCb: concVer.getConcFunc(),
+									afterCb: concVer.getConcFunc( "SuiteTwoTwo" ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite two three",
+								{
+									before: emptyFunc,
+									topic: emptyFunc,
+									after:
+									function()
+									{
+										concVer.seq.push( "SuiteTwoThree" );
+									},
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								}
+							]
+						},
+						"suite three",
+						{
+							beforeCb: concVer.getConcFunc( 300 ),
+							topicCb: concVer.getConcFunc( 300 ),
+							afterCb: concVer.getConcFunc( 300, "SuiteThree" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite four",
+						{
+							beforeCb: concVer.getConcFunc(),
+							topicCb: concVer.getConcFunc(),
+							afterCb: concVer.getConcFunc( "SuiteFour" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite five",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after:
+							function()
+							{
+								concVer.seq.push( "SuiteFive" );
+							},
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite six",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							afterCb: concVer.getConcFunc( 1000, "SuiteSix" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite seven",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after:
+							function()
+							{
+								concVer.seq.push( "SuiteSeven" );
+							},
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						concVer.maxNrConcCbs === 1 &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						concVer.seq[ 0 ] === "SuiteOne" &&
+						
+						run.next[ 1 ].runOk === true &&
+						run.next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 0 ].runOk === true &&
+						run.next[ 1 ].next[ 0 ].after.stepOk === true &&
+						concVer.seq[ 1 ] === "SuiteTwoOne" &&
+						
+						run.next[ 1 ].next[ 1 ].runOk === true &&
+						run.next[ 1 ].next[ 1 ].after.stepOk === true &&
+						concVer.seq[ 2 ] === "SuiteTwoTwo" &&
+						
+						run.next[ 1 ].next[ 2 ].runOk === true &&
+						run.next[ 1 ].next[ 2 ].after.stepOk === true &&
+						concVer.seq[ 3 ] === "SuiteTwoThree" &&
+						
+						concVer.seq[ 4 ] === "SuiteTwo" &&
+						
+						run.next[ 2 ].runOk === true &&
+						run.next[ 2 ].after.stepOk === true &&
+						concVer.seq[ 5 ] === "SuiteThree" &&
+						
+						run.next[ 3 ].runOk === true &&
+						run.next[ 3 ].after.stepOk === true &&
+						concVer.seq[ 6 ] === "SuiteFour" &&
+						
+						run.next[ 4 ].runOk === true &&
+						run.next[ 4 ].after.stepOk === true &&
+						concVer.seq[ 7 ] === "SuiteFive" &&
+						
+						run.next[ 5 ].runOk === true &&
+						run.next[ 5 ].after.stepOk === true &&
+						concVer.seq[ 8 ] === "SuiteSix" &&
+						
+						run.next[ 6 ].runOk === true &&
+						run.next[ 6 ].after.stepOk === true &&
+						concVer.seq[ 9 ] === "SuiteSeven"
+						,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing suite that executes its child suites sequentially, "+
+	"but where one child suite allows its own child suites to "+
+	"run in parallel. Making sure correct suites are executed "+
+	"sequentially while concurrent cb step execution is utilized "+
+	"too",
+	{ testAsChild: false, nrSlots: 3 },
+	function()
+	{
+		var concVer = new ConcVer();
+		
+		return(
+			{
+				suite:
+				{
+					conf:{ sequential: true },
+					next:
+					[
+						"suite one",
+						{
+							beforeCb: concVer.getConcFunc( 3000 ),
+							topicCb: concVer.getConcFunc( 3000 ),
+							afterCb: concVer.getConcFunc( 3000, "SuiteOne" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite two",
+						{
+							conf:{ sequential: false },
+							beforeCb: concVer.getConcFunc( 1000 ),
+							topicCb: concVer.getConcFunc( 1000 ),
+							afterCb: concVer.getConcFunc( 1000, "SuiteTwo" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ],
+							next:
+							[
+								"suite two one",
+								{
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite two two",
+								{
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite two three",
+								{
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite two four",
+								{
+									beforeCb: concVer.getConcFunc( 300 ),
+									topicCb: concVer.getConcFunc( 300 ),
+									afterCb: concVer.getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								}
+							]
+						},
+						"suite three",
+						{
+							beforeCb: concVer.getConcFunc( 300 ),
+							topicCb: concVer.getConcFunc( 300 ),
+							afterCb: concVer.getConcFunc( 300, "SuiteThree" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite four",
+						{
+							beforeCb: concVer.getConcFunc(),
+							topicCb: concVer.getConcFunc(),
+							afterCb: concVer.getConcFunc( "SuiteFour" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite five",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after:
+							function()
+							{
+								concVer.seq.push( "SuiteFive" );
+							},
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite six",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							afterCb: concVer.getConcFunc( 1000, "SuiteSix" ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite seven",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after:
+							function()
+							{
+								concVer.seq.push( "SuiteSeven" );
+							},
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						concVer.maxNrConcCbs === 3 &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						concVer.seq[ 0 ] === "SuiteOne" &&
+						
+						run.next[ 1 ].runOk === true &&
+						run.next[ 1 ].after.stepOk === true &&
+						concVer.seq[ 1 ] === "SuiteTwo" &&
+						
+						run.next[ 1 ].next[ 0 ].runOk === true &&
+						run.next[ 1 ].next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 1 ].runOk === true &&
+						run.next[ 1 ].next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 2 ].runOk === true &&
+						run.next[ 1 ].next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 2 ].runOk === true &&
+						run.next[ 2 ].after.stepOk === true &&
+						concVer.seq[ 2 ] === "SuiteThree" &&
+						
+						run.next[ 3 ].runOk === true &&
+						run.next[ 3 ].after.stepOk === true &&
+						concVer.seq[ 3 ] === "SuiteFour" &&
+						
+						run.next[ 4 ].runOk === true &&
+						run.next[ 4 ].after.stepOk === true &&
+						concVer.seq[ 4 ] === "SuiteFive" &&
+						
+						run.next[ 5 ].runOk === true &&
+						run.next[ 5 ].after.stepOk === true &&
+						concVer.seq[ 5 ] === "SuiteSix" &&
+						
+						run.next[ 6 ].runOk === true &&
+						run.next[ 6 ].after.stepOk === true &&
+						concVer.seq[ 6 ] === "SuiteSeven"
 						,
 						"run result is invalid"
 					);
