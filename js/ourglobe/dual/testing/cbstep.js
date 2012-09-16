@@ -55,7 +55,7 @@ CbStep.EVALUATE_FV =
 		.setR( [ Error, "undef" ] )
 ;
 
-CbStep.DEFAULT_CB_TIMEOUT = 1000;
+CbStep.DEFAULT_CB_TIMEOUT = 5000;
 
 return CbStep;
 
@@ -123,6 +123,11 @@ function( err )
 // this call of evaluateCbStep() is done
 	this.cbStepDone = true;
 	
+// Free up the queue slot that was occupied by this CbStep
+	this.suiteRun.cbStepQueue.freeSlot();
+	
+// The call to landStep() might add more CbSteps to the queue,
+// so the CbSteps of the queue arent initiated before that
 	if( this.thrownErr !== undefined )
 	{
 		this.landStep( undefined, this.evaluate( this.thrownErr ) );
@@ -146,6 +151,9 @@ function( err )
 			this.evaluate( undefined, this.cbErr, this.cbArgs )
 		);
 	}
+	
+// Allow the next CbSteps of the queue to take a slot and run
+	this.suiteRun.cbStepQueue.fillSlots();
 });
 
 CbStep.prototype.getStepObj =
@@ -156,10 +164,10 @@ function()
 	return new CbStepObject( this );
 });
 
-CbStep.prototype.takeStep =
+CbStep.prototype.takeStepFromQueue =
 getF(
-SuiteStep.TAKE_STEP_FV,
-function( cb )
+getV(),
+function()
 {
 	var timeout = this.getCbTimeout();
 	var cbStep = this;
@@ -173,7 +181,27 @@ function( cb )
 		timeout
 	);
 	
-	SuiteStep.prototype.takeStep.call( this, cb );
+	CbStep.ourGlobeSuper.prototype.takeStep.call(
+		this, this.suiteStepCb
+	);
+});
+
+CbStep.prototype.takeStep =
+getF(
+SuiteStep.TAKE_STEP_FV,
+function( cb )
+{
+// Saving the cb here instead of waiting for SuiteStep.takeStep()
+// to do it so the cb can be used when running the CbStep from
+// CbStepQueue
+	this.suiteStepCb = cb;
+	
+	this.suiteRun.cbStepQueue.add( this );
+	
+// The CbStep is only added but the queue isnt started here.
+// Instead it is always started by evaluateCbStep() once a
+// CbStep is done or by the root SuiteRun that is the first
+// to ever call takeStep()
 });
 
 CbStep.prototype.landReturnStep =
@@ -268,8 +296,6 @@ function( err, cbArgs )
 		this.stepCbCalled === true || this.thrownErr !== undefined
 	)
 	{
-		var errCode = undefined;
-		
 		if( this.stepCbCalled === true )
 		{
 			this.evaluateCbStep(

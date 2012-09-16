@@ -2,6 +2,7 @@ ourglobe.define(
 [
 	"./suiteruntimeerror",
 	"./suiteholder",
+	"./cbstepqueue",
 	"./suitestep",
 	"./before",
 	"./beforecb",
@@ -18,6 +19,7 @@ function( mods )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
+var CbStepQueue = undefined;
 var SuiteHolder = undefined;
 var Before = undefined;
 var BeforeCb = undefined;
@@ -31,6 +33,7 @@ var AfterCb = undefined;
 mods.delay(
 	function()
 	{
+		CbStepQueue = mods.get( "cbstepqueue" );
 		SuiteHolder = mods.get( "suiteholder" );
 		Before = mods.get( "before" );
 		BeforeCb = mods.get( "beforecb" );
@@ -49,11 +52,19 @@ function()
 {
 	return(
 		getV()
-			.addA( SuiteHolder, [ SuiteRun, "undef" ] )
+			.addA( SuiteHolder, [ SuiteRun, { gt: 0 }, "undef" ] )
 	);
 },
 function( suiteHolder, parentRun )
 {
+	var nrSlots = undefined;
+	
+	if( parentRun instanceof SuiteRun === false )
+	{
+		nrSlots = parentRun;
+		parentRun = undefined;
+	}
+	
 	this.parentRun = parentRun;
 	this.suiteHolder = suiteHolder;
 	
@@ -61,6 +72,15 @@ function( suiteHolder, parentRun )
 	this.runOk = undefined;
 	this.failedSuiteStep = undefined;
 	this.failedSuiteRun = undefined;
+	
+	if( parentRun === undefined )
+	{
+		this.cbStepQueue = new CbStepQueue( nrSlots );
+	}
+	else
+	{
+		this.cbStepQueue = parentRun.cbStepQueue;
+	}
 	
 	this.local = SuiteHolder.copySet( suiteHolder.local );
 	
@@ -76,23 +96,24 @@ function( suiteHolder, parentRun )
 		this.before = new Before( this );
 	}
 	
-	if( suiteHolder.topic !== undefined )
+	if( suiteHolder.topicCb !== undefined )
+	{
+		this.topic = new TopicCb( this );
+	}
+	else if( suiteHolder.topic !== undefined )
 	{
 		this.topic = new Topic( this );
 	}
 	else if(
-		suiteHolder.topicCb !== undefined || parentRun === undefined
+		parentRun === undefined ||
+		parentRun.topic instanceof TopicCb === true
 	)
 	{
 		this.topic = new TopicCb( this );
 	}
-	else if( parentRun.topic instanceof Topic === true )
-	{
-		this.topic = new Topic( this, parentRun.topic );
-	}
 	else
 	{
-		this.topic = new TopicCb( this, parentRun.topic );
+		this.topic = new Topic( this );
 	}
 	
 	this.argsVer = new ArgsVer( this );
@@ -415,6 +436,14 @@ function( cb )
 	this.suiteRunCb = cb;
 	
 	this.runBefore();
+	
+// If this SuiteRun has no parent then it must make sure the
+// CbStepQueue is initiated for the first time so the CbSteps
+// can begin running
+	if( this.parentRun === undefined )
+	{
+		this.cbStepQueue.fillSlots();
+	}
 });
 
 });

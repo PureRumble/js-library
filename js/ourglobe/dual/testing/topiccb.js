@@ -29,41 +29,43 @@ var TopicCb =
 getF(
 function()
 {
-	return getV().addA( SuiteRun, [ TopicCb, "undef" ] );
+	return getV().addA( SuiteRun );
 },
-function( suiteRun, topicCbToCopy )
+function( suiteRun )
 {
 	this.result = undefined;
 	
-	if( topicCbToCopy !== undefined )
+	if( suiteRun.suiteHolder.topicCb === undefined )
 	{
-		this.result = topicCbToCopy.result;
-		this.thrownErr = topicCbToCopy.thrownErr;
-		this.cbErr = topicCbToCopy.cbErr;
-		
-		this.suiteRun = suiteRun;
-		this.stepOk = topicCbToCopy.stepOk;
-		this.err = topicCbToCopy.err;
+		if( suiteRun.parentRun !== undefined )
+		{
+			var topicCb = suiteRun.parentRun.topic;
+			
+			this.result = topicCb.result;
+			this.thrownErr = topicCb.thrownErr;
+			this.cbErr = topicCb.cbErr;
+			
+			this.suiteRun = suiteRun;
+			this.stepOk = topicCb.stepOk;
+			this.err = topicCb.err;
+		}
+		else
+		{
+			this.result = [];
+			this.thrownErr = undefined;
+			this.cbErr = undefined;
+			
+			this.suiteRun = suiteRun;
+			this.stepOk = true;
+			this.err = undefined;
+		}
 		
 		return;
 	}
 	
-	var topicCb = suiteRun.suiteHolder.topicCb;
-	
-	if( topicCb === undefined )
-	{
-		this.result = [];
-		this.thrownErr = undefined;
-		this.cbErr = undefined;
-		
-		this.suiteRun = suiteRun;
-		this.stepOk = true;
-		this.err = undefined;
-		
-		return;
-	}
-	
-	TopicCb.ourGlobeSuper.call( this, suiteRun, topicCb );
+	TopicCb.ourGlobeSuper.call(
+		this, suiteRun, suiteRun.suiteHolder.topicCb
+	);
 });
 
 return TopicCb;

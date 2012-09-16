@@ -28,14 +28,16 @@ var Topic =
 getF(
 function()
 {
-	return getV().addA( SuiteRun, [ Topic, "undef" ] );
+	return getV().addA( SuiteRun );
 },
-function( suiteRun, topic )
+function( suiteRun )
 {
 	this.result = undefined;
 	
-	if( topic !== undefined )
+	if( suiteRun.suiteHolder.topic === undefined )
 	{
+		var topic = suiteRun.parentRun.topic;
+		
 		this.result = topic.result;
 		this.thrownErr = topic.thrownErr;
 		

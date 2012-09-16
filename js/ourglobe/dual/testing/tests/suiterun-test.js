@@ -11,6 +11,44 @@ ourglobe.require(
 function( mods )
 {
 
+var originalSetTimeout = setTimeout;
+var originalClearTimeout = clearTimeout;
+
+var nrTimers = 0;
+var maxNrTimers = 0;
+
+setTimeout =
+function( cb, time )
+{
+	nrTimers++;
+	
+	if( nrTimers > maxNrTimers )
+	{
+		maxNrTimers = nrTimers;
+		console.log( maxNrTimers );
+	}
+	
+	return(
+		originalSetTimeout(
+			function()
+			{
+				nrTimers--;
+				
+				cb();
+			},
+			time
+		)
+	);
+};
+
+clearTimeout =
+function( timeoutId )
+{
+	nrTimers--;
+	
+	originalClearTimeout( timeoutId );
+};
+
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
@@ -25,6 +63,23 @@ var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
 var CbStep = mods.get( "cbstep" );
 
+// There must be a great difference between CB_TIMES_OUT and
+// TEST_TIME_LIMIT because in many tests the test suite is
+// copied and the two suites are placed side by side as child
+// suites in a parent suite that is then executed. If SuiteRun
+// is allocated only one slot to execute CbSteps (the slots are
+// in CbStepQueue), then it must execute the two child suites
+// one after another and in some cases the copied original suite
+// places timeouts that are roughly CB_TIMES_OUT and the total
+// execution time falls close to 2*CB_TIMES_OUT. TEST_TIME_LIMIT
+// must therefore be greater than this with a safe margin
+
+// CbStep.DEFAULT_CB_TIMEOUT = 5000
+// CB_TIMES_OUT = 10000
+var CB_TIMES_OUT = CbStep.DEFAULT_CB_TIMEOUT + 5000;
+// TEST_TIME_LIMIT = 40000
+var TEST_TIME_LIMIT = CbStep.DEFAULT_CB_TIMEOUT + 35000;
+
 var faultyFunc = function() { throw new TestingError(); };
 var emptyFunc = function() {};
 var undefVer = [ "undef" ];
@@ -36,6 +91,94 @@ var healthySuite =
 	vows:[ "dango", emptyFunc ]
 };
 
+var popTest =
+function()
+{
+	if( nrCurrentTests < 10 )
+	{
+		if( testStack.length > 0 )
+		{
+			nrCurrentTests++;
+			
+			var func = testStack.shift();
+			
+			func();
+		}
+	}
+};
+
+var pushTest =
+function( func )
+{
+	testStack.push( func );
+	popTest();
+};
+
+var markTestDone =
+function()
+{
+	nrCurrentTests--;
+	popTest();
+};
+
+var getCbFunc =
+getF(
+	getV()
+		.addA(
+			{ types: "int/undef", gte: 0 }, "func/undef", "func/undef"
+		)
+		.addA( "func/undef", "func/undef" )
+		.setR( "func" ),
+	function( cbTime, begin, end )
+	{
+		if( sys.hasType( cbTime, "func" ) === true )
+		{
+			end = begin;
+			begin = cbTime;
+			cbTime = undefined;
+		}
+		
+		if( begin === undefined )
+		{
+			begin = emptyFunc;
+		}
+		
+		if( end === undefined )
+		{
+			end = emptyFunc;
+		}
+		
+		return(
+			function()
+			{
+				var args = arguments;
+				begin.apply( this, args );
+				
+				var func = this;
+				
+				if( cbTime === undefined )
+				{
+					end.apply( func, args );
+					var cb = func.getCb();
+					cb();
+				}
+				else
+				{
+					setTimeout(
+						function()
+						{
+							end.apply( func, args );
+							var cb = func.getCb();
+							cb();
+						},
+						cbTime
+					);
+				}
+			}
+		);
+	}
+);
+
 var expectSingleSuiteCbErr =
 getF(
 getV()
@@ -44,32 +187,40 @@ function(
 	testName, errClass, errCode, faultySuite, healthySuite
 )
 {
-	test.expectCbErr(
-		testName,
-		errClass,
-		errCode,
-		CbStep.DEFAULT_CB_TIMEOUT+2000,
-		function( cb )
-		{
-			new SuiteRun( new SuiteHolder( "suite", faultySuite ) )
-				.run(
-					function( err )
-					{
-						if( err !== undefined )
+	pushTest(
+	function()
+	{
+		test.expectCbErr(
+			testName,
+			errClass,
+			errCode,
+			TEST_TIME_LIMIT,
+			function( cb )
+			{
+				new SuiteRun( new SuiteHolder( "suite", faultySuite ) )
+					.run(
+						function( err )
 						{
-							cb( err );
+							if( err !== undefined )
+							{
+								cb( err );
+							}
 						}
-					}
-				)
-			;
-		},
-		function( cb )
-		{
-			new SuiteRun( new SuiteHolder( "suite", healthySuite ) )
-				.run( cb )
-			;
-		}
-	);
+					)
+				;
+			},
+			function( cb )
+			{
+				new SuiteRun( new SuiteHolder( "suite", healthySuite ) )
+					.run( cb )
+				;
+			},
+			function()
+			{
+				markTestDone();
+			}
+		);
+	});
 });
 
 var expectSuiteCbErr =
@@ -124,43 +275,14 @@ function(
 var nrCurrentTests = 0;
 var testStack = [];
 
-function popTest()
-{
-	if( nrCurrentTests < 20 )
-	{
-		if( testStack.length > 0 )
-		{
-			nrCurrentTests++;
-			
-			var func = testStack.shift();
-			
-			func();
-		}
-	}
-}
-
-function pushTest( func )
-{
-	testStack.push( func );
-	popTest();
-}
-
-function markStepDone()
-{
-	nrCurrentTests--;
-	popTest();
-}
-
 var testSingleSuiteRun =
 getF(
 getV()
-	.addA( "str", "obj", "func" ),
-function( testName, suite, verify )
+	.addA( "str", "obj", { gt: 0 }, "func" ),
+function( testName, suite, nrSlots, verify )
 {
-	var cbTime = CbStep.DEFAULT_CB_TIMEOUT+2000;
-	
 	var suiteRun =
-		new SuiteRun( new SuiteHolder( "suite", suite ) )
+		new SuiteRun( new SuiteHolder( "suite", suite ), nrSlots )
 	;
 	
 	console.log( testName );
@@ -174,6 +296,21 @@ function( testName, suite, verify )
 	pushTest(
 	function()
 	{
+		var testTimeout =
+		setTimeout(
+			function()
+			{
+				if( cbCalled === false )
+				{
+					console.log( errPrefix );
+					throw new TestRuntimeError(
+						"The cb given to SuiteRun.run() hasnt been called"
+					);
+				}
+			},
+			TEST_TIME_LIMIT
+		);
+		
 		try
 		{
 			suiteRun.run(
@@ -197,6 +334,7 @@ function( testName, suite, verify )
 						);
 					}
 					
+					clearTimeout( testTimeout );
 					cbCalled = true;
 					
 					try
@@ -208,6 +346,8 @@ function( testName, suite, verify )
 						console.log( errPrefix );
 						throw e;
 					}
+					
+					markTestDone();
 				})
 			);
 		}
@@ -216,65 +356,78 @@ function( testName, suite, verify )
 			console.log( errPrefix );
 			throw e;
 		}
-		
-		setTimeout(
-			function()
-			{
-				if( cbCalled === false )
-				{
-					console.log( errPrefix );
-					throw new TestRuntimeError(
-						"The cb given to SuiteRun.run() hasnt been called"
-					);
-				}
-				
-				markStepDone();
-			},
-			cbTime
-		);
 	});
 });
 
 var testSuiteRun =
 getF(
 getV()
-	.addA( "str", "bool/undef", "func" )
-	.addA( "str", "bool/undef", "obj", "func" )
-	.addA( "str", "func" )
+	.addA( "str", "obj/undef", "obj", "func" )
 	.addA( "str", "obj", "func" ),
-function( testName, testNested, suiteArg, cbArg )
+function( testName, args, suite, cb )
 {
-	if( sys.hasType( testNested, "bool", "undef" ) === false )
+	if( cb === undefined )
 	{
-		cbArg = suiteArg;
-		suiteArg = testNested;
-		testNested = undefined;
+		cb = suite;
+		suite = args;
+		args = undefined;
 	}
 	
-	if( testNested === undefined )
+	var cbForArgs =
+	function()
 	{
-		testNested = true;
-	}
+		return { suite: suite, cb: cb };
+	};
 	
-	var testFunc = undefined;
-	
-	if( sys.hasType( suiteArg, "func" ) )
-	{
-		testFunc = suiteArg;
-	}
-	else
-	{
-		testFunc =
-		function()
+	testSuiteRunWithCb( testName, args, cbForArgs );
+});
+
+var testSuiteRunWithCb =
+getF(
+getV()
+	.addA(
+		"str",
 		{
-			return { suite: suiteArg, cb: cbArg };
-		};
+			types: "obj/undef",
+			props:
+			{
+				"testAsChild": "bool/undef",
+				"nrSlots": { types: "int/undef", gt: 0 }
+			}
+		},
+		"func"
+	)
+	.addA( "str", "func" ),
+function( testName, args, cb )
+{
+	if( cb === undefined )
+	{
+		cb = args;
+		args = undefined;
+	}
+	
+	if( args === undefined )
+	{
+		args = {};
+	}
+	
+	var testAsChild = args.testAsChild;
+	var nrSlots = args.nrSlots;
+	
+	if( testAsChild === undefined )
+	{
+		testAsChild = true;
+	}
+	
+	if( nrSlots === undefined )
+	{
+		nrSlots = 10;
 	}
 	
 	var getTestObj =
 	function()
 	{
-		var returnVar = testFunc();
+		var returnVar = cb();
 		
 		if(
 			sys.hasType( returnVar, "obj" ) === false ||
@@ -299,11 +452,12 @@ function( testName, testNested, suiteArg, cbArg )
 	testSingleSuiteRun(
 		testName+" - plain suite",
 		suite,
+		nrSlots,
 		function( suiteRun )
 		{
 			cbOne( suiteRun );
 			
-			if( testNested === false )
+			if( testAsChild === false )
 			{
 				return;
 			}
@@ -320,6 +474,7 @@ function( testName, testNested, suiteArg, cbArg )
 						"nested suite", suite
 					]
 				},
+				nrSlots,
 				function( suiteRun )
 				{
 					cbTwo( suiteRun.next[ 0 ] );
@@ -340,6 +495,7 @@ function( testName, testNested, suiteArg, cbArg )
 								"second nested suite", suiteTwo
 							]
 						},
+						nrSlots,
 						function( suiteRun )
 						{
 							cbThree( suiteRun.next[ 0 ] );
@@ -352,9 +508,10 @@ function( testName, testNested, suiteArg, cbArg )
 	);
 });
 
+// test group
 // testing simple suites with topic and vows
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy topic with single vow",
 	function()
 	{
@@ -469,6 +626,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing simple suites with topicCb and vows
 
 testSuiteRun(
@@ -493,7 +651,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy topicCb giving no args and args received by "+
 	"two vows",
 	function()
@@ -548,7 +706,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy topicCb giving four args and args received "+
 	"by two vows",
 	function()
@@ -810,6 +968,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with topicCb that signals it is done many times
 // by a combination of call(s) to cb() and throwing err
 
@@ -901,7 +1060,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				300
+				1000
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1083,7 +1242,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 			
 			setTimeout(
@@ -1091,7 +1250,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1500
+				CB_TIMES_OUT+1000
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1108,7 +1267,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1141,7 +1300,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+100
+				CB_TIMES_OUT
 			);
 			
 			setTimeout(
@@ -1149,7 +1308,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+200
+				CB_TIMES_OUT+1000
 			);
 			
 			setTimeout(
@@ -1157,7 +1316,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+300
+				CB_TIMES_OUT+2000
 			);
 			
 			setTimeout(
@@ -1165,7 +1324,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+400
+				CB_TIMES_OUT+3000
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1182,7 +1341,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1190,6 +1349,7 @@ expectSuiteCbErr(
 	}
 );
 
+// test group
 // testing suites with topicCb that doesnt call cb() within
 // allowed timeout limit
 
@@ -1228,7 +1388,7 @@ testSuiteRun(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		argsVer: getV().setE( "any" ),
@@ -1247,6 +1407,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suite step argsVer (using suites with both topic and
 // topicCb)
 
@@ -1424,6 +1585,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites where suite prop conf forbids suite step
 // argsVer
 
@@ -1455,6 +1617,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing that err thrown by cb given to SuiteRun bubble up
 // through suite steps that use direct call to their own cb funcs
 // and that the err reaches the call of SuiteRun.run()
@@ -1559,10 +1722,11 @@ expectErr(
 	function() { }
 );
 
+// test group
 // testing suites with conf prop allowThrownErr set and topic
 // that throws err
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"faulty topic allowed to throw err with healthy vow",
 	function()
 	{
@@ -1635,10 +1799,11 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites where topicCb is allowed to throw err and/or
 // give cb err and where topicCb throws err or gives cb err
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"faulty topicCb allowed to pass err to cb and healthy vow",
 	function()
 	{
@@ -1795,10 +1960,11 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with child suites where it is alternated if
 // parent or child suite has/hasnt a topic
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with healthy child suite",
 	function()
 	{
@@ -1846,7 +2012,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topic passes arg to healthy child suite",
 	function()
 	{
@@ -1898,7 +2064,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb passes arg to healthy child suite",
 	function()
 	{
@@ -1954,7 +2120,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with delayed topicCb passes arg to healthy "+
 	"child suite",
 	function()
@@ -2050,7 +2216,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with no topic and healthy child suite",
 	function()
 	{
@@ -2099,7 +2265,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topic passing args to healthy child "+
 	"suite with no topic",
 	function()
@@ -2154,7 +2320,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb passing args to healthy child "+
 	"suite with no topic",
 	function()
@@ -2248,12 +2414,13 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites where parent suite has topic/topicCb that
 // throws err or gives cb err and where child suite receives the
 // resulting err from the parent suite, sometimes the child suite
 // has no topic/topicCb
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topic throwing allowed err and healthy "+
 	"child suite",
 	function()
@@ -2298,7 +2465,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb giving allowed cb err and "+
 	"healthy child suite",
 	function()
@@ -2349,7 +2516,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topic throwing allowed err and healthy "+
 	"child suite with topic that doesnt allow err",
 	function()
@@ -2394,7 +2561,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb (that gives allowed err) and two "+
 	"child suites, one with topic and both with healthy and "+
 	"faulty vows",
@@ -2547,12 +2714,13 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites that use get() and set() in many suite steps to
 // handle the suite prop local and that have child suites that in
 // turn handle parent suite's prop local or their own prop local
 // instead
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"suite that uses get()/set() to handle local var, and one "+
 	"nested suite that handles outer local var and another "+
 	"nested suite that handles its own local vars with a vow "+
@@ -2841,13 +3009,14 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites where suite checks if it hasParent() and reads
 // parent suite result if there is a parent
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing healthy suites at many levels that check if they "+
 	"have a parent",
-	false,
+	{ testAsChild: false },
 	function()
 	{
 		var beforeHasParent = undefined;
@@ -2947,11 +3116,11 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing healthy suite with healthy child suites that "+
 	"getParent() and read parent suite results at various suite "+
 	"steps and another level of child suites that in turn "+
-	"getParent() and read parent suite results. Making suire "+
+	"getParent() and read parent suite results. Making sure "+
 	"results are correct even if topic/topicCb throws/gives err",
 	function()
 	{
@@ -3234,7 +3403,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topic that that throws allowed err "+
 	"followed by child suite that has no topic followed "+
 	"by another child suite that reads results propagated by "+
@@ -3313,7 +3482,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb that gives allowed cbErr "+
 	"followed by child suite that has no topic followed "+
 	"by another child suite that reads results via getParent() "+
@@ -3394,9 +3563,10 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites where vows read their own suite's topic result
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with vow that reads topic results and child "+
 	"suites with vows that read topic results too",
 	function()
@@ -3618,11 +3788,12 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites and child suites with suite step before and it
 // in relation to other suite steps (in the same suite or parent
 // suite)
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with suite step before that receives no args",
 	function()
 	{
@@ -3674,7 +3845,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with suite step before that returns var and "+
 	"making sure returned var is ignored by suite",
 	function()
@@ -3767,7 +3938,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with topicCb that passes args to child suite "+
 	"that has suite step before and making sure that child "+
 	"suites suite steps before and topic receive args",
@@ -3837,7 +4008,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with child suite that has only suite step "+
 	"before and vows and making sure vows get correct args",
 	function()
@@ -3896,10 +4067,11 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with beforeCb and it in relation to other
 // suite steps
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with beforeCb that receives args and making "+
 	"sure the args passed to cb by beforeCb are ignored",
 	function()
@@ -4026,6 +4198,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with beforeCb that signals it is done many
 // times by a combination of call(s) to cb() and throwing err
 
@@ -4121,7 +4294,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				300
+				1000
 			);
 		},
 		topic: emptyFunc,
@@ -4284,7 +4457,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 			
 			setTimeout(
@@ -4292,7 +4465,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1500
+				CB_TIMES_OUT+1000
 			);
 		},
 		topic: emptyFunc,
@@ -4310,7 +4483,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		topic: emptyFunc,
@@ -4338,7 +4511,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+100
+				CB_TIMES_OUT
 			);
 			
 			setTimeout(
@@ -4346,7 +4519,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+200
+				CB_TIMES_OUT+1000
 			);
 			
 			setTimeout(
@@ -4354,15 +4527,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+300
-			);
-			
-			setTimeout(
-				function()
-				{
-					cb();
-				},
-				CbStep.DEFAULT_CB_TIMEOUT+400
+				CB_TIMES_OUT+2000
 			);
 		},
 		topic: emptyFunc,
@@ -4380,7 +4545,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		topic: emptyFunc,
@@ -4389,6 +4554,7 @@ expectSuiteCbErr(
 	}
 );
 
+// test group
 // testing suites with beforeCb that doesnt call cb() within
 // allowed timeout limit
 
@@ -4427,7 +4593,7 @@ testSuiteRun(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		},
 		topic: emptyFunc,
@@ -4447,9 +4613,10 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with suite step after
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing healthy suite with suite step after that receives "+
 	"no args",
 	function()
@@ -4527,7 +4694,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing healthy suite with topicCb that passes args to "+
 	"child suite that has suite step after, making sure that "+
 	"step after receives args",
@@ -4583,10 +4750,11 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with suite step after where the step reads the
 // suite's results
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing suite with suite step after that reads its own "+
 	"suite's results",
 	function()
@@ -4738,7 +4906,7 @@ testSuiteRun(
 // testing suites with suite step after where the suite fails at
 // some step and step after commences and reads the results
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing faulty suite that fails at step before and suite "+
 	"step after reads the results",
 	function()
@@ -4829,7 +4997,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing faulty suite that fails at step topic and suite "+
 	"step after reads the results",
 	function()
@@ -4919,7 +5087,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing faulty suite that fails at step argsVer and suite "+
 	"step after reads the results",
 	function()
@@ -4977,7 +5145,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing faulty suite that fails at step vows and suite "+
 	"step after reads the results",
 	function()
@@ -5033,7 +5201,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing faulty suite that fails at step next and suite "+
 	"step after reads the results",
 	function()
@@ -5089,7 +5257,7 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"testing healthy suite and suite step after that reads the "+
 	"results",
 	function()
@@ -5142,7 +5310,7 @@ testSuiteRun(
 // testing suites with suite step afterCb and it in relation to
 // other suite steps
 
-testSuiteRun(
+testSuiteRunWithCb(
 	"healthy suite with afterCb that receives args and making "+
 	"sure the args passed to cb by afterCb are ignored",
 	function()
@@ -5287,6 +5455,7 @@ testSuiteRun(
 	}
 );
 
+// test group
 // testing suites with afterCb that signals it is done many
 // times by a combination of call(s) to cb() and throwing err
 
@@ -5351,7 +5520,7 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				300
+				1000
 			);
 		}
 	},
@@ -5474,7 +5643,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 			
 			setTimeout(
@@ -5482,7 +5651,7 @@ expectSuiteCbErr(
 				{
 					cb( new TestingError() );
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1500
+				CB_TIMES_OUT+1000
 			);
 		}
 	},
@@ -5500,12 +5669,13 @@ expectSuiteCbErr(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		}
 	}
 );
 
+// test group
 // testing suites with afterCb that doesnt call cb() within
 // allowed timeout limit
 
@@ -5546,7 +5716,7 @@ testSuiteRun(
 				{
 					cb();
 				},
-				CbStep.DEFAULT_CB_TIMEOUT+1000
+				CB_TIMES_OUT
 			);
 		}
 	},
@@ -5558,6 +5728,580 @@ testSuiteRun(
 			run.after.err.constructor === SuiteRuntimeError &&
 			run.after.err.ourGlobeCode === "SuiteStepCbNotCalled",
 			"run result is invalid"
+		);
+	}
+);
+
+// test group
+// testing suites where nr concurrent cb suite step calls is
+// limited
+
+testSuiteRunWithCb(
+	"Testing a great limit on the nr of conc cb steps when "+
+	"running suite with many child suites at many levels where "+
+	"a lot of the suites use cb steps (some with delayed calls "+
+	"to cb and others with direct calls). Making sure the limit "+
+	"on nr conc cb steps is fully utilized but not exceeded",
+	{ testAsChild: false, nrSlots: 10 },
+	function()
+	{
+		var maxNrConcCbs = 0;
+		var nrConcCbs = 0;
+		
+		var getConcFunc =
+		getF(
+			getV()
+				.addA( "int/undef" )
+				.setR( "func" ),
+			function( cbTime )
+			{
+				return(
+					getCbFunc(
+						cbTime,
+						function()
+						{
+							nrConcCbs++;
+							
+							if( nrConcCbs > maxNrConcCbs )
+							{
+								maxNrConcCbs = nrConcCbs;
+							}
+						},
+						function()
+						{
+							nrConcCbs--;
+						}
+					)
+				);
+			}
+		);
+		
+		return(
+			{
+				suite:
+				{
+					next:
+					[
+						"suite one",
+						{
+							beforeCb: getConcFunc( 1000 ),
+							topicCb: getConcFunc( 1000 ),
+							afterCb: getConcFunc( 1000 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite one vow one", emptyFunc ]
+						},
+						"suite two",
+						{
+							beforeCb: getConcFunc(),
+							topicCb: getConcFunc(),
+							afterCb: getConcFunc(),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite one vow one", emptyFunc ],
+							next:
+							[
+								"suite two one",
+								{
+									beforeCb: getConcFunc( 500 ),
+									topicCb: getConcFunc( 500 ),
+									afterCb: getConcFunc( 500 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite two one vow one", emptyFunc ]
+								},
+								"suite two two",
+								{
+									beforeCb: getConcFunc( 300 ),
+									topicCb: getConcFunc( 300 ),
+									afterCb: getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite two two vow one", emptyFunc ]
+								},
+								"suite two three",
+								{
+									beforeCb: getConcFunc( 100 ),
+									topicCb: getConcFunc( 100 ),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite two three vow one", emptyFunc ]
+								},
+								"suite two four",
+								{
+									beforeCb: getConcFunc( 200 ),
+									topicCb: getConcFunc( 200 ),
+									afterCb: getConcFunc( 200 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite two four vow one", emptyFunc ]
+								}
+							]
+						},
+						"suite three",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after: emptyFunc,
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite three vow one", emptyFunc ],
+							next:
+							[
+								"suite three one",
+								{
+									beforeCb: getConcFunc( 500 ),
+									topicCb: getConcFunc( 500 ),
+									afterCb: getConcFunc( 500 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite three one vow one", emptyFunc ]
+								},
+								"suite three two",
+								{
+									beforeCb: getConcFunc( 300 ),
+									topicCb: getConcFunc( 300 ),
+									afterCb: getConcFunc( 300 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite three two vow one", emptyFunc ]
+								},
+								"suite three three",
+								{
+									beforeCb: getConcFunc( 100 ),
+									topicCb: getConcFunc( 100 ),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite three three vow one", emptyFunc ]
+								}
+							]
+						},
+						"suite four",
+						{
+							beforeCb: getConcFunc( 100 ),
+							topicCb: getConcFunc( 100 ),
+							afterCb: getConcFunc( 100 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite four vow one", emptyFunc ]
+						},
+// this suite makes sure there are always plenty of more cb steps
+// to execute than the allowed limit. It can therefore be
+// established that the limit isnt exceeded
+						"suite five",
+						{
+							next:
+							[
+								"suite five one",
+								{
+									beforeCb: getConcFunc( 2000 ),
+									topicCb: getConcFunc( 2000 ),
+									afterCb: getConcFunc( 200 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite five one vow one", emptyFunc ]
+								},
+								"suite five two",
+								{
+									beforeCb: getConcFunc( 2000 ),
+									topicCb: getConcFunc( 2000 ),
+									afterCb: getConcFunc( 2000 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite five two vow one", emptyFunc ]
+								},
+								"suite five three",
+								{
+									beforeCb: getConcFunc( 2000 ),
+									topicCb: getConcFunc( 2000 ),
+									afterCb: getConcFunc( 2000 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite five three vow one", emptyFunc ]
+								},
+								"suite two five",
+								{
+									beforeCb: getConcFunc( 2000 ),
+									topicCb: getConcFunc( 2000 ),
+									afterCb: getConcFunc( 2000 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite five four vow one", emptyFunc ]
+								}
+							]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						maxNrConcCbs === 10 &&
+						
+						run.runOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].before.stepOk === true &&
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 1 ].runOk === true &&
+						run.next[ 1 ].before.stepOk === true &&
+						run.next[ 1 ].topic.stepOk === true &&
+						run.next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 0 ].runOk === true &&
+						run.next[ 1 ].next[ 0 ].before.stepOk === true &&
+						run.next[ 1 ].next[ 0 ].topic.stepOk === true &&
+						run.next[ 1 ].next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 1 ].runOk === true &&
+						run.next[ 1 ].next[ 1 ].before.stepOk === true &&
+						run.next[ 1 ].next[ 1 ].topic.stepOk === true &&
+						run.next[ 1 ].next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 2 ].runOk === true &&
+						run.next[ 1 ].next[ 2 ].before.stepOk === true &&
+						run.next[ 1 ].next[ 2 ].topic.stepOk === true &&
+						run.next[ 1 ].next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 3 ].runOk === true &&
+						run.next[ 1 ].next[ 3 ].before.stepOk === true &&
+						run.next[ 1 ].next[ 3 ].topic.stepOk === true &&
+						run.next[ 1 ].next[ 3 ].after.stepOk === true &&
+						
+						run.next[ 2 ].runOk === true &&
+						run.next[ 2 ].before.stepOk === true &&
+						run.next[ 2 ].topic.stepOk === true &&
+						run.next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 2 ].next[ 0 ].runOk === true &&
+						run.next[ 2 ].next[ 0 ].before.stepOk === true &&
+						run.next[ 2 ].next[ 0 ].topic.stepOk === true &&
+						run.next[ 2 ].next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 2 ].next[ 1 ].runOk === true &&
+						run.next[ 2 ].next[ 1 ].before.stepOk === true &&
+						run.next[ 2 ].next[ 1 ].topic.stepOk === true &&
+						run.next[ 2 ].next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 2 ].next[ 2 ].runOk === true &&
+						run.next[ 2 ].next[ 2 ].before.stepOk === true &&
+						run.next[ 2 ].next[ 2 ].topic.stepOk === true &&
+						run.next[ 2 ].next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 3 ].runOk === true &&
+						run.next[ 3 ].before.stepOk === true &&
+						run.next[ 3 ].topic.stepOk === true &&
+						run.next[ 3 ].after.stepOk === true &&
+						
+						run.next[ 4 ].runOk === true &&
+						run.next[ 4 ].before.stepOk === true &&
+						run.next[ 4 ].topic.stepOk === true &&
+						run.next[ 4 ].after.stepOk === true &&
+						
+						run.next[ 4 ].next[ 0 ].runOk === true &&
+						run.next[ 4 ].next[ 0 ].before.stepOk === true &&
+						run.next[ 4 ].next[ 0 ].topic.stepOk === true &&
+						run.next[ 4 ].next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 4 ].next[ 1 ].runOk === true &&
+						run.next[ 4 ].next[ 1 ].before.stepOk === true &&
+						run.next[ 4 ].next[ 1 ].topic.stepOk === true &&
+						run.next[ 4 ].next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 4 ].next[ 2 ].runOk === true &&
+						run.next[ 4 ].next[ 2 ].before.stepOk === true &&
+						run.next[ 4 ].next[ 2 ].topic.stepOk === true &&
+						run.next[ 4 ].next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 4 ].next[ 3 ].runOk === true &&
+						run.next[ 4 ].next[ 3 ].before.stepOk === true &&
+						run.next[ 4 ].next[ 3 ].topic.stepOk === true &&
+						run.next[ 4 ].next[ 3 ].after.stepOk === true,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a limit of two on the nr conc cb steps with a suite "+
+	"with many child suites that use ordinary return steps and "+
+	"cb steps (some with direct calls to cb and others with "+
+	"delayed calls)",
+	{ testAsChild: false, nrSlots: 2 },
+	function()
+	{
+		var maxNrConcCbs = 0;
+		var nrConcCbs = 0;
+		
+		var getConcFunc =
+		getF(
+			getV()
+				.addA( "int/undef" )
+				.setR( "func" ),
+			function( cbTime )
+			{
+				return(
+					getCbFunc(
+						cbTime,
+						function()
+						{
+							nrConcCbs++;
+							
+							if( nrConcCbs > maxNrConcCbs )
+							{
+								maxNrConcCbs = nrConcCbs;
+							}
+						},
+						function()
+						{
+							nrConcCbs--;
+						}
+					)
+				);
+			}
+		);
+		
+		return(
+			{
+				suite:
+				{
+					next:
+					[
+						"suite one",
+						{
+							beforeCb: getConcFunc( 1000 ),
+							topicCb: getConcFunc( 1000 ),
+							afterCb: getConcFunc( 1000 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite one vow one", emptyFunc ]
+						},
+						"suite two",
+						{
+							beforeCb: getConcFunc( 500 ),
+							topicCb: getConcFunc( 500 ),
+							afterCb: getConcFunc( 500 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite two vow one", emptyFunc ]
+						},
+						"suite three",
+						{
+							beforeCb: getConcFunc(),
+							topicCb: getConcFunc(),
+							afterCb: getConcFunc(),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite three vow one", emptyFunc ],
+							next:
+							[
+								"suite three one",
+								{
+									beforeCb: getConcFunc( 100 ),
+									topicCb: getConcFunc( 100 ),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite three one vow one", emptyFunc ]
+								},
+								"suite three two",
+								{
+									beforeCb: getConcFunc( 100 ),
+									topicCb: getConcFunc( 100 ),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "suite three two vow one", emptyFunc ]
+								}
+							]
+						},
+						"suite four",
+						{
+							before: emptyFunc,
+							topic: emptyFunc,
+							after: emptyFunc,
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite four vow one", emptyFunc ]
+						},
+						"suite five",
+						{
+							beforeCb: getConcFunc( 300 ),
+							topicCb: getConcFunc( 300 ),
+							afterCb: getConcFunc( 300 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite five vow one", emptyFunc ]
+						},
+						"suite six",
+						{
+							beforeCb: getConcFunc( 100 ),
+							topicCb: getConcFunc( 100 ),
+							afterCb: getConcFunc( 100 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "suite six vow one", emptyFunc ]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						maxNrConcCbs === 2 &&
+						run.runOk === true &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].before.stepOk === true &&
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 1 ].runOk === true &&
+						
+						run.next[ 2 ].runOk === true &&
+						
+						run.next[ 2 ].next[ 0 ].runOk === true &&
+						run.next[ 2 ].next[ 0 ].before.stepOk === true &&
+						run.next[ 2 ].next[ 0 ].topic.stepOk === true &&
+						run.next[ 2 ].next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 2 ].next[ 1 ].runOk === true &&
+						
+						run.next[ 3 ].runOk === true &&
+						
+						run.next[ 4 ].runOk === true &&
+						
+						run.next[ 5 ].runOk === true
+						,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a limit of one on the nr conc cb steps with a suite "+
+	"with many child suites that use ordinary return steps and "+
+	"cb steps (some with direct calls to cb and others with "+
+	"delayed calls)",
+	{ testAsChild: false, nrSlots: 1 },
+	function()
+	{
+		var maxNrConcCbs = 0;
+		var nrConcCbs = 0;
+		
+		var getConcFunc =
+		getF(
+			getV()
+				.addA( "int/undef" )
+				.setR( "func" ),
+			function( cbTime )
+			{
+				return(
+					getCbFunc(
+						cbTime,
+						function()
+						{
+							nrConcCbs++;
+							
+							if( nrConcCbs > maxNrConcCbs )
+							{
+								maxNrConcCbs = nrConcCbs;
+							}
+						},
+						function()
+						{
+							nrConcCbs--;
+						}
+					)
+				);
+			}
+		);
+		
+		return(
+			{
+				suite:
+				{
+					next:
+					[
+						"suite one",
+						{
+							beforeCb: getConcFunc( 1000 ),
+							topicCb: getConcFunc( 1000 ),
+							afterCb: getConcFunc( 1000 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ],
+							next:
+							[
+								"suite one one",
+								{
+									beforeCb: getConcFunc( 100 ),
+									topicCb: getConcFunc( 100 ),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite one two",
+								{
+									beforeCb: getConcFunc(),
+									topicCb: getConcFunc(),
+									afterCb: getConcFunc(),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								},
+								"suite one three",
+								{
+									before: emptyFunc,
+									topicCb: getConcFunc(),
+									afterCb: getConcFunc( 100 ),
+									argsVer: getV().setE( "any" ),
+									vows:[ "vow", emptyFunc ]
+								}
+							]
+						},
+						"suite two",
+						{
+							before: emptyFunc,
+							topicCb: getConcFunc( 100 ),
+							afterCb: getConcFunc(),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite three",
+						{
+							beforeCb: getConcFunc(),
+							topicCb: getConcFunc(),
+							afterCb: getConcFunc(),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						},
+						"suite four",
+						{
+							beforeCb: getConcFunc( 100 ),
+							topicCb: getConcFunc( 100 ),
+							afterCb: getConcFunc( 100 ),
+							argsVer: getV().setE( "any" ),
+							vows:[ "vow", emptyFunc ]
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						maxNrConcCbs === 1 &&
+						
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 0 ].next[ 0 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 0 ].next[ 1 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 0 ].next[ 2 ].runOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						
+						run.next[ 1 ].runOk === true &&
+						run.next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 2 ].runOk === true &&
+						run.next[ 2 ].after.stepOk === true &&
+						
+						run.next[ 3 ].runOk === true &&
+						run.next[ 3 ].after.stepOk === true
+						,
+						"run result is invalid"
+					);
+				}
+			}
 		);
 	}
 );
