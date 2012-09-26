@@ -4,9 +4,7 @@ ourglobe.require(
 	"ourglobe/dual/testing/testruntimeerror",
 	"ourglobe/dual/testing/testingerror",
 	"ourglobe/dual/testing/test",
-	"ourglobe/dual/testing/suiteholder",
-	"ourglobe/dual/testing/suiterun",
-	"ourglobe/dual/testing/cbstep"
+	"ourglobe/dual/testing/suite"
 ],
 function( mods )
 {
@@ -21,9 +19,7 @@ var TestingError = mods.get( "testingerror" );
 var test = mods.get( "test" );
 var expectErr = test.expectErr;
 var assert = test.assert;
-var SuiteHolder = mods.get( "suiteholder" );
-var SuiteRun = mods.get( "suiterun" );
-var CbStep = mods.get( "cbstep" );
+var Suite = mods.get( "suite" );
 
 // There must be a great difference between CB_TIMES_OUT and
 // TEST_TIME_LIMIT because in many tests the test suite is
@@ -36,11 +32,11 @@ var CbStep = mods.get( "cbstep" );
 // execution time falls close to 2*CB_TIMES_OUT. TEST_TIME_LIMIT
 // must therefore be greater than this with a safe margin
 
-// CbStep.DEFAULT_CB_TIMEOUT = 5000
+// Suite.DEFAULT_CB_TIMEOUT = 5000
 // CB_TIMES_OUT = 10000
-var CB_TIMES_OUT = CbStep.DEFAULT_CB_TIMEOUT + 5000;
+var CB_TIMES_OUT = Suite.DEFAULT_CB_TIMEOUT + 5000;
 // TEST_TIME_LIMIT = 40000
-var TEST_TIME_LIMIT = CbStep.DEFAULT_CB_TIMEOUT + 35000;
+var TEST_TIME_LIMIT = Suite.DEFAULT_CB_TIMEOUT + 35000;
 
 var faultyFunc = function() { throw new TestingError(); };
 var emptyFunc = function() {};
@@ -159,23 +155,25 @@ function(
 			TEST_TIME_LIMIT,
 			function( cb )
 			{
-				new SuiteRun( new SuiteHolder( "suite", faultySuite ) )
-					.run(
-						function( err )
+				var suite = new Suite( "suite for testing purposes" );
+				
+				suite.add( "faulty suite", faultySuite );
+				suite.run(
+					function( err )
+					{
+						if( err !== undefined )
 						{
-							if( err !== undefined )
-							{
-								cb( err );
-							}
+							cb( err );
 						}
-					)
-				;
+					}
+				);
 			},
 			function( cb )
 			{
-				new SuiteRun( new SuiteHolder( "suite", healthySuite ) )
-					.run( cb )
-				;
+				var suite = new Suite( "suite for testing purposes" );
+				
+				suite.add( "healthy suite", healthySuite );
+				suite.run( cb );
 			},
 			function()
 			{
@@ -241,11 +239,13 @@ var testSingleSuiteRun =
 getF(
 getV()
 	.addA( "str", "obj", { gt: 0 }, "func" ),
-function( testName, suite, nrSlots, verify )
+function( testName, suiteObj, nrSlots, verify )
 {
-	var suiteRun =
-		new SuiteRun( new SuiteHolder( "suite", suite ), nrSlots )
+	var suite =
+		new Suite( "suite for testing purposes", undefined, nrSlots )
 	;
+	
+	suite.add( "suite to test", suiteObj );
 	
 	console.log( testName );
 	
@@ -275,9 +275,9 @@ function( testName, suite, nrSlots, verify )
 		
 		try
 		{
-			suiteRun.run(
+			suite.run(
 				getF(
-				SuiteRun.RUN_CB_FV,
+				Suite.RUN_CB_FV,
 				function( err, resSuiteRun )
 				{
 					if( err !== undefined )
@@ -301,7 +301,7 @@ function( testName, suite, nrSlots, verify )
 					
 					try
 					{
-						verify( suiteRun );
+						verify( resSuiteRun.next[ 0 ] );
 					}
 					catch( e )
 					{
@@ -1504,56 +1504,56 @@ expectErr(
 	TestingError,
 	function()
 	{
-		new SuiteRun(
-			new SuiteHolder(
-				"suite",
-				{
-					beforeCb: getCbFunc(),
-					topicCb: getCbFunc(),
-					afterCb: getCbFunc(),
-					argsVer:[],
-					vows:[ "dingo", emptyFunc ],
-					next:
-					[
-						"suite one",
-						{
-							beforeCb: getCbFunc(),
-							topicCb: getCbFunc(),
-							afterCb: getCbFunc(),
-							argsVer:[],
-							vows:[ "dingo", emptyFunc ]
-						}
-					]
-				}
-			)
-		)
-			.run(
-				function( err, run )
-				{
-					if( err !== undefined )
+		var suite = new Suite( "suite" );
+		
+		suite.add(
+			"suite",
+			{
+				beforeCb: getCbFunc(),
+				topicCb: getCbFunc(),
+				afterCb: getCbFunc(),
+				argsVer:[],
+				vows:[ "dingo", emptyFunc ],
+				next:
+				[
+					"suite one",
 					{
-						throw err;
+						beforeCb: getCbFunc(),
+						topicCb: getCbFunc(),
+						afterCb: getCbFunc(),
+						argsVer:[],
+						vows:[ "dingo", emptyFunc ]
 					}
-					
+				]
+			}
+		);
+		
+		suite.run(
+			function( err, run )
+			{
+				if( err !== undefined )
+				{
+					throw err;
+				}
+				
 // Making sure all cb suite steps were executed successfully.
 // assert() throws a TestRuntimeError which this call to
 // expectErr() doesnt expect
-					assert(
-						run.runOk === true &&
-						run.before.stepOk === true &&
-						run.topic.stepOk === true &&
-						run.after.stepOk === true &&
-						run.next[ 0 ].runOk === true &&
-						run.next[ 0 ].before.stepOk === true &&
-						run.next[ 0 ].topic.stepOk === true &&
-						run.next[ 0 ].after.stepOk === true,
-						"run result is invalid"
-					);
-					
-					throw new TestingError();
-				}
-			)
-		;
+				assert(
+					run.runOk === true &&
+					run.before.stepOk === true &&
+					run.topic.stepOk === true &&
+					run.after.stepOk === true &&
+					run.next[ 0 ].runOk === true &&
+					run.next[ 0 ].before.stepOk === true &&
+					run.next[ 0 ].topic.stepOk === true &&
+					run.next[ 0 ].after.stepOk === true,
+					"run result is invalid"
+				);
+				
+				throw new TestingError();
+			}
+		);
 	},
 	function() { }
 );
@@ -2866,22 +2866,27 @@ testSuiteRunWithCb(
 		
 		return(
 			{
+// testSuiteRunWithCb() puts this suite in an inst of class Suite
+// via Suite.add(). This puts the following suite into prop next
+// of the Suite instance. The following suite therefore will have
+// a parent, and it is therefore checked that that parent doesnt
+// have another parent in turn
 				suite:
 				{
 					before:
 					function()
 					{
-						beforeHasParent = this.hasParent();
+						beforeHasParent = this.getParent().hasParent();
 					},
 					topic:
 					function()
 					{
-						topicHasParent = this.hasParent();
+						topicHasParent = this.getParent().hasParent();
 					},
 					after:
 					function()
 					{
-						afterHasParent = this.hasParent();
+						afterHasParent = this.getParent().hasParent();
 					},
 					argsVer:[ "undef" ],
 					vows:
@@ -2889,7 +2894,7 @@ testSuiteRunWithCb(
 						"vowOne",
 						function()
 						{
-							vowOneHasParent = this.hasParent();
+							vowOneHasParent = this.getParent().hasParent();
 						}
 					],
 					next:

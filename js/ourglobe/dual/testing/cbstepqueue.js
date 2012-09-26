@@ -12,14 +12,9 @@ var sys = ourglobe.sys;
 var CbStepQueue =
 getF(
 getV()
-	.addA( { types: "int/undef", gt: 0 } ),
+	.addA( { gt: 0 } ),
 function( nrSlots )
 {
-	if( nrSlots === undefined )
-	{
-		nrSlots = CbStepQueue.DEFAULT_NR_SLOTS;
-	}
-	
 	this.queue = [];
 	this.tempQueue = [];
 	this.nrSlots = nrSlots;

@@ -1,6 +1,5 @@
 ourglobe.define(
 [
-	"./suiteruntimeerror",
 	"./suiterun",
 	"./suitestep",
 	"./returnstep"
@@ -62,7 +61,6 @@ function( mods, Topic )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
-var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var ReturnStep = mods.get( "returnstep" );
 var SuiteStep = mods.get( "suitestep" );
 

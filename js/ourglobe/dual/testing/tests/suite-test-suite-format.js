@@ -1,7 +1,7 @@
 ourglobe.require(
 [
 	"ourglobe/dual/testing",
-	"ourglobe/dual/testing/suiteholder"
+	"ourglobe/dual/testing/suite"
 ],
 function( mods )
 {
@@ -13,8 +13,8 @@ var FuncVer = ourglobe.FuncVer;
 
 var SuiteRuntimeError = mods.get( "testing" ).SuiteRuntimeError;
 var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
-var SuiteHolder = mods.get( "suiteholder" );
 var test = mods.get( "testing" ).Test;
+var Suite = mods.get( "suite" );
 
 var emptyFunc = function() {};
 
@@ -28,76 +28,71 @@ var validSuite =
 var expectErr =
 getF(
 getV()
-	.addA( "str", "str", "obj", "str", "obj", "bool/undef" )
-	.addA(
-		"str", "str/undef", "str", "obj", "str", "obj", "bool/undef"
-	),
+	.addA( "str", "str/undef", "obj", "obj", "bool/undef" ),
 function(
 	testName,
 	errCode,
-	faultySuiteName,
 	faultySuite,
-	healthySuiteName,
 	healthySuite,
 	doRecTest
 )
 {
-	if( sys.hasType( faultySuiteName, "obj" ) )
-	{
-		doRecTest = healthySuite;
-		healthySuite = healthySuiteName;
-		healthySuiteName = faultySuite;
-		faultySuite = faultySuiteName;
-		faultySuiteName = errCode;
-		errCode = undefined;
-	}
-	
 	if( doRecTest === undefined )
 	{
 		doRecTest = true;
 	}
 	
 	test.expectErr(
-		testName + " - simple suite",
+		testName + " - testing with ordinary suite",
 		SuiteRuntimeError,
 		errCode,
 		function()
 		{
-			new SuiteHolder( faultySuiteName, faultySuite );
+			var suite =
+				new Suite( "suite for testing purposes" )
+					.add( "faulty suite", faultySuite )
+			;
 		},
 		function()
 		{
-			new SuiteHolder( healthySuiteName, healthySuite );
+			var suite =
+				new Suite( "suite for testing purposes" )
+					.add( "healthy suite", healthySuite )
+			;
 		}
 	);
 	
 	if( doRecTest === true )
 	{
 		test.expectErr(
-			testName + " - recursive suite",
+			testName + " - testing with child suites",
 			SuiteRuntimeError,
 			errCode,
 			function()
 			{
-				new SuiteHolder(
+				var suite = new Suite( "suite for testing purposes" );
+				
+				suite.add(
 					"recursive suite obj",
 					{
 						topic: emptyFunc,
 						argsVer:[ "undef" ],
-						vows:[ "dingo", emptyFunc ],
-						next:[ faultySuiteName, faultySuite ]
+						vows:[ "vow one", emptyFunc ],
+						next:[ "faulty suite", faultySuite ]
 					}
 				);
 			},
 			function()
 			{
-				new SuiteHolder(
+				var suite = new Suite( "suite for testing purposes" );
+				
+				suite.add(
 					"recursive suite obj",
 					{
 						topic: emptyFunc,
 						argsVer:[ "undef" ],
-						vows:[ "dingo", emptyFunc ],
-						next:[ healthySuiteName, healthySuite ]
+						vows:[ "vow one", emptyFunc ],
+						next:[ "healthy suite", healthySuite ]
 					}
 				);
 			}
@@ -110,9 +105,7 @@ function(
 expectErr(
 	"A Suite may not be empty",
 	"SuiteHasNoRequiredProp",
-	"dingo",
 	{},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -125,14 +118,12 @@ expectErr(
 expectErr(
 	"Suite prop before must be a func",
 	"BeforeIsNotValid",
-	"dingo",
 	{
 		before:[ emptyFunc ],
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
 	},
-	"dingo",
 	{
 		before: emptyFunc,
 		topic: emptyFunc,
@@ -144,14 +135,12 @@ expectErr(
 expectErr(
 	"Suite prop beforeCb must be a func",
 	"BeforeIsNotValid",
-	"dingo",
 	{
 		beforeCb:[ emptyFunc ],
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
 	},
-	"dingo",
 	{
 		beforeCb: emptyFunc,
 		topic: emptyFunc,
@@ -163,7 +152,6 @@ expectErr(
 expectErr(
 	"A suite may not have both props before and beforeCb set",
 	"BeforeIsNotValid",
-	"dingo",
 	{
 		before: emptyFunc,
 		beforeCb: emptyFunc,
@@ -171,7 +159,6 @@ expectErr(
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
 	},
-	"dingo",
 	{
 		before: emptyFunc,
 		topic: emptyFunc,
@@ -185,13 +172,11 @@ expectErr(
 expectErr(
 	"topic must be a func",
 	"TopicIsNotValid",
-	"dingo",
 	{
 		topic: null,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -202,14 +187,12 @@ expectErr(
 expectErr(
 	"A Suite may not have both topic and topicCb",
 	"TopicIsNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		topicCb: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -222,13 +205,11 @@ expectErr(
 expectErr(
 	"vows may not be empty in a Suite",
 	"VowsAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[]
 	},
-	"dingo",
 	{
 		topic:emptyFunc,
 		argsVer:[ "undef" ],
@@ -239,13 +220,11 @@ expectErr(
 expectErr(
 	"Every second item in vows must be a func",
 	"VowsAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dongo", "dongo" ]
 	},
-	"dingo",
 	{
 		topic:emptyFunc,
 		argsVer:[ "undef" ],
@@ -257,13 +236,11 @@ expectErr(
 	"Every second item (starting from first) in vows must be a "+
 	"vow-name",
 	"VowsAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ emptyFunc, "dongo", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -274,13 +251,11 @@ expectErr(
 expectErr(
 	"vow names must be unique",
 	"VowsAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dongo", emptyFunc, "dongo", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -293,14 +268,12 @@ expectErr(
 expectErr(
 	"conf must be undef or an obj",
 	"ConfIsNotValid",
-	"dingo",
 	{
 		conf: null,
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{},
 		topic: emptyFunc,
@@ -314,14 +287,12 @@ expectErr(
 expectErr(
 	"local must be undef or an obj",
 	"LocalIsNotValid",
-	"dingo",
 	{
 		local: 43,
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		local:{},
 		topic: emptyFunc,
@@ -336,14 +307,12 @@ expectErr(
 expectErr(
 	"verifyArgs of conf must be bool or undef",
 	"ConfIsNotValid",
-	"dingo",
 	{
 		conf:{ verifyArgs: 1 },
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ verifyArgs: true },
 		topic: emptyFunc,
@@ -356,13 +325,11 @@ expectErr(
 	"argsVer of a Suite must be set if verifyArgs of conf "+
 	"is undef or true",
 	"ArgsVerIsNotValid",
-	"dingo",
 	{
 		conf:{ verifyArgs: true },
 		topic: emptyFunc,
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ verifyArgs: true },
 		topic: emptyFunc,
@@ -375,14 +342,12 @@ expectErr(
 	"argsVer of a Suite may not be set if verifyArgs of conf is "+
 	"false",
 	"ArgsVerIsNotValid",
-	"dingo",
 	{
 		conf:{ verifyArgs: false },
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ verifyArgs: false },
 		topic: emptyFunc,
@@ -396,14 +361,12 @@ expectErr(
 expectErr(
 	"allowThrownErr of conf must be undef or a bool",
 	"ConfIsNotValid",
-	"dingo",
 	{
 		conf:{ allowThrownErr: null },
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ allowThrownErr: false },
 		topic: emptyFunc,
@@ -416,7 +379,6 @@ expectErr(
 	"there must be a topic or topicCb with conf prop "+
 	"allowThrownErr",
 	"AllowThrownErrWithoutTopic",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -436,7 +398,6 @@ expectErr(
 			}
 		]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -480,14 +441,12 @@ expectErr(
 expectErr(
 	"allowCbErr of conf must be undef or a bool",
 	"ConfIsNotValid",
-	"dingo",
 	{
 		conf:{ allowCbErr: 1 },
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ allowThrownErr: false },
 		topic: emptyFunc,
@@ -499,7 +458,6 @@ expectErr(
 expectErr(
 	"there must be a topicCb with conf prop allowCbErr",
 	"AllowCbErrWithoutTopicCb",
-	"dingo",
 	{
 		conf:
 		{
@@ -509,7 +467,6 @@ expectErr(
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:
 		{
@@ -526,14 +483,12 @@ expectErr(
 expectErr(
 	"sequential of conf must be undef or a bool",
 	"ConfIsNotValid",
-	"dingo",
 	{
 		conf:{ sequential: 1 },
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		conf:{ sequential: false },
 		topic: emptyFunc,
@@ -547,14 +502,12 @@ expectErr(
 expectErr(
 	"next must be an arr of suites",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next: validSuite
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -574,14 +527,12 @@ expectErr(
 expectErr(
 	"next must be a proper arr of suites",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -593,14 +544,12 @@ expectErr(
 expectErr(
 	"suite name in next must be a proper str",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[ "", validSuite ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -612,14 +561,12 @@ expectErr(
 expectErr(
 	"suites in next must be non-empty objs",
 	"SuiteHasNoRequiredProp",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[ "dingo", {} ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -631,14 +578,12 @@ expectErr(
 expectErr(
 	"every even next item must be a suite name",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[ validSuite, "dingo", validSuite ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -650,14 +595,12 @@ expectErr(
 expectErr(
 	"every odd next item must be a suite",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[ "dingo", validSuite, "dango" ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -669,14 +612,12 @@ expectErr(
 expectErr(
 	"suite names in next must be unique",
 	"NextSuitesAreNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
 		next:[ "dingo", validSuite, "dingo", validSuite ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -691,13 +632,11 @@ expectErr(
 expectErr(
 	"argsVer must be an arr or a FuncVer",
 	"ArgsVerIsNotValid",
-	"dingo",
 	{
 		topic: function() { return 42; },
 		argsVer:{ types: "int" },
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer: getV(),
@@ -706,31 +645,12 @@ expectErr(
 );
 
 expectErr(
-	"topic/topicCb must have an argsVer",
-	"TopicWithoutArgsVer",
-	"dingo",
-	{
-		topic: emptyFunc,
-		vows:[ "dango", emptyFunc ]
-	},
-	"dingo",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dango", emptyFunc ]
-	},
-	false
-);
-
-expectErr(
 	"There must be a topic/topicCb with an argsVer",
 	"ArgsVerWithoutTopic",
-	"dingo",
 	{
 		conf:{ verifyArgs: true },
 		argsVer: [ "undef" ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		conf:{ verifyArgs: true },
@@ -743,7 +663,6 @@ expectErr(
 expectErr(
 	"There must be a parent topic/topicCb with an argsVer",
 	"ArgsVerWithoutTopic",
-	"dingo",
 	{
 		next:
 		[
@@ -754,7 +673,6 @@ expectErr(
 			}
 		]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -777,11 +695,9 @@ expectErr(
 expectErr(
 	"Vows must have a topic/topicCb",
 	"VowsWithoutTopic",
-	"dingo",
 	{
 		vows:[ "dango", emptyFunc ]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		conf:{ verifyArgs: false },
@@ -791,9 +707,8 @@ expectErr(
 );
 
 expectErr(
-	"Vows must have parent topic/topicCb",
+	"Vows must have a parent topic/topicCb",
 	"VowsWithoutTopic",
-	"dingo",
 	{
 		next:
 		[
@@ -803,7 +718,6 @@ expectErr(
 			}
 		]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		conf:{ verifyArgs: false },
@@ -821,12 +735,10 @@ expectErr(
 expectErr(
 	"topic must have vows",
 	"TopicWithoutVows",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -838,7 +750,6 @@ expectErr(
 expectErr(
 	"topic must have child vows",
 	"TopicWithoutVows",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -850,7 +761,6 @@ expectErr(
 			}
 		]
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -871,14 +781,12 @@ expectErr(
 expectErr(
 	"Suite prop after must be a func",
 	"AfterIsNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
 		after:{ func: emptyFunc }
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -890,14 +798,12 @@ expectErr(
 expectErr(
 	"Suite prop afterCb must be a func",
 	"AfterIsNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
 		afterCb:{ func: emptyFunc }
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -909,7 +815,6 @@ expectErr(
 expectErr(
 	"A suite may not have both props after and afterCb set",
 	"AfterIsNotValid",
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
@@ -921,7 +826,6 @@ expectErr(
 			var cb = this.getCb();
 		}
 	},
-	"dingo",
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],

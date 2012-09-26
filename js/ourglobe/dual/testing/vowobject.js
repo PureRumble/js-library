@@ -1,6 +1,5 @@
 ourglobe.define(
 [
-	"./suiteruntimeerror",
 	"./suitestepobject",
 	"./suiteresult",
 	"./vow"

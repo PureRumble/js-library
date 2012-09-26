@@ -1,16 +1,24 @@
 ourglobe.define(
 [
 	"./testruntimeerror",
-	"./suiteruntimeerror"
+	"./suiteruntimeerror",
+	"./suite"
 ],
 function( mods )
 {
 
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
-
 var sys = ourglobe.sys;
 var FuncVer = ourglobe.FuncVer;
+
+var Suite;
+
+mods.delay(
+function()
+{
+	Suite = mods.get( "suite" );
+});
 
 var SuiteHolder =
 getF(
@@ -19,18 +27,36 @@ function()
 	return(
 		getV()
 			.addA(
-				FuncVer.PROPER_STR, "obj", [ SuiteHolder, "undef" ]
+				FuncVer.PROPER_STR,
+				Suite,
+				"obj",
+				 [ SuiteHolder, "bool/undef" ]
 			)
 	);
 },
-function( name, suiteObj, parentSuite )
+function( name, suite, suiteObj, parentSuite )
 {
+	var forSuite = false;
+	
+	if( parentSuite === true )
+	{
+		forSuite = true;
+	}
+	
+	if( parentSuite instanceof SuiteHolder === false )
+	{
+		parentSuite = undefined;
+	}
+	
 	if( parentSuite === undefined )
 	{
-		SuiteHolder.verSuiteObj( name, suiteObj );
+		SuiteHolder.verSuiteObj(
+			name, suite, suiteObj, undefined, forSuite
+		);
 	}
 	
 	this.name = name;
+	this.suite = suite;
 	this.parent = parentSuite;
 	this.before = suiteObj.before;
 	this.beforeCb = suiteObj.beforeCb;
@@ -47,13 +73,6 @@ function( name, suiteObj, parentSuite )
 		this.argsVer = new FuncVer( this.argsVer );
 	}
 	
-	this.conf = SuiteHolder.copySet( suiteObj.conf );
-	
-	if( this.conf === undefined )
-	{
-		this.conf = {};
-	}
-	
 	this.local = SuiteHolder.copySet( suiteObj.local );
 	
 	if( this.local === undefined )
@@ -61,37 +80,68 @@ function( name, suiteObj, parentSuite )
 		this.local = {};
 	}
 	
+	this.conf = SuiteHolder.copySet( suiteObj.conf );
+	
+	if( this.conf === undefined )
+	{
+		this.conf = {};
+	}
+	
 	if( this.conf.verifyArgs === undefined )
 	{
-		this.conf.verifyArgs =
-			this.topic !== undefined || this.topicCb !== undefined
+		this.conf.verifyArgs = this.suite.globalConf.verifyArgs;
 		;
+	}
+	
+	if( this.conf.cbTimeout === undefined )
+	{
+		this.conf.cbTimeout = this.suite.globalConf.cbTimeout;
 	}
 	
 	if( this.conf.allowThrownErr === undefined )
 	{
-		this.conf.allowThrownErr = false;
+		this.conf.allowThrownErr =
+			this.suite.globalConf.allowThrownErr
+		;
 	}
 	
 	if( this.conf.allowCbErr === undefined )
 	{
-		this.conf.allowCbErr = false;
+		this.conf.allowCbErr =
+			this.suite.globalConf.allowCbErr
+		;
 	}
 	
 	if( this.conf.sequential === undefined )
 	{
-		this.conf.sequential = false;
+		this.conf.sequential =
+			this.suite.globalConf.sequential
+		;
 	}
 	
 	if( this.next !== undefined )
 	{
-		for( var item = 0; item < this.next.length; item++ )
+		if( forSuite === false )
 		{
-			var suite = this.next[ item ];
-			
-			suite.value =
-				new SuiteHolder( suite.key, suite.value, this )
-			;
+			for( var item = 0; item < this.next.length; item++ )
+			{
+				var suite = this.next[ item ];
+				
+				suite.value =
+					new SuiteHolder(
+						suite.key, this.suite, suite.value, this
+					)
+				;
+			}
+		}
+		else
+		{
+			for( var item = 0; item < this.next.length; item++ )
+			{
+				var suite = this.next[ item ];
+				
+				suite.value.parent = this;
+			}
 		}
 	}
 });
@@ -109,17 +159,38 @@ var getV = ourglobe.getV;
 
 var TestRuntimeError = mods.get( "testruntimeerror" );
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
+var Suite = mods.get( "suite" );
 
 SuiteHolder.verSuiteObj =
 getF(
 getV()
-	.addA( FuncVer.PROPER_STR, "obj", "bool/undef" )
+	.addA(
+		[ FuncVer.PROPER_STR, SuiteRuntimeError.SUITE_NAMES_S ],
+		Suite,
+		"obj",
+		"bool/undef",
+		"bool/undef"
+	)
 	.setR( "bool" ),
-function( name, suiteObj, topicFound )
+function( suiteNames, suite, suiteObj, topicFound, forSuite )
 {
+	if( sys.hasType( suiteNames, "str" ) === true )
+	{
+		suiteNames = [ suiteNames ];
+	}
+	else
+	{
+		suiteNames = suiteNames.slice();
+	}
+	
 	if( topicFound === undefined )
 	{
 		topicFound = false;
+	}
+	
+	if( forSuite === undefined )
+	{
+		forSuite = false;
 	}
 	
 	for( var prop in suiteObj )
@@ -139,8 +210,9 @@ function( name, suiteObj, topicFound )
 		)
 		{
 			throw new SuiteRuntimeError(
+				{ suite: suiteNames },
 				"Prop "+prop+" isnt a valid suite prop",
-				{ suiteName: name },
+				{ invalidProp: prop },
 				"UnknownSuitePropFound"
 			);
 		}
@@ -163,14 +235,28 @@ function( name, suiteObj, topicFound )
 		topicFound = topic !== undefined || topicCb !== undefined;
 	}
 	
+	var res = Suite.confIsValid( conf );
+	
+	if( res !== undefined )
+	{
+		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
+			"There is an error with suite prop conf:\n"+
+			res.msg,
+			res.errorVar,
+			"ConfIsNotValid"
+		);
+	}
+	
 	if(
 		before !== undefined &&
 		sys.hasType( before, "func" ) === false
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop before of a suite must be undef or a func",
-			{ suiteName: name, before: before },
+			{ before: before },
 			"BeforeIsNotValid"
 		);
 	}
@@ -181,8 +267,9 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop beforeCb of a suite must be undef or a func",
-			{ suiteName: name, beforeCb: beforeCb },
+			{ beforeCb: beforeCb },
 			"BeforeIsNotValid"
 		);
 	}
@@ -190,9 +277,10 @@ function( name, suiteObj, topicFound )
 	if( before !== undefined && beforeCb !== undefined )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"A suite cant have both props before and "+
 			"beforeCb set",
-			{ suiteName: name, before: before, beforeCb: beforeCb },
+			{ before: before, beforeCb: beforeCb },
 			"BeforeIsNotValid"
 		);
 	}
@@ -202,8 +290,9 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop topic of a suite must be undef or a func",
-			{ suiteName: name, topic: topic },
+			{ topic: topic },
 			"TopicIsNotValid"
 		);
 	}
@@ -214,9 +303,10 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop topicCb of a suite must be undef or "+
 			"a func",
-			{ suiteName: name, topicCb: topicCb },
+			{ topicCb: topicCb },
 			"TopicIsNotValid"
 		);
 	}
@@ -224,9 +314,10 @@ function( name, suiteObj, topicFound )
 	if( topic !== undefined && topicCb !== undefined )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"A suite cant have both props topic and "+
 			"topicCb set",
-			{ suiteName: name, topic: topic, topicCb: topicCb },
+			{ topic: topic, topicCb: topicCb },
 			"TopicIsNotValid"
 		);
 	}
@@ -237,9 +328,10 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop argsVer of a suite must be undef, "+
 			"an arr or a FuncVer",
-			{ suiteName: name, argsVer: argsVer },
+			{ argsVer: argsVer },
 			"ArgsVerIsNotValid"
 		);
 	}
@@ -253,11 +345,12 @@ function( name, suiteObj, topicFound )
 		catch( e )
 		{
 			throw new SuiteRuntimeError(
+				{ suite: suiteNames },
 				"If prop argsVer of a suite is an arr then "+
 				"it must be valid as the first arg of FuncVer's "+
 				"constructor but an error was thrown when trying to "+
 				"construct a FuncVer",
-				{ suiteName: name, thrownErr: e },
+				{ thrownErr: e },
 				"ArgsVerIsNotValid"
 			);
 		}
@@ -269,9 +362,10 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop vows of a suite must be "+
 			"an non-empty arr of vows",
-			{ suiteName: name },
+			{ vows: vows },
 			"VowsAreNotValid"
 		);
 	}
@@ -282,27 +376,20 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop next of a suite must be "+
 			"an non-empty arr of suites",
-			{ suiteName: name },
+			{ next: next },
 			"NextSuitesAreNotValid"
-		);
-	}
-	
-	if( sys.hasType( conf, "obj", "undef" ) === false )
-	{
-		throw new SuiteRuntimeError(
-			"Prop conf of a suite must be undef or an obj",
-			{ suiteName: name, conf: conf },
-			"ConfIsNotValid"
 		);
 	}
 	
 	if( sys.hasType( local, "obj", "undef" ) === false )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop local of a suite must be undef or an obj",
-			{ suiteName: name, local: local },
+			{ local: local },
 			"LocalIsNotValid"
 		);
 	}
@@ -313,8 +400,9 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop after of a suite must be undef or a func",
-			{ suiteName: name, after: after },
+			{ after: after },
 			"AfterIsNotValid"
 		);
 	}
@@ -325,8 +413,9 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop afterCb of a suite must be undef or a func",
-			{ suiteName: name, afterCb: afterCb },
+			{ afterCb: afterCb },
 			"AfterIsNotValid"
 		);
 	}
@@ -334,9 +423,10 @@ function( name, suiteObj, topicFound )
 	if( after !== undefined && afterCb !== undefined )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"A suite cant have both props after and "+
 			"afterCb set",
-			{ suiteName: name, after: after, afterCb: afterCb },
+			{ after: after, afterCb: afterCb },
 			"AfterIsNotValid"
 		);
 	}
@@ -346,53 +436,25 @@ function( name, suiteObj, topicFound )
 		conf = {};
 	}
 	
-	for( var prop in conf )
-	{
-		if(
-			prop !== "verifyArgs" &&
-			prop !== "allowThrownErr" &&
-			prop !== "allowCbErr" &&
-			prop !== "sequential"
-		)
-		{
-			throw new SuiteRuntimeError(
-				"Prop "+prop+" isnt valid for "+
-				"suite prop conf",
-				{ suiteName: name },
-				"ConfIsNotValid"
-			);
-		}
-	}
-	
-	var verifyArgs = conf[ "verifyArgs" ];
+// It is required that the suite has a topic/topicCb depending on
+// which of the conf props allowCbErr or allowThrownErr are set,
+// and this is therefore verified. The values are therefore not
+// overriden here by the global conf props for the purpose of
+// verification
 	var allowThrownErr = conf[ "allowThrownErr" ];
 	var allowCbErr = conf[ "allowCbErr" ];
 	var sequential = conf[ "sequential" ];
+	var verifyArgs = conf[ "verifyArgs" ];
+	var localVerifyArgs = verifyArgs;
 	
-	if(
-		verifyArgs !== undefined &&
-		typeof( verifyArgs ) !== "boolean"
-	)
+// Depending on if the suite's conf prop verifyArgs requies the
+// topic result to be verified, it must be verfied that suite
+// prop argsVer is set. But if verifyArgs isnt set then it is
+// overriden by the suite's global conf prop and therefore it
+// must be consulted
+	if( verifyArgs === undefined )
 	{
-		throw new SuiteRuntimeError(
-			"Prop verifyArgs of suite prop conf must "+
-			"be undef or a bool",
-			{ suiteName: name },
-			"ConfIsNotValid"
-		);
-	}
-	
-	if(
-		allowThrownErr !== undefined &&
-		typeof( allowThrownErr ) !== "boolean"
-	)
-	{
-		throw new SuiteRuntimeError(
-			"Prop allowThrownErr of suite prop conf "+
-			"must be undef or a bool",
-			{ suiteName: name },
-			"ConfIsNotValid"
-		);
+		verifyArgs = suite.globalConf.verifyArgs;
 	}
 	
 	if(
@@ -402,46 +464,22 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop allowThrownErr of suite prop conf may be set only "+
 			"if the suite has a topic or topicCb",
-			{ suiteName: name },
+			{ allowThrownErr: allowThrownErr },
 			"AllowThrownErrWithoutTopic"
-		);
-	}
-	
-	if(
-		allowCbErr !== undefined &&
-		typeof( allowCbErr ) !== "boolean"
-	)
-	{
-		throw new SuiteRuntimeError(
-			"Prop allowCbErr of suite prop conf "+
-			"must be undef or a bool",
-			{ suiteName: name },
-			"ConfIsNotValid"
 		);
 	}
 	
 	if( allowCbErr !== undefined && topicCb === undefined )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"Prop allowCbErr of suite prop conf may only be set "+
 			"if the suite has a topicCb",
-			{ suiteName: name },
+			{ allowCbErr: allowCbErr },
 			"AllowCbErrWithoutTopicCb"
-		);
-	}
-	
-	if(
-		sequential !== undefined &&
-		typeof( sequential ) !== "boolean"
-	)
-	{
-		throw new SuiteRuntimeError(
-			"Prop sequential of suite prop conf "+
-			"must be undef or a bool",
-			{ suiteName: name, sequential: sequential },
-			"ConfIsNotValid"
 		);
 	}
 	
@@ -454,9 +492,10 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"A suite must have one of the props vows, argsVer or "+
 			"next set",
-			{ suiteName: name, suite: suiteObj },
+			{ suite: suiteObj },
 			"SuiteHasNoRequiredProp"
 		);
 	}
@@ -466,9 +505,10 @@ function( name, suiteObj, topicFound )
 		if( topicFound === false )
 		{
 			throw new SuiteRuntimeError(
+				{ suite: suiteNames },
 				"If a suite has vows then it or one of its parent "+
 				"suites must have a topic (or topicCb)",
-				{ suiteName: name },
+				undefined,
 				"VowsWithoutTopic"
 			);
 		}
@@ -486,8 +526,9 @@ function( name, suiteObj, topicFound )
 			)
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteNames },
 					"A vow's name must be a non-empty str",
-					{ suiteName: name },
+					{ vowName: vowName },
 					"VowsAreNotValid"
 				);
 			}
@@ -495,9 +536,10 @@ function( name, suiteObj, topicFound )
 			if( vowDic[ vowName ] === true )
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteNames },
 					"Vow names must be unique but the name '"+vowName+
 					"' is used many times",
-					{ suiteName: name },
+					undefined,
 					"VowsAreNotValid"
 				);
 			}
@@ -507,25 +549,37 @@ function( name, suiteObj, topicFound )
 			if( vow instanceof Function === false )
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteNames },
 					"A vow must be a func but this isnt so for the vow"+
 					"named '"+vowName+"'",
-					{ suiteName: name },
+					{ vowName: vowName, vow: vow },
 					"VowsAreNotValid"
 				);
 			}
 		}
 	}
 	
-	var shouldVerArgs =
-		topic !== undefined || topicCb !== undefined
-	;
-	
-	if( verifyArgs === true && argsVer === undefined )
+	if(
+// If the suite's prop conf has verifyArgs set to true then
+// the suite's prop argsVer must be set accordingly
+		( localVerifyArgs === true && argsVer === undefined ) ||
+// If the suite's prop conf hasnt set verifyArgs then it's
+// overriden by the global conf, but you shouldnt be forced to
+// have suite prop argsVer set if there is no topic/topicCb
+		(
+			localVerifyArgs === undefined &&
+			( topic !== undefined || topicCb !== undefined ) &&
+			verifyArgs === true &&
+			argsVer === undefined
+		)
+	)
 	{
 		throw new SuiteRuntimeError(
-			"Prop argsVer of a suite must be set if "+
-			"conf prop verifyArgs is true",
-			{ suiteName: name },
+			{ suite: suiteNames },
+			"Prop argsVer of a suite must be set if the suite's conf "+
+			"prop verifyArgs is true (or if it's undef but the "+
+			"global conf prop verifyArgs is true)",
+			undefined,
 			"ArgsVerIsNotValid"
 		);
 	}
@@ -533,9 +587,11 @@ function( name, suiteObj, topicFound )
 	if( verifyArgs === false && argsVer !== undefined )
 	{
 		throw new SuiteRuntimeError(
-			"Prop argsVer of a suite may not be set if "+
-			"prop verifyArgs of conf is false",
-			{ suiteName: name },
+			{ suite: suiteNames },
+			"Prop argsVer of a suite may not be set if the suite's "+
+			"conf prop verifyArgs is false (or if it's undef but the "+
+			"global conf prop verifyArgs is false)",
+			undefined,
 			"ArgsVerIsNotValid"
 		);
 	}
@@ -543,46 +599,32 @@ function( name, suiteObj, topicFound )
 	if( topicFound === false && argsVer !== undefined )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"If a suite has prop argsVer set then it or a parent "+
 			"suite must have a topic/topicCb",
-			{ suiteName: name },
+			undefined,
 			"ArgsVerWithoutTopic"
-		);
-	}
-	
-	if(
-		shouldVerArgs &&
-		verifyArgs !== false &&
-		argsVer === undefined
-	)
-	{
-		throw new SuiteRuntimeError(
-			"A suite with a topic/topicCb must have prop argsVer "+
-			"set or prop verifyArgs under conf must be false",
-			{ suiteName: name },
-			"TopicWithoutArgsVer"
 		);
 	}
 	
 	var suiteHasVows = vows !== undefined;
 	
-	if( next !== undefined )
+	if( next !== undefined && forSuite === false )
 	{
 		var suiteDic = {};
 		
 		for( var item = 0; item < next.length; item+=2 )
 		{
 			var suiteName = next[ item ];
-			var suite = next[ item+1 ];
+			var suiteObj = next[ item+1 ];
 			
-			if(
-				sys.hasType( suiteName, "str" ) === false ||
-				suiteName.length === 0
-			)
+			if( Suite.suiteNameIsValid( suiteName ) === false )
 			{
 				throw new SuiteRuntimeError(
-					"A suite's name must be a non-empty str",
-					{ suiteName: name },
+					{ suite: suiteNames },
+					"In the suite prop next a suite's name must be a "+
+					"non-empty str",
+					{ invalidSuiteName: suiteName },
 					"NextSuitesAreNotValid"
 				);
 			}
@@ -590,28 +632,36 @@ function( name, suiteObj, topicFound )
 			if( suiteDic[ suiteName ] === true )
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteNames },
 					"In the suite prop next suite names must be unique "+
 					"but the name '"+suiteName+"' is used more than once",
-					{ suiteName: name },
+					undefined,
 					"NextSuitesAreNotValid"
 				);
 			}
 			
 			suiteDic[ suiteName ] = true;
 			
-			if( sys.hasType( suite, "obj" ) === false )
+			if( sys.hasType( suiteObj, "obj" ) === false )
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteNames },
 					"In the suite prop next suites must be non-empty "+
 					"objs but this isnt so for the suite named '"+
 					suiteName+"'",
-					{ suiteName: name },
+					undefined,
 					"NextSuitesAreNotValid"
 				);
 			}
 			
+			var SuiteNamesWithChild = suiteNames.slice();
+			
+			SuiteNamesWithChild.push( suiteName );
+			
 			var nextSuiteHasVows =
-				SuiteHolder.verSuiteObj( suiteName, suite, topicFound )
+				SuiteHolder.verSuiteObj(
+					SuiteNamesWithChild, suite, suiteObj, topicFound
+				)
 			;
 			
 			if( nextSuiteHasVows === true )
@@ -627,9 +677,10 @@ function( name, suiteObj, topicFound )
 	)
 	{
 		throw new SuiteRuntimeError(
+			{ suite: suiteNames },
 			"This suite has a topic/topicCb but no vows and neither "+
 			"does any of its child suites",
-			{ suiteName: name },
+			undefined,
 			"TopicWithoutVows"
 		);
 	}

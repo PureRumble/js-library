@@ -13,15 +13,18 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
-
-var ReturnStep = mods.get( "returnstep" );
+var SuiteRuntimeError = undefined;
+var ReturnStep = undefined;
 var SuiteRun = undefined;
 
 mods.delay(
 function()
 {
+	SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 	SuiteRun = mods.get( "suiterun" );
+	ReturnStep = mods.get( "returnstep" );
+	
+	sys.extend( ArgsVer, ReturnStep );
 });
 
 var ArgsVer =
@@ -54,6 +57,7 @@ function( suiteRun )
 			if( argsAreValid === false )
 			{
 				throw new SuiteRuntimeError(
+					{ suite: suiteRun.suiteHolder },
 					"The Suite step 'verArgs' doesnt approve of the args "+
 					"that are to be provided to the vows and the next "+
 					"Suites",
@@ -68,8 +72,6 @@ function( suiteRun )
 	);
 });
 
-sys.extend( ArgsVer, ReturnStep );
-
 return ArgsVer;
 
 },
@@ -79,8 +81,6 @@ function( mods, ArgsVer )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var SuiteStep = mods.get( "suitestep" );
-
-var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 
 ArgsVer.prototype.getName =
 getF(

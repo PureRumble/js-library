@@ -71,6 +71,7 @@ function( varName )
 		if( suiteRun === undefined )
 		{
 			throw new SuiteRuntimeError(
+				{ suite: this.suiteStep.suiteRun.suiteHolder },
 				"This suite has no local var named '"+varName+"' and "+
 				"neither does any of its parent suites",
 				undefined,

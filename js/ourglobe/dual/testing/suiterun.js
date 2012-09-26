@@ -1,6 +1,5 @@
 ourglobe.define(
 [
-	"./suiteruntimeerror",
 	"./suiteholder",
 	"./cbstepqueue",
 	"./suitestep",
@@ -52,19 +51,11 @@ function()
 {
 	return(
 		getV()
-			.addA( SuiteHolder, [ SuiteRun, { gt: 0 }, "undef" ] )
+			.addA( SuiteHolder, [ SuiteRun, "undef" ] )
 	);
 },
 function( suiteHolder, parentRun )
 {
-	var nrSlots = undefined;
-	
-	if( parentRun instanceof SuiteRun === false )
-	{
-		nrSlots = parentRun;
-		parentRun = undefined;
-	}
-	
 	this.parentRun = parentRun;
 	this.suiteHolder = suiteHolder;
 	
@@ -78,7 +69,9 @@ function( suiteHolder, parentRun )
 	
 	if( parentRun === undefined )
 	{
-		this.cbStepQueue = new CbStepQueue( nrSlots );
+		this.cbStepQueue =
+			new CbStepQueue( this.suiteHolder.suite.maxNrConcCbs )
+		;
 	}
 	else
 	{
@@ -158,7 +151,6 @@ function( mods, SuiteRun )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
-var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteStep = mods.get( "suitestep" );
 var After = mods.get( "after" );
 

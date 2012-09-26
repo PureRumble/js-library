@@ -70,6 +70,7 @@ function()
 	if( this.suiteStep.suiteRun.topic.stepOk !== true )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run without "+
 			"failing for topicErrThrown() to be consulted",
 			undefined,
@@ -92,6 +93,7 @@ function()
 	if( this.suiteStep.suiteRun.topic.stepOk !== true )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run without "+
 			"failing for topicErrOccurred() to be consulted",
 			undefined,
@@ -114,6 +116,7 @@ function()
 	if( this.suiteStep.suiteRun.topic.stepOk !== true )
 	{
 		throw new SuiteRuntimeError(
+			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run without "+
 			"failing for getTopicRes() to be consulted",
 			undefined,
@@ -176,7 +179,7 @@ function( stepName )
 			"Arg stepName must be either 'before', 'beforeCb', "+
 			"'topic', 'topicCb', 'argsVer', 'vow', 'vows' or 'next'",
 			{ stepName: stepName },
-			"InvalidArgsForStepFailed"
+			"InvalidArgsForStepOk"
 		);
 	}
 	

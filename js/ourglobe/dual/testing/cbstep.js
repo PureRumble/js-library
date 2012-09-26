@@ -55,8 +55,6 @@ CbStep.EVALUATE_FV =
 		.setR( [ Error, "undef" ] )
 ;
 
-CbStep.DEFAULT_CB_TIMEOUT = 5000;
-
 return CbStep;
 
 },
@@ -137,6 +135,7 @@ function( err )
 		this.landStep(
 			undefined, 
 			new SuiteRuntimeError(
+				{ suite: this.suiteRun.suiteHolder },
 				"The cb of Suite step '"+this.stepName+"' hasnt "+
 				"been called within the allowed time limit",
 				{ stepName: this.stepName },
@@ -228,6 +227,7 @@ function( returnVar, thrownErr )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
+					{ suite: this.suiteRun.suiteHolder },
 					"The cb of suite step '"+this.stepName+"' has thrown "+
 					"an err after having called its cb. Due to this all "+
 					"running suites must be terminated",
@@ -300,6 +300,7 @@ function( err, cbArgs )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
+					{ suite: this.suiteRun.suiteHolder },
 					"The cb of suite step '"+this.stepName+"' has been "+
 					"called twice. Due to this all running suites must "+
 					"be terminated",
@@ -316,6 +317,7 @@ function( err, cbArgs )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
+					{ suite: this.suiteRun.suiteHolder },
 					"The cb of suite step '"+this.stepName+"' has been "+
 					"called after that the step has thrown an err. Due "+
 					"to this all running suites must be terminated",
@@ -352,7 +354,7 @@ getF(
 CbStep.GET_CB_TIMEOUT_FV,
 function()
 {
-	return CbStep.DEFAULT_CB_TIMEOUT;
+	return this.suiteRun.suiteHolder.conf.cbTimeout;
 });
 
 CbStep.prototype.evaluate =
