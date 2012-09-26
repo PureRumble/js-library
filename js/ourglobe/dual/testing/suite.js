@@ -117,7 +117,7 @@ function( suiteName, globalConf, maxNrConcCbs )
 	}
 });
 
-Suite.DEFAULT_MAX_NR_CONC_CBS = 15;
+Suite.DEFAULT_MAX_NR_CONC_CBS = 10;
 
 Suite.DEFAULT_CB_TIMEOUT = 5000;
 
