@@ -24,6 +24,9 @@ getF(
 function() { return SuiteStep.CONSTR_FV; },
 function( suiteRun, func )
 {
+	this.returnVar = undefined;
+	this.thrownErr = undefined;
+	
 	ReturnStep.ourGlobeSuper.call( this, suiteRun, func );
 });
 
