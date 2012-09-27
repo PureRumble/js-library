@@ -64,7 +64,7 @@ getF(
 SuiteStep.GET_ARGS_FV,
 function()
 {
-	return this.suiteRun.topic.result;
+	return this.suiteRun.suiteRes.getTopicRes();
 });
 
 Vow.prototype.getName =

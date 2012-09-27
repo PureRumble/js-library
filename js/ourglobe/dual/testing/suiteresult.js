@@ -1,8 +1,7 @@
 ourglobe.define(
 [
 	"./suiteruntimeerror",
-	"./suiterun",
-	"./topiccb"
+	"./suiterun"
 ],
 function( mods )
 {
@@ -31,6 +30,27 @@ function()
 function( suiteRun )
 {
 	this.suiteRun = suiteRun;
+	
+	if( suiteRun.topic !== undefined )
+	{
+		this.topicRes = suiteRun.topic.result;
+		this.thrownErr = suiteRun.topic.thrownErr;
+		this.cbErr = suiteRun.topic.cbErr;
+	}
+	else if( suiteRun.parentRun !== undefined )
+	{
+		var parentRun = suiteRun.parentRun;
+		
+		this.topicRes = parentRun.suiteRes.topicRes;
+		this.thrownErr = parentRun.suiteRes.thrownErr;
+		this.cbErr = parentRun.suiteRes.cbErr;
+	}
+	else
+	{
+		this.topicRes = [];
+		this.thrownErr = undefined;
+		this.cbErr = undefined;
+	}
 });
 
 SuiteResult.GET_TOPIC_RES_FV =
@@ -73,8 +93,6 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var TopicCb = mods.get( "topiccb" );
-
 SuiteResult.prototype.hasParent =
 getF(
 SuiteResult.HAS_PARENT_FV,
@@ -116,7 +134,7 @@ function()
 		);
 	}
 	
-	return new SuiteResult( this.suiteRun.parentRun );
+	return this.suiteRun.parentRun.suiteRes;
 });
 
 SuiteResult.prototype.topicErrThrown =
@@ -133,7 +151,7 @@ function()
 		);
 	}
 	
-	return this.suiteRun.topic.thrownErr !== undefined;
+	return this.thrownErr !== undefined;
 });
 
 SuiteResult.prototype.topicErrOccurred =
@@ -151,8 +169,7 @@ function()
 	}
 	
 	return(
-		this.suiteRun.topic.thrownErr !== undefined ||
-		this.suiteRun.topic.cbErr !== undefined
+		this.thrownErr !== undefined || this.cbErr !== undefined
 	);
 });
 
@@ -170,7 +187,7 @@ function()
 		);
 	}
 	
-	return this.suiteRun.topic.result.slice();
+	return this.topicRes.slice();
 });
 
 });

@@ -34,34 +34,6 @@ function( suiteRun )
 {
 	this.result = undefined;
 	
-	if( suiteRun.suiteHolder.topicCb === undefined )
-	{
-		if( suiteRun.parentRun !== undefined )
-		{
-			var topicCb = suiteRun.parentRun.topic;
-			
-			this.result = topicCb.result;
-			this.thrownErr = topicCb.thrownErr;
-			this.cbErr = topicCb.cbErr;
-			
-			this.suiteRun = suiteRun;
-			this.stepOk = topicCb.stepOk;
-			this.err = topicCb.err;
-		}
-		else
-		{
-			this.result = [];
-			this.thrownErr = undefined;
-			this.cbErr = undefined;
-			
-			this.suiteRun = suiteRun;
-			this.stepOk = true;
-			this.err = undefined;
-		}
-		
-		return;
-	}
-	
 	TopicCb.ourGlobeSuper.call(
 		this, suiteRun, suiteRun.suiteHolder.topicCb
 	);
@@ -79,28 +51,6 @@ var getV = ourglobe.getV;
 var SuiteStep = mods.get( "suitestep" );
 var CbStep = mods.get( "cbstep" );
 var Topic = mods.get( "topic" );
-
-TopicCb.prototype.takeStep =
-getF(
-SuiteStep.TAKE_STEP_FV,
-function( cb )
-{
-	if( this.stepOk === undefined )
-	{
-		TopicCb.ourGlobeSuper.prototype.takeStep.call( this, cb );
-		
-		return;
-	}
-	else
-	{
-// this.stepOk is already set so this TopicCb has been copied
-// from another TopicCb
-		
-		cb( undefined, this.stepOk );
-		
-		return;
-	}
-});
 
 TopicCb.prototype.evaluate =
 getF(

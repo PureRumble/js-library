@@ -43,15 +43,10 @@ function( suiteRun )
 		suiteRun,
 		function()
 		{
-			if( suiteRun.suiteHolder.argsVer === undefined )
-			{
-				return;
-			}
+			var topicRes = suiteRun.suiteRes.getTopicRes();
 			
 			var argsAreValid =
-				suiteRun.suiteHolder.argsVer.argsAreValid(
-					suiteRun.topic.result
-				)
+				suiteRun.suiteHolder.argsVer.argsAreValid( topicRes )
 			;
 			
 			if( argsAreValid === false )
@@ -62,7 +57,7 @@ function( suiteRun )
 					"that are to be provided to the vows and the next "+
 					"Suites",
 					{
-						providedArgs: suiteRun.topic.result,
+						providedArgs: topicRes,
 						argsVer: suiteRun.suiteHolder.argsVer
 					},
 					"ArgsAreNotValid"

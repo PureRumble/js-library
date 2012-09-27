@@ -31,14 +31,9 @@ function()
 },
 function( suiteRun )
 {
-	var before = suiteRun.suiteHolder.before;
-	
-	if( before === undefined )
-	{
-		before = function() { };
-	}
-	
-	Before.ourGlobeSuper.call( this, suiteRun, before );
+	Before.ourGlobeSuper.call(
+		this, suiteRun, suiteRun.suiteHolder.before
+	);
 });
 
 return Before;

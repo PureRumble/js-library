@@ -64,47 +64,68 @@ var Vow = mods.get( "vow" );
 
 AfterObject.prototype.topicErrThrown =
 getF(
-SuiteResult.TOPIC_ERR_THROWN_FV,
+getV().setR( "bool" ),
 function()
 {
-	if( this.suiteStep.suiteRun.topic.stepOk !== true )
+	if( this.stepOk( "topic" ) === undefined )
 	{
 		throw new SuiteRuntimeError(
 			{ suite: this.suiteStep.suiteRun.suiteHolder },
-			"The suite's step topic must have been run without "+
-			"failing for topicErrThrown() to be consulted",
+			"The suite's step topic must have been run "+
+			"(but is allowed to fail) for topicErrThrown() to be "+
+			"called",
 			undefined,
-			"TopicHasntRunSuccessfully"
+			"TopicHasntRun"
 		);
 	}
 	
-	return(
-		this.suiteRes.topicErrThrown.apply(
-			this.suiteRes, arguments
-		)
-	);
+	var topic = this.suiteStep.suiteRun.topic;
+	
+	return topic !== undefined && topic.thrownErr !== undefined;
+});
+
+AfterObject.prototype.topicCbErrGiven =
+getF(
+getV().setR( "bool" ),
+function()
+{
+	if( this.stepOk( "topic" ) === undefined )
+	{
+		throw new SuiteRuntimeError(
+			{ suite: this.suiteStep.suiteRun.suiteHolder },
+			"The suite's step topic must have been run "+
+			"(but is allowed to fail) for topicCbErrGiven() to be "+
+			"called",
+			undefined,
+			"TopicHasntRun"
+		);
+	}
+	
+	var topic = this.suiteStep.suiteRun.topic;
+	
+	return topic !== undefined && topic.cbErr !== undefined;
 });
 
 AfterObject.prototype.topicErrOccurred =
 getF(
-SuiteResult.TOPIC_ERR_OCCURRED_FV,
+getV().setR( "bool" ),
 function()
 {
-	if( this.suiteStep.suiteRun.topic.stepOk !== true )
+	if( this.stepOk( "topic" ) === undefined )
 	{
 		throw new SuiteRuntimeError(
 			{ suite: this.suiteStep.suiteRun.suiteHolder },
-			"The suite's step topic must have been run without "+
-			"failing for topicErrOccurred() to be consulted",
+			"The suite's step topic must have been run "+
+			"(but is allowed to fail) for topicErrOccurred() to be "+
+			"called",
 			undefined,
-			"TopicHasntRunSuccessfully"
+			"TopicHasntRun"
 		);
 	}
 	
 	return(
-		this.suiteRes.topicErrOccurred.apply(
-			this.suiteRes, arguments
-		)
+		this.topicErrThrown() === true ||
+		this.topicCbErrGiven() === true
 	);
 });
 
@@ -113,7 +134,7 @@ getF(
 SuiteResult.GET_TOPIC_RES_FV,
 function()
 {
-	if( this.suiteStep.suiteRun.topic.stepOk !== true )
+	if( this.stepOk( "topic" ) !== true )
 	{
 		throw new SuiteRuntimeError(
 			{ suite: this.suiteStep.suiteRun.suiteHolder },
@@ -187,45 +208,81 @@ function( stepName )
 	var failedStep = this.suiteStep.suiteRun.failedSuiteStep;
 	var failedSuiteRun = this.suiteStep.suiteRun.failedSuiteRun;
 	
+	var beforeOk =
+		failedStep instanceof Before === false &&
+		failedStep instanceof BeforeCb === false
+	;
+	
+	var topicOk;
+	
+	if( beforeOk !== true )
+	{
+		topicOk = undefined;
+	}
+	else
+	{
+		var topicOk =
+			failedStep instanceof Topic === false &&
+			failedStep instanceof TopicCb === false
+		;
+	}
+	
+	var argsVerOk;
+	
+	if( topicOk !== true )
+	{
+		argsVerOk = undefined;
+	}
+	else
+	{
+		var argsVerOk = failedStep instanceof ArgsVer === false;
+	}
+	
+	var vowsOk;
+	
+	if( argsVerOk !== true )
+	{
+		vowsOk = undefined;
+	}
+	else
+	{
+		var vowsOk = failedStep instanceof Vow === false;
+	}
+	
+	var nextOk;
+	
+	if( vowsOk !== true )
+	{
+		nextOk = undefined;
+	}
+	else
+	{
+		var nextOk = failedSuiteRun === undefined;
+	}
+	
 	if( stepName === "before" || stepName === "beforeCb" )
 	{
-		return suiteRun.before.stepOk;
+		return beforeOk;
 	}
 	
 	if( stepName === "topic" || stepName === "topicCb" )
 	{
-		return suiteRun.topic.stepOk;
+		return topicOk;
 	}
 	
 	if( stepName === "argsVer" )
 	{
-		return suiteRun.argsVer.stepOk;
+		return argsVerOk;
 	}
 	
 	if( stepName === "vow" || stepName === "vows" )
 	{
-		if( suiteRun.argsVer.stepOk !== true )
-		{
-			return undefined;
-		}
-		
-		return failedStep instanceof Vow !== true
+		return vowsOk;
 	}
 	
-	if( stepName === "next"
-	)
+	if( stepName === "next" )
 	{
-		if(
-			suiteRun.before.stepOk === false ||
-			suiteRun.topic.stepOk === false ||
-			suiteRun.argsVer.stepOk === false ||
-			failedStep instanceof Vow === true
-		)
-		{
-			return undefined;
-		}
-		
-		return failedSuiteRun === undefined;
+		return nextOk;
 	}
 });
 

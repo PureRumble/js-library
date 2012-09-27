@@ -32,14 +32,9 @@ function()
 },
 function( suiteRun )
 {
-	var after = suiteRun.suiteHolder.after;
-	
-	if( after === undefined )
-	{
-		after = function() { };
-	}
-	
-	After.ourGlobeSuper.call( this, suiteRun, after );
+	After.ourGlobeSuper.call(
+		this, suiteRun, suiteRun.suiteHolder.after
+	);
 });
 
 return After;

@@ -470,6 +470,57 @@ function( testName, args, cb )
 	);
 });
 
+var ConcVer =
+getF(
+getV(),
+function()
+{
+	this.seq = [];
+	this.maxNrConcCbs = 0;
+	this.nrConcCbs = 0;
+});
+
+ConcVer.prototype.getConcFunc =
+getF(
+getV()
+	.addA( "int/undef", "str/undef" )
+	.addA( "str/undef" )
+	.setR( "func" ),
+function( cbTime, testStr )
+{
+	if( sys.hasType( cbTime, "str" ) === true )
+	{
+		testStr = cbTime;
+		cbTime = undefined;
+	}
+	
+	var concVer = this;
+	
+	return(
+		getCbFunc(
+			cbTime,
+			function()
+			{
+				concVer.nrConcCbs++;
+				
+				if( concVer.nrConcCbs > concVer.maxNrConcCbs )
+				{
+					concVer.maxNrConcCbs = concVer.nrConcCbs;
+				}
+			},
+			function()
+			{
+				concVer.nrConcCbs--;
+				
+				if( testStr !== undefined )
+				{
+					concVer.seq.push( testStr );
+				}
+			}
+		)
+	);
+});
+
 // test group
 // testing simple suites with topic and vows
 
@@ -1481,8 +1532,6 @@ testSuiteRun(
 		assert(
 			run.runOk === true &&
 			run.topic.stepOk === true &&
-			run.argsVer.stepOk === true &&
-			run.argsVer.err === undefined &&
 			run.vows[ 0 ].stepOk === true,
 			"run result is invalid"
 		);
@@ -1540,14 +1589,14 @@ expectErr(
 // assert() throws a TestRuntimeError which this call to
 // expectErr() doesnt expect
 				assert(
-					run.runOk === true &&
-					run.before.stepOk === true &&
-					run.topic.stepOk === true &&
-					run.after.stepOk === true &&
 					run.next[ 0 ].runOk === true &&
 					run.next[ 0 ].before.stepOk === true &&
 					run.next[ 0 ].topic.stepOk === true &&
-					run.next[ 0 ].after.stepOk === true,
+					run.next[ 0 ].after.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].runOk === true &&
+					run.next[ 0 ].next[ 0 ].before.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].topic.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].after.stepOk === true,
 					"run result is invalid"
 				);
 				
@@ -2081,11 +2130,9 @@ testSuiteRunWithCb(
 			{
 				assert(
 					run.runOk === true &&
-					run.topic.stepOk === true &&
-					run.topic.result.length === 0 &&
-					run.topic.thrownErr === undefined &&
-					run.topic.cbErr === undefined &&
-					run.argsVer.stepOk === true &&
+					run.suiteRes.topicRes.length === 0 &&
+					run.suiteRes.thrownErr === undefined &&
+					run.suiteRes.cbErr === undefined &&
 					run.vows.length === 0 &&
 					run.next.length === 1 &&
 					run.next[ 0 ].runOk === true &&
@@ -2141,9 +2188,6 @@ testSuiteRunWithCb(
 					run.runOk === true &&
 					run.next.length === 1 &&
 					run.next[ 0 ].runOk === true &&
-					run.next[ 0 ].topic.stepOk === true &&
-					run.next[ 0 ].topic.result.length === 1 &&
-					run.next[ 0 ].topic.result[ 0 ] === "dingo" &&
 					run.next[ 0 ].argsVer.stepOk === true &&
 					run.next[ 0 ].vows.length === 1 &&
 					run.next[ 0 ].vows[ 0 ].stepOk === true &&
@@ -2198,10 +2242,6 @@ testSuiteRunWithCb(
 					run.runOk === true &&
 					run.next.length === 1 &&
 					run.next[ 0 ].runOk === true &&
-					run.next[ 0 ].topic.stepOk === true &&
-					run.next[ 0 ].topic.result.length === 2 &&
-					run.next[ 0 ].topic.result[ 0 ] === "dingo" &&
-					run.next[ 0 ].topic.result[ 1 ] === "dango" &&
 					run.next[ 0 ].argsVer.stepOk === true &&
 					run.next[ 0 ].vows.length === 1 &&
 					run.next[ 0 ].vows[ 0 ].stepOk === true &&
@@ -2242,7 +2282,6 @@ testSuiteRun(
 			run.runOk === false &&
 			run.next.length === 1 &&
 			run.next[ 0 ].runOk === false &&
-			run.next[ 0 ].topic.stepOk === true &&
 			run.next[ 0 ].argsVer.stepOk === false &&
 			run.next[ 0 ].vows[ 0 ].stepOk === undefined,
 			"run result is invalid"
@@ -2519,16 +2558,6 @@ testSuiteRunWithCb(
 					run.next[ 0 ].vows[ 1 ].err === undefined &&
 					
 					run.next[ 1 ].runOk === true &&
-					
-					run.next[ 1 ].topic.stepOk === true &&
-					run.next[ 1 ].topic.result.length === 3 &&
-					run.next[ 1 ].topic.result[ 0 ].constructor ===
-						TestingError
-					&&
-					sys.hasType( run.next[ 1 ].topic.result[ 1 ], "arr" )
-					&&
-					sys.hasType( run.next[ 1 ].topic.result[ 2 ], "obj" )
-					&&
 					
 					run.next[ 1 ].argsVer.stepOk === true &&
 					
@@ -3757,28 +3786,6 @@ testSuiteRun(
 	}
 );
 
-testSuiteRun(
-	"healthy suite without suite step before but making sure "+
-	"the step is marked as ok by suite run",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undefined" ],
-		vows:[ "vow one", emptyFunc ]
-	},
-	function( run )
-	{
-		assert(
-			run.runOk === true &&
-			run.before.stepOk === true &&
-			run.before.err === undefined &&
-			run.topic.stepOk === true &&
-			run.argsVer.stepOk === true &&
-			run.vows[ 0 ].stepOk === true,
-			"run result is invalid"
-		);
-	}
-);
-
 testSuiteRunWithCb(
 	"healthy suite with topicCb that passes args to child suite "+
 	"that has suite step before and making sure that child "+
@@ -4429,7 +4436,6 @@ testSuiteRunWithCb(
 				{
 					assert(
 						run.runOk === true &&
-						run.before.stepOk === true &&
 						
 						run.topic.stepOk === true &&
 						
@@ -4463,7 +4469,6 @@ testSuiteRun(
 	{
 		assert(
 			run.runOk === false &&
-			run.before.stepOk === true &&
 			
 			run.topic.stepOk === true &&
 			
@@ -4797,8 +4802,8 @@ testSuiteRunWithCb(
 		var afterVowsOk = undefined;
 		var afterNextOk = undefined;
 		var afterGetTopicResErr = undefined;
-		var afterErrOccurredErr = undefined;
-		var afterErrThrownErr = undefined;
+		var afterErrOccurred = undefined;
+		var afterErrThrown = undefined;
 		
 		return(
 			{
@@ -4828,23 +4833,9 @@ testSuiteRunWithCb(
 							afterGetTopicResErr = e;
 						}
 						
-						try
-						{
-							this.topicErrOccurred();
-						}
-						catch( e )
-						{
-							afterErrOccurredErr = e;
-						}
+						afterErrOccurred = this.topicErrOccurred();
 						
-						try
-						{
-							this.topicErrThrown();
-						}
-						catch( e )
-						{
-							afterErrThrownErr = e;
-						}
+						afterErrThrown = this.topicErrThrown();
 					}
 				},
 				cb:
@@ -4861,11 +4852,8 @@ testSuiteRunWithCb(
 						afterGetTopicResErr.constructor ===
 							SuiteRuntimeError
 						&&
-						afterErrOccurredErr.constructor ===
-							SuiteRuntimeError
-						&&
-						afterErrThrownErr.constructor ===
-							SuiteRuntimeError,
+						afterErrOccurred === true &&
+						afterErrThrown === true,
 						"run result is invalid"
 					);
 				}
@@ -5132,11 +5120,9 @@ testSuiteRunWithCb(
 						run.vows[ 0 ].stepOk === true &&
 						
 						run.next[ 0 ].runOk === true &&
-						run.next[ 0 ].before.stepOk === true &&
 						run.next[ 0 ].topic.stepOk === true &&
 						run.next[ 0 ].argsVer.stepOk === true &&
 						run.next[ 0 ].vows[ 0 ].stepOk === true &&
-						run.next[ 0 ].after.stepOk === true &&
 						
 						run.after.stepOk === true &&
 						run.after.err === undefined &&
@@ -5481,57 +5467,6 @@ testSuiteRun(
 // testing suites where nr concurrent cb suite step calls is
 // limited
 
-var ConcVer =
-getF(
-getV(),
-function()
-{
-	this.seq = [];
-	this.maxNrConcCbs = 0;
-	this.nrConcCbs = 0;
-});
-
-ConcVer.prototype.getConcFunc =
-getF(
-getV()
-	.addA( "int/undef", "str/undef" )
-	.addA( "str/undef" )
-	.setR( "func" ),
-function( cbTime, testStr )
-{
-	if( sys.hasType( cbTime, "str" ) === true )
-	{
-		testStr = cbTime;
-		cbTime = undefined;
-	}
-	
-	var concVer = this;
-	
-	return(
-		getCbFunc(
-			cbTime,
-			function()
-			{
-				concVer.nrConcCbs++;
-				
-				if( concVer.nrConcCbs > concVer.maxNrConcCbs )
-				{
-					concVer.maxNrConcCbs = concVer.nrConcCbs;
-				}
-			},
-			function()
-			{
-				concVer.nrConcCbs--;
-				
-				if( testStr !== undefined )
-				{
-					concVer.seq.push( testStr );
-				}
-			}
-		)
-	);
-});
-
 testSuiteRunWithCb(
 	"Testing a great limit on the nr of conc cb steps when "+
 	"running suite with many child suites at many levels where "+
@@ -5750,9 +5685,6 @@ testSuiteRunWithCb(
 						run.next[ 3 ].after.stepOk === true &&
 						
 						run.next[ 4 ].runOk === true &&
-						run.next[ 4 ].before.stepOk === true &&
-						run.next[ 4 ].topic.stepOk === true &&
-						run.next[ 4 ].after.stepOk === true &&
 						
 						run.next[ 4 ].next[ 0 ].runOk === true &&
 						run.next[ 4 ].next[ 0 ].before.stepOk === true &&

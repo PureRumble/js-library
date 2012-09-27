@@ -2,6 +2,7 @@ ourglobe.define(
 [
 	"./suiteholder",
 	"./cbstepqueue",
+	"./suiteresult",
 	"./suitestep",
 	"./before",
 	"./beforecb",
@@ -84,11 +85,8 @@ function( suiteHolder, parentRun )
 	{
 		this.before = new BeforeCb( this );
 	}
-	else
+	else if( suiteHolder.before !== undefined )
 	{
-// class Before makes sure suite step before is set to
-// the default empty func if suiteHolder doesnt have the suite
-// step set
 		this.before = new Before( this );
 	}
 	
@@ -100,19 +98,11 @@ function( suiteHolder, parentRun )
 	{
 		this.topic = new Topic( this );
 	}
-	else if(
-		parentRun === undefined ||
-		parentRun.topic instanceof TopicCb === true
-	)
-	{
-		this.topic = new TopicCb( this );
-	}
-	else
-	{
-		this.topic = new Topic( this );
-	}
 	
-	this.argsVer = new ArgsVer( this );
+	if( suiteHolder.argsVer !== undefined )
+	{
+		this.argsVer = new ArgsVer( this );
+	}
 	
 	this.vows = [];
 	
@@ -130,7 +120,7 @@ function( suiteHolder, parentRun )
 	{
 		this.after = new AfterCb( this );
 	}
-	else
+	else if( suiteHolder.after !== undefined )
 	{
 		this.after = new After( this );
 	}
@@ -151,6 +141,7 @@ function( mods, SuiteRun )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
+var SuiteResult = mods.get( "suiteresult" );
 var SuiteStep = mods.get( "suitestep" );
 var After = mods.get( "after" );
 
@@ -213,39 +204,81 @@ function( item )
 	);
 });
 
+SuiteRun.prototype.finishAfter =
+getF(
+getV()
+	.addA( [ Error, "undef" ] ),
+function( err )
+{
+	if( err !== undefined )
+	{
+		this.suiteRunCb( err );
+		
+		return;
+	}
+	
+	if( this.after === undefined || this.after.stepOk === true )
+	{
+		if( this.runOk === undefined )
+		{
+			this.runOk = true;
+		}
+	}
+	else
+	{
+		this.markRunFailed( this.after );
+	}
+	
+	this.suiteRunCb( undefined, this );
+	
+});
+
 SuiteRun.prototype.runAfter =
 getF(
 getV(),
 function()
 {
-	var suiteRun = this;
+	if( this.after === undefined )
+	{
+		this.finishAfter();
+	}
+	else
+	{
+		var suiteRun = this;
+		
+		this.after.takeStep(
+			getF(
+			SuiteStep.TAKE_STEP_CB_FV,
+			function( err )
+			{
+				suiteRun.finishAfter( err );
+			})
+		);
+	}
+});
+
+SuiteRun.prototype.finishBefore =
+getF(
+getV()
+	.addA( [ Error, "undef" ] ),
+function( err )
+{
+	if( err !== undefined )
+	{
+		this.suiteRunCb( err );
+		
+		return;
+	}
 	
-	this.after.takeStep(
-		getF(
-		SuiteStep.TAKE_STEP_CB_FV,
-		function( err, stepOk )
-		{
-			if( err !== undefined )
-			{
-				suiteRun.suiteRunCb( err );
-				
-				return;
-			}
-			
-// markRunFailed wont execuite suiteRunCb, so this func must
-// proceed to do so
-			if( stepOk === false )
-			{
-				suiteRun.markRunFailed( suiteRun.after );
-			}
-			else if( suiteRun.runOk === undefined )
-			{
-				suiteRun.runOk = true;
-			}
-			
-			suiteRun.suiteRunCb( undefined, suiteRun );
-		})
-	);
+	if( this.before === undefined || this.before.stepOk === true )
+	{
+		this.runTopic();
+	}
+	else
+	{
+		this.markRunFailed( this.before );
+		this.runAfter();
+	}
 });
 
 SuiteRun.prototype.runBefore =
@@ -253,31 +286,23 @@ getF(
 getV(),
 function()
 {
-	var suiteRun = this;
-	
-	this.before.takeStep(
-		getF(
-		SuiteStep.TAKE_STEP_CB_FV,
-		function( err, stepOk )
-		{
-			if( err !== undefined )
+	if( this.before === undefined )
+	{
+		this.finishBefore();
+	}
+	else
+	{
+		var suiteRun = this;
+		
+		this.before.takeStep(
+			getF(
+			SuiteStep.TAKE_STEP_CB_FV,
+			function( err )
 			{
-				suiteRun.suiteRunCb( err );
-				
-				return;
-			}
-			
-			if( stepOk === false )
-			{
-				suiteRun.markRunFailed( suiteRun.before );
-				suiteRun.runAfter();
-				
-				return;
-			}
-			
-			suiteRun.runTopic();
-		})
-	);
+				suiteRun.finishBefore( err );
+			})
+		);
+	}
 });
 
 SuiteRun.prototype.runNext =
@@ -323,6 +348,13 @@ getF(
 getV(),
 function()
 {
+	if( this.argsVer === undefined )
+	{
+		this.runVows();
+		
+		return;
+	}
+	
 	var argsVerErr = undefined;
 	var argsVerOk = undefined;
 	
@@ -399,36 +431,54 @@ function()
 	}
 });
 
+SuiteRun.prototype.finishTopic =
+getF(
+getV()
+	.addA( [Error, "undef" ] ),
+function( err )
+{
+	if( err !== undefined )
+	{
+		this.suiteRunCb( err );
+		
+		return;
+	}
+	
+	this.suiteRes = new SuiteResult( this );
+	
+	if( this.topic === undefined || this.topic.stepOk === true )
+	{
+		this.runArgsVer();
+	}
+	else
+	{
+		this.markRunFailed( this.topic );
+		this.runAfter();
+	}
+});
+
 SuiteRun.prototype.runTopic =
 getF(
 getV(),
 function()
 {
-	var suiteRun = this;
-	
-	this.topic.takeStep(
-		getF(
-		SuiteStep.TAKE_STEP_CB_FV,
-		function( err, stepOk )
-		{
-			if( err !== undefined )
+	if( this.topic === undefined )
+	{
+		this.finishTopic();
+	}
+	else
+	{
+		var suiteRun = this;
+		
+		this.topic.takeStep(
+			getF(
+			SuiteStep.TAKE_STEP_CB_FV,
+			function( err )
 			{
-				suiteRun.suiteRunCb( err );
-				
-				return;
-			}
-			
-			if( stepOk === false )
-			{
-				suiteRun.markRunFailed( suiteRun.topic );
-				suiteRun.runAfter();
-				
-				return;
-			}
-			
-			suiteRun.runArgsVer();
-		})
-	);
+				suiteRun.finishTopic( err );
+			})
+		);
+	}
 });
 
 SuiteRun.prototype.markRunFailed =

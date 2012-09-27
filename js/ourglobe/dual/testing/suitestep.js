@@ -90,7 +90,11 @@ function()
 {
 	var parentRun = this.suiteRun.parentRun;
 	
-	return parentRun === undefined ? [] : parentRun.topic.result;
+	return(
+		parentRun === undefined ?
+			[] :
+			parentRun.suiteRes.getTopicRes()
+	);
 });
 
 SuiteStep.prototype.getStepObj =
