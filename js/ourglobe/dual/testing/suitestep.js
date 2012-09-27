@@ -40,8 +40,6 @@ function( suiteRun, func )
 	this.stepOk = undefined;
 	this.err = undefined;
 	this.suiteStepCb = undefined;
-	
-	this.stepName = this.getName();
 });
 
 SuiteStep.LAND_RETURN_STEP_FV =

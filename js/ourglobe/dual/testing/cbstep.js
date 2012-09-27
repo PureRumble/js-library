@@ -132,13 +132,15 @@ function( err )
 	}
 	else if( this.cbTimedOut === true )
 	{
+		var stepName = this.getName();
+		
 		this.landStep(
 			undefined, 
 			new SuiteRuntimeError(
 				{ suite: this.suiteRun.suiteHolder },
-				"The cb of Suite step '"+this.stepName+"' hasnt "+
+				"The cb of Suite step '"+stepName+"' hasnt "+
 				"been called within the allowed time limit",
-				{ stepName: this.stepName },
+				{ stepName: stepName },
 				"SuiteStepCbNotCalled"
 			)
 		);
@@ -225,14 +227,16 @@ function( returnVar, thrownErr )
 		
 		if( this.stepCbCalled === true )
 		{
+			var stepName = this.getName();
+			
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
 					{ suite: this.suiteRun.suiteHolder },
-					"The cb of suite step '"+this.stepName+"' has thrown "+
+					"The cb of suite step '"+stepName+"' has thrown "+
 					"an err after having called its cb. Due to this all "+
 					"running suites must be terminated",
 					{
-						stepName: this.stepName,
+						stepName: stepName,
 						thrownErr: thrownErr,
 						cbArgs: this.cbArgs
 					},
@@ -296,16 +300,18 @@ function( err, cbArgs )
 		this.stepCbCalled === true || this.thrownErr !== undefined
 	)
 	{
+		var stepName = this.getName();
+		
 		if( this.stepCbCalled === true )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
 					{ suite: this.suiteRun.suiteHolder },
-					"The cb of suite step '"+this.stepName+"' has been "+
+					"The cb of suite step '"+stepName+"' has been "+
 					"called twice. Due to this all running suites must "+
 					"be terminated",
 					{
-						stepName: this.stepName,
+						stepName: stepName,
 						currentCbArgs: cbArgs,
 						previousCbArgs: this.cbArgs
 					},
@@ -318,11 +324,11 @@ function( err, cbArgs )
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
 					{ suite: this.suiteRun.suiteHolder },
-					"The cb of suite step '"+this.stepName+"' has been "+
+					"The cb of suite step '"+stepName+"' has been "+
 					"called after that the step has thrown an err. Due "+
 					"to this all running suites must be terminated",
 					{
-						stepName: this.stepName,
+						stepName: stepName,
 						thrownErr: this.thrownErr,
 						cbArgs: cbArgs
 					},
