@@ -3,6 +3,7 @@ ourglobe.define(
 	"./suiteruntimeerror",
 	"./suiteholder",
 	"./suiterun",
+	"./suitestep",
 	"./before",
 	"./beforecb",
 	"./topic",
@@ -150,6 +151,7 @@ var RuntimeError = ourglobe.RuntimeError;
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
+var SuiteStep = mods.get( "suitestep" );
 var Before = mods.get( "before" );
 var BeforeCb = mods.get( "beforecb" );
 var Topic = mods.get( "topic" );
@@ -183,7 +185,7 @@ function( suiteNames )
 	
 	for( var item = 0; item < suiteNames.length; item++ )
 	{
-		suiteName += "\u2022 "+suiteNames[ item ].name+"\n";
+		suiteName += "\u2022 "+suiteNames[ item ]+"\n";
 	}
 	
 	return suiteName;
@@ -416,6 +418,31 @@ function( local )
 	this.suiteObj.local = SuiteHolder.copySet( local );
 });
 
+Suite.declareFailedSuiteStep =
+getF(
+getV()
+	.addA( SuiteStep ),
+function( suiteStep )
+{
+	var failedSuiteStepHeading =
+		"\n\u001b[1m************ "+
+		"Failed Suite Step "+
+		"************\u001b[0m\n"
+	;
+	
+	var stepName = suiteStep.getStepName();
+	
+	console.log( failedSuiteStepHeading );
+	
+	console.log(
+		"\u001b[1mThe suite's step \u001b[31;1m"+stepName+
+		"\u001b[0;1m has failed by the following err:"+
+		"\u001b[0m\n\n"+
+		suiteStep.err.toString()+
+		"\n"
+	);
+});
+
 Suite.prototype.declareSuiteRes =
 getF(
 SuiteRun.RUN_CB_FV,
@@ -426,6 +453,29 @@ function( err, suiteRun )
 		throw err;
 	}
 	
+	var failedSuiteHeading =
+		"\n\u001b[1m============ "+
+		"Failed Suite "+
+		"============\u001b[0m\n"
+	;
+	var failedSuiteStepHeading =
+		"\n\u001b[1m************ "+
+		"Failed Suite Step "+
+		"************\u001b[0m\n"
+	;
+	var failedVowHeading =
+		"\n\u001b[1m------------ "+
+		"Failed Vow "+
+		"------------\u001b[0m\n"
+	;
+	var resultHeading =
+		"\n\u001b[1m============ "+
+		"Result "+
+		"============\u001b[0m\n"
+	;
+	
+	console.log();
+	
 	var failedSuiteRuns = [];
 	
 	if( suiteRun.runOk === false )
@@ -433,9 +483,9 @@ function( err, suiteRun )
 		failedSuiteRuns.unshift( suiteRun );
 	}
 	
-	while( suiteRuns.length > 0 )
+	while( failedSuiteRuns.length > 0 )
 	{
-		var suiteRun = suiteRuns.shift();
+		var suiteRun = failedSuiteRuns.shift();
 		var failedSteps = suiteRun.failedSteps;
 		var suiteStep = undefined;
 		
@@ -447,67 +497,38 @@ function( err, suiteRun )
 			failedSteps.after !== undefined
 		)
 		{
+			console.log( failedSuiteHeading );
+			
 			console.log(
 				"\u001b[1mThe following \u001b[31;1msuite\u001b[0;1m "+
 				"has failed:\n\n"+
 				suiteRun.suiteHolder.toString()+
-				"\u001b[0m\n\n"
+				"\u001b[0m"
 			);
 			
 			if( failedSteps.before !== undefined )
 			{
-				if( failedSteps.before instanceof Before === true )
-				{
-					suiteStep = "before";
-				}
-				else
-				{
-					suiteStep = "beforeCb";
-				}
-				
-				console.log(
-					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
-					"\u001b[0;1m has failed by the following err:"+
-					"\u001b[0m\n\n"+
-					failedSteps.before.err.toString()
-				);
+				Suite.declareFailedSuiteStep( failedSteps.before );
 			}
 			
 			if( failedSteps.topic !== undefined )
 			{
-				if( failedSteps.topic instanceof Topic === true )
-				{
-					suiteStep = "topic";
-				}
-				else
-				{
-					suiteStep = "topicCb";
-				}
-				
-				console.log(
-					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
-					"\u001b[0;1m has failed by the following err:"+
-					"\u001b[0m\n\n"+
-					failedSteps.topic.err.toString()
-				);
+				Suite.declareFailedSuiteStep( failedSteps.topic );
 			}
 			
 			if( failedSteps.argsVer !== undefined )
 			{
-				console.log(
-					"\u001b[1mThe suite's step \u001b[31;1margsVer"+
-					"\u001b[0;1m has failed by the following err:"+
-					"\u001b[0m\n\n"+
-					failedSteps.argsVer.err.toString()
-				);
+				Suite.declareFailedSuiteStep( failedSteps.argsVer );
 			}
 			
 			if( failedSteps.vows !== undefined )
 			{
+				console.log( failedSuiteStepHeading );
+				
 				console.log(
 					"\u001b[1mThe suite's following \u001b[31;1mvows"+
 					"\u001b[0;1m have failed by the errs "+
-					"stated with them:\u001b[0m\n\n"
+					"stated with them:\u001b[0m\n"
 				);
 				
 				for(
@@ -516,31 +537,20 @@ function( err, suiteRun )
 				{
 					var failedVow = failedSteps.vows[ item ];
 					
+					console.log( failedVowHeading );
+					
 					console.log(
-						"\u001b[1m\u2022 "+failedVow.getVowName()+":"+
+						"\u001b[1m\u00bb "+failedVow.getVowName()+":"+
 						"\u001b[0m\n\n"+
-						failedVow.err.toString()
+						failedVow.err.toString()+
+						"\n"
 					);
 				}
 			}
 			
 			if( failedSteps.after !== undefined )
 			{
-				if( failedSteps.after instanceof After === true )
-				{
-					suiteStep = "after";
-				}
-				else
-				{
-					suiteStep = "afterCb";
-				}
-				
-				console.log(
-					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
-					"\u001b[0;1m has failed by the following err:"+
-					"\u001b[0m\n\n"+
-					failedSteps.after.err.toString()
-				);
+				Suite.declareFailedSuiteStep( failedSteps.after );
 			}
 		}
 		
@@ -551,6 +561,21 @@ function( err, suiteRun )
 			;
 		}
 	}
+	
+	console.log( resultHeading );
+	
+	if( suiteRun.runOk === true )
+	{
+		console.log(
+			"\u001b[1mThe suite run \u001b[32;1msucceeded\u001b[0m\n"
+		);
+	}
+	else
+	{
+		console.log(
+			"\u001b[1mThe suite run \u001b[31;1mfailed\u001b[0m\n"
+		);
+	}
 });
 
 Suite.prototype.declareStepRes =
@@ -560,13 +585,15 @@ function( suiteRun, suiteStep )
 {
 	if( suiteStep !== undefined )
 	{
+		var stepName = suiteStep.getStepName();
+		
 		if( suiteStep.stepOk === true )
 		{
-			console.log( "\u001b[32;1m\u2713\u001b[0m" );
+			console.log( "\u001b[32;1m"+stepName+" ok\u001b[0m" );
 		}
 		else
 		{
-			console.log( "\u001b[31;1m\u2717\u001b[0m" );
+			console.log( "\u001b[31;1m"+stepName+" failed\u001b[0m" );
 		}
 	}
 });

@@ -65,4 +65,12 @@ function()
 	return new AfterCbObject( this );
 });
 
+AfterCb.prototype.getStepName =
+getF(
+SuiteStep.GET_STEP_NAME_FV,
+function()
+{
+	return "afterCb";
+});
+
 });

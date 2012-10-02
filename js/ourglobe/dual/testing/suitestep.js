@@ -53,6 +53,11 @@ SuiteStep.GET_NAME_FV =
 		.setR( "str" )
 ;
 
+SuiteStep.GET_STEP_NAME_FV =
+	getV()
+		.setR( "str" )
+;
+
 SuiteStep.GET_ARGS_FV =
 	getV()
 		.setR( "arr" )

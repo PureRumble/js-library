@@ -75,6 +75,14 @@ function()
 	return "vow '"+this.vowName+"'";
 });
 
+Vow.prototype.getStepName =
+getF(
+SuiteStep.GET_STEP_NAME_FV,
+function()
+{
+	return "vow";
+});
+
 Vow.prototype.getVowName =
 getF(
 getV()

@@ -77,4 +77,12 @@ function()
 	return "topic";
 });
 
+Topic.prototype.getStepName =
+getF(
+SuiteStep.GET_STEP_NAME_FV,
+function()
+{
+	return "topic";
+});
+
 });

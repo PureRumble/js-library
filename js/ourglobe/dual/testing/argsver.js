@@ -85,4 +85,12 @@ function()
 	return "argsVer";
 });
 
+ArgsVer.prototype.getStepName =
+getF(
+SuiteStep.GET_STEP_NAME_FV,
+function()
+{
+	return "argsVer";
+});
+
 });
