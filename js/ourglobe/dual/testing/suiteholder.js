@@ -165,7 +165,7 @@ SuiteHolder.verSuiteObj =
 getF(
 getV()
 	.addA(
-		[ FuncVer.PROPER_STR, SuiteRuntimeError.SUITE_NAMES_S ],
+		[ FuncVer.PROPER_STR, Suite.SUITE_NAMES_S ],
 		Suite,
 		"obj",
 		"bool/undef",
@@ -768,5 +768,25 @@ function( set )
 	
 	return returnVar;
 };
+
+SuiteHolder.prototype.toString =
+getF(
+getV()
+	.setR( "str" ),
+function()
+{
+	var suiteNames = [];
+	
+	var suiteHolder = this;
+	
+	while( suiteHolder !== undefined )
+	{
+		suiteNames.unshift( suiteHolder.name );
+		
+		suiteHolder = suiteHolder.parent;
+	}
+	
+	return Suite.getSuiteName( suiteNames );
+});
 
 });

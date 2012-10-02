@@ -2,7 +2,15 @@ ourglobe.define(
 [
 	"./suiteruntimeerror",
 	"./suiteholder",
-	"./suiterun"
+	"./suiterun",
+	"./before",
+	"./beforecb",
+	"./topic",
+	"./topiccb",
+	"./argsver",
+	"./vow",
+	"./after",
+	"./aftercb"
 ],
 function( mods )
 {
@@ -11,6 +19,7 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 var assert = ourglobe.assert;
+var Schema = ourglobe.Schema;
 
 var RuntimeError = ourglobe.RuntimeError;
 
@@ -121,6 +130,10 @@ Suite.DEFAULT_MAX_NR_CONC_CBS = 10;
 
 Suite.DEFAULT_CB_TIMEOUT = 5000;
 
+Suite.SUITE_NAMES_S =
+	{ extraItems: Schema.PROPER_STR, minItems: 1 }
+;
+
 return Suite;
 
 },
@@ -137,6 +150,14 @@ var RuntimeError = ourglobe.RuntimeError;
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
+var Before = mods.get( "before" );
+var BeforeCb = mods.get( "beforecb" );
+var Topic = mods.get( "topic" );
+var TopicCb = mods.get( "topiccb" );
+var ArgsVer = mods.get( "argsver" );
+var Vow = mods.get( "vow" );
+var After = mods.get( "after" );
+var AfterCb = mods.get( "aftercb" );
 
 Suite.suiteNameIsValid =
 getF(
@@ -149,6 +170,23 @@ function( suiteName )
 		sys.hasType( suiteName, "str" ) === true &&
 		suiteName.length > 0
 	);
+});
+
+Suite.getSuiteName =
+getF(
+getV()
+	.addA( Suite.SUITE_NAMES_S )
+	.setR( { minStrLen: 1 } ),
+function( suiteNames )
+{
+	var suiteName = "";
+	
+	for( var item = 0; item < suiteNames.length; item++ )
+	{
+		suiteName += "\u2022 "+suiteNames[ item ].name+"\n";
+	}
+	
+	return suiteName;
 });
 
 Suite.confIsValid =
@@ -301,27 +339,18 @@ function( childSuiteName, childSuite )
 	this.suiteObj.next.push( suiteHolder );
 });
 
-Suite.prototype.setRootConf =
+Suite.prototype.setConf =
 getF(
 getV().setE( "any" ),
 function( conf )
 {
 	assert.nrArgs( arguments, 1 );
-	var res = Suite.confIsValid( conf );
-	
-	if( res !== undefined )
-	{
-		throw new RuntimeError(
-			"There is an error with arg conf:\n"+
-			res.msg,
-			{ conf: conf }
-		);
-	}
+	assert.argType( "conf", conf, "obj" );
 	
 	this.suiteObj.conf = SuiteHolder.copySet( conf );
 });
 
-Suite.prototype.setRootBefore =
+Suite.prototype.setBefore =
 getF(
 getV().setE( "any" ),
 function( before )
@@ -332,7 +361,7 @@ function( before )
 	this.suiteObj.before = before;
 });
 
-Suite.prototype.setRootAfter =
+Suite.prototype.setAfter =
 getF(
 getV().setE( "any" ),
 function( after )
@@ -343,7 +372,7 @@ function( after )
 	this.suiteObj.after = after;
 });
 
-Suite.prototype.setRootBeforeCb =
+Suite.prototype.setBeforeCb =
 getF(
 getV().setE( "any" ),
 function( beforeCb )
@@ -354,7 +383,7 @@ function( beforeCb )
 	this.suiteObj.beforeCb = beforeCb;
 });
 
-Suite.prototype.setRootAfterCb =
+Suite.prototype.setAfterCb =
 getF(
 getV().setE( "any" ),
 function( afterCb )
@@ -365,7 +394,7 @@ function( afterCb )
 	this.suiteObj.afterCb = afterCb;
 });
 
-Suite.prototype.setRootAfterCb =
+Suite.prototype.setAfterCb =
 getF(
 getV().setE( "any" ),
 function( afterCb )
@@ -376,7 +405,7 @@ function( afterCb )
 	this.suiteObj.afterCb = afterCb;
 });
 
-Suite.prototype.setRootLocal =
+Suite.prototype.setLocal =
 getF(
 getV().setE( "any" ),
 function( local )
@@ -387,19 +416,217 @@ function( local )
 	this.suiteObj.local = SuiteHolder.copySet( local );
 });
 
+Suite.prototype.declareSuiteRes =
+getF(
+SuiteRun.RUN_CB_FV,
+function( err, suiteRun )
+{
+	if( err !== undefined )
+	{
+		throw err;
+	}
+	
+	var failedSuiteRuns = [];
+	
+	if( suiteRun.runOk === false )
+	{
+		failedSuiteRuns.unshift( suiteRun );
+	}
+	
+	while( suiteRuns.length > 0 )
+	{
+		var suiteRun = suiteRuns.shift();
+		var failedSteps = suiteRun.failedSteps;
+		var suiteStep = undefined;
+		
+		if(
+			failedSteps.before !== undefined ||
+			failedSteps.topic !== undefined ||
+			failedSteps.argsVer !== undefined ||
+			failedSteps.vows !== undefined ||
+			failedSteps.after !== undefined
+		)
+		{
+			console.log(
+				"\u001b[1mThe following \u001b[31;1msuite\u001b[0;1m "+
+				"has failed:\n\n"+
+				suiteRun.suiteHolder.toString()+
+				"\u001b[0m\n\n"
+			);
+			
+			if( failedSteps.before !== undefined )
+			{
+				if( failedSteps.before instanceof Before === true )
+				{
+					suiteStep = "before";
+				}
+				else
+				{
+					suiteStep = "beforeCb";
+				}
+				
+				console.log(
+					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
+					"\u001b[0;1m has failed by the following err:"+
+					"\u001b[0m\n\n"+
+					failedSteps.before.err.toString()
+				);
+			}
+			
+			if( failedSteps.topic !== undefined )
+			{
+				if( failedSteps.topic instanceof Topic === true )
+				{
+					suiteStep = "topic";
+				}
+				else
+				{
+					suiteStep = "topicCb";
+				}
+				
+				console.log(
+					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
+					"\u001b[0;1m has failed by the following err:"+
+					"\u001b[0m\n\n"+
+					failedSteps.topic.err.toString()
+				);
+			}
+			
+			if( failedSteps.argsVer !== undefined )
+			{
+				console.log(
+					"\u001b[1mThe suite's step \u001b[31;1margsVer"+
+					"\u001b[0;1m has failed by the following err:"+
+					"\u001b[0m\n\n"+
+					failedSteps.argsVer.err.toString()
+				);
+			}
+			
+			if( failedSteps.vows !== undefined )
+			{
+				console.log(
+					"\u001b[1mThe suite's following \u001b[31;1mvows"+
+					"\u001b[0;1m have failed by the errs "+
+					"stated with them:\u001b[0m\n\n"
+				);
+				
+				for(
+					var item = 0; item < failedSteps.vows.length; item++
+				)
+				{
+					var failedVow = failedSteps.vows[ item ];
+					
+					console.log(
+						"\u001b[1m\u2022 "+failedVow.getVowName()+":"+
+						"\u001b[0m\n\n"+
+						failedVow.err.toString()
+					);
+				}
+			}
+			
+			if( failedSteps.after !== undefined )
+			{
+				if( failedSteps.after instanceof After === true )
+				{
+					suiteStep = "after";
+				}
+				else
+				{
+					suiteStep = "afterCb";
+				}
+				
+				console.log(
+					"\u001b[1mThe suite's step \u001b[31;1m"+suiteStep+
+					"\u001b[0;1m has failed by the following err:"+
+					"\u001b[0m\n\n"+
+					failedSteps.after.err.toString()
+				);
+			}
+		}
+		
+		if( failedSteps.next !== undefined )
+		{
+			failedSuiteRuns =
+				failedSteps.next.concat( failedSuiteRuns )
+			;
+		}
+	}
+});
+
+Suite.prototype.declareStepRes =
+getF(
+SuiteRun.STEP_ENDS_CB_FV,
+function( suiteRun, suiteStep )
+{
+	if( suiteStep !== undefined )
+	{
+		if( suiteStep.stepOk === true )
+		{
+			console.log( "\u001b[32;1m\u2713\u001b[0m" );
+		}
+		else
+		{
+			console.log( "\u001b[31;1m\u2717\u001b[0m" );
+		}
+	}
+});
+
 Suite.prototype.run =
 getF(
 getV().setE( "any" ),
 function( cb )
 {
-	assert.nrArgs( arguments, 1 );
-	assert.argType( "cb", cb, "func" );
+	assert.nrArgs( arguments, 0, 1 );
+	assert.argType( "cb", cb, "func", "undef" );
+	
+	if( this.suiteObj.next.length === 0 )
+	{
+		throw new SuiteRuntimeError(
+			"No suites have been added to run",
+			undefined,
+			"NoSuitesToRun"
+		);
+	}
+	
+	var suite = this;
 	
 	var suiteHolder =
 		new SuiteHolder( this.suiteName, this, this.suiteObj, true )
 	;
 	
-	new SuiteRun( suiteHolder ).run( cb );
+	var suiteRun = undefined;
+	
+	if( cb === undefined )
+	{
+		suiteRun =
+			new SuiteRun(
+				suiteHolder,
+				undefined,
+				getF(
+					SuiteRun.STEP_ENDS_CB_FV,
+					function()
+					{
+						suite.declareStepRes.apply( suite, arguments );
+					}
+				)
+			)
+		;
+		
+		cb =
+			getF(
+				SuiteRun.RUN_CB_FV,
+				function()
+				{
+					suite.declareSuiteRes.apply( suite, arguments );
+				}
+			);
+	}
+	else
+	{
+		suiteRun = new SuiteRun( suiteHolder );
+	}
+	
+	suiteRun.run( cb );
 });
 
 });

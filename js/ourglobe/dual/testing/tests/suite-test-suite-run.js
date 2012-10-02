@@ -238,14 +238,29 @@ var testStack = [];
 var testSingleSuiteRun =
 getF(
 getV()
-	.addA( "str", "obj", { gt: 0 }, "func" ),
+	.addA( "str", [ "obj", Suite ], { gt: 0 }, "func" ),
 function( testName, suiteObj, nrSlots, verify )
 {
-	var suite =
-		new Suite( "suite for testing purposes", undefined, nrSlots )
-	;
+	var suite = undefined;
+	var suiteGiven = undefined;
 	
-	suite.add( "suite to test", suiteObj );
+	if( suiteObj instanceof Suite === true )
+	{
+		suite = suiteObj;
+		
+		suiteGiven = true;
+	}
+	else
+	{
+		suite =
+			new Suite(
+				"suite for testing purposes", undefined, nrSlots
+			)
+		;
+		suite.add( "suite to test", suiteObj );
+		
+		suiteGiven = false;
+	}
 	
 	console.log( testName );
 	
@@ -301,7 +316,14 @@ function( testName, suiteObj, nrSlots, verify )
 					
 					try
 					{
-						verify( resSuiteRun.next[ 0 ] );
+						if( suiteGiven === true )
+						{
+							verify( resSuiteRun );
+						}
+						else
+						{
+							verify( resSuiteRun.next[ 0 ] );
+						}
 					}
 					catch( e )
 					{
@@ -324,8 +346,8 @@ function( testName, suiteObj, nrSlots, verify )
 var testSuiteRun =
 getF(
 getV()
-	.addA( "str", "obj/undef", "obj", "func" )
-	.addA( "str", "obj", "func" ),
+	.addA( "str", "obj/undef", [ Suite, "obj" ], "func" )
+	.addA( "str", [ Suite, "obj" ], "func" ),
 function( testName, args, suite, cb )
 {
 	if( cb === undefined )
@@ -354,7 +376,7 @@ getV()
 			props:
 			{
 				"testAsChild": "bool/undef",
-				"nrSlots": { types: "int/undef", gt: 0 }
+				"nrSlots":{ types: "int/undef", gt: 0 }
 			}
 		},
 		"func"
@@ -393,7 +415,11 @@ function( testName, args, cb )
 		
 		if(
 			sys.hasType( returnVar, "obj" ) === false ||
-			sys.hasType( returnVar.suite, "obj" ) === false ||
+			(
+				sys.hasType( returnVar.suite, "obj" ) === false &&
+				returnVar.suite instanceof Suite === false
+			)
+			||
 			sys.hasType( returnVar.cb, "func" ) === false
 		)
 		{
@@ -409,7 +435,17 @@ function( testName, args, cb )
 	
 	var returnVar = getTestObj();
 	var suite = returnVar.suite;
-	var cbOne = returnVar.cb;
+	var firstCb = returnVar.cb;
+	
+	var suiteGiven = undefined;
+	if( suite instanceof Suite === true )
+	{
+		suiteGiven = true;
+	}
+	else
+	{
+		suiteGiven = false;
+	}
 	
 	testSingleSuiteRun(
 		testName+" - plain suite",
@@ -417,36 +453,34 @@ function( testName, args, cb )
 		nrSlots,
 		function( suiteRun )
 		{
-			cbOne( suiteRun );
+			firstCb( suiteRun );
 			
-			if( testAsChild === false )
+			if( testAsChild === false || suiteGiven === true )
 			{
 				return;
 			}
 			
 			var returnVar = getTestObj();
 			var suite = returnVar.suite;
-			var cbTwo = returnVar.cb;
+			var secondCb = returnVar.cb;
 			
 			testSingleSuiteRun(
 				testName+" - nested suite",
 				{
-					next:
-					[
-						"nested suite", suite
-					]
+					next:[ "nested suite", suite ]
 				},
 				nrSlots,
 				function( suiteRun )
 				{
-					cbTwo( suiteRun.next[ 0 ] );
+					secondCb( suiteRun.next[ 0 ] );
 					
-					var returnVar = getTestObj();
-					var suiteOne = returnVar.suite;
-					var cbThree = returnVar.cb;
+					var returnVarOne = getTestObj();
+					var suiteOne = returnVarOne.suite;
+					var thirdCbOne = returnVarOne.cb;
 					
-					var returnVar = getTestObj();
-					var suiteTwo = returnVar.suite;
+					var returnVarTwo = getTestObj();
+					var suiteTwo = returnVarTwo.suite;
+					var thirdCbTwo = returnVarTwo.cb;
 					
 					testSingleSuiteRun(
 						testName+" - two nested suites",
@@ -460,8 +494,8 @@ function( testName, args, cb )
 						nrSlots,
 						function( suiteRun )
 						{
-							cbThree( suiteRun.next[ 0 ] );
-							cbThree( suiteRun.next[ 1 ] );
+							thirdCbOne( suiteRun.next[ 0 ] );
+							thirdCbTwo( suiteRun.next[ 1 ] );
 						}
 					);
 				}
@@ -6284,6 +6318,408 @@ testSuiteRunWithCb(
 						run.next[ 6 ].after.stepOk === true &&
 						concVer.seq[ 6 ] === "SuiteSeven"
 						,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// test group
+// testing creating instances of class Suite and running them
+
+testSuiteRunWithCb(
+	"Testing a Suite instance with root before and root after",
+	function()
+	{
+		var suite = new Suite( "test suite" );
+		var beforeArgs = undefined;
+		var afterArgs = undefined;
+		
+		suite.setBefore(
+			function()
+			{
+				beforeArgs = arguments;
+			}
+		);
+		
+		suite.setAfter(
+			function()
+			{
+				afterArgs = arguments;
+			}
+		);
+		
+		suite.add(
+			"suite one",
+			{
+				before: emptyFunc,
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "suite one vow one", emptyFunc ],
+				after: emptyFunc
+			}
+		);
+		
+		return(
+			{
+				suite: suite,
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						run.after.stepOk === true &&
+						run.next.length === 1 &&
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].before.stepOk === true &&
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].argsVer.stepOk === true &&
+						run.next[ 0 ].vows.length === 1 &&
+						run.next[ 0 ].vows[ 0 ].stepOk === true &&
+						run.next[ 0 ].after.stepOk === true &&
+						beforeArgs.length === 0 &&
+						afterArgs.length === 0,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a Suite instance with root beforeCb and root afterCb",
+	function()
+	{
+		var suite = new Suite( "test suite" );
+		var beforeArgs = undefined;
+		var afterArgs = undefined;
+		
+		suite.setBeforeCb(
+			getCbFunc(
+				function()
+				{
+					beforeArgs = arguments;
+				}
+			)
+		);
+		
+		suite.setAfterCb(
+			getCbFunc(
+				100,
+				function()
+				{
+					afterArgs = arguments;
+				}
+			)
+		);
+		
+		suite.add(
+			"suite one",
+			{
+				before: emptyFunc,
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "suite one vow one", emptyFunc ],
+				after: emptyFunc
+			}
+		);
+		
+		return(
+			{
+				suite: suite,
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						beforeArgs.length === 0 &&
+						afterArgs.length === 0 &&
+						run.next[ 0 ].runOk === true,
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a Suite instance with root conf",
+	function()
+	{
+		var suiteOrder = [];
+		var suite = new Suite( "test suite" );
+		
+		suite.setConf( { sequential: true, cbTimeout: 500 } );
+		
+		suite.setBeforeCb( getCbFunc( 100 ) );
+		
+		suite.setAfterCb( getCbFunc( 1000 ) );
+		
+		suite.add(
+			"suite one",
+			{
+				before: emptyFunc,
+				topicCb:
+					getCbFunc(
+// making sure root conf's cbTimeout value doesnt affect this
+// child suite
+						3000,
+						undefined,
+						function()
+						{
+							suiteOrder.push( "suite one" );
+						}
+					),
+				argsVer:[],
+				vows:[ "suite one vow one", emptyFunc ],
+				after: emptyFunc
+			}
+		);
+		
+		suite.add(
+			"suite two",
+			{
+				before: emptyFunc,
+				topic:
+				function()
+				{
+					suiteOrder.push( "suite two" );
+				},
+				argsVer:[ "undef" ],
+				vows:[ "suite one vow one", emptyFunc ],
+				after: emptyFunc
+			}
+		);
+		
+		return(
+			{
+				suite: suite,
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === false &&
+						run.before.stepOk === true &&
+						run.after.stepOk === false &&
+						run.next[ 0 ].runOk === true &&
+						run.next[ 1 ].runOk === true &&
+						suiteOrder.length === 2 &&
+						suiteOrder[ 0 ] === "suite one" &&
+						suiteOrder[ 1 ] === "suite two",
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a Suite instance with root local",
+	function()
+	{
+		var suite = new Suite( "test suite" );
+		var suiteOneVowOneGetDingo = undefined;
+		var suiteOneVowTwoGetDingo = undefined;
+		
+		suite.setLocal( { dingo: "dango" } );
+		
+		suite.add(
+			"suite one",
+			{
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:
+				[
+					"suite one vow one",
+					function()
+					{
+						suiteOneVowOneGetDingo = this.get( "dingo" );
+						this.set( "dingo", "dongo" );
+					},
+					"suite one vow two",
+					function()
+					{
+						suiteOneVowTwoGetDingo = this.get( "dingo" );
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				suite: suite,
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.next[ 0 ].runOk === true &&
+						suiteOneVowOneGetDingo === "dango" &&
+						suiteOneVowTwoGetDingo === "dongo",
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"Testing a Suite instance with global conf",
+	function()
+	{
+		var suite =
+			new Suite(
+				"test suite",
+				{
+					verifyArgs: false,
+					cbTimeout: 500,
+					allowThrownErr: true,
+					allowCbErr: true,
+					sequential: true
+				}
+			)
+		;
+		
+		var suiteOneSuiteOrder = [];
+		var suiteTwoSuiteOrder = [];
+		
+// this suite has no conf and thus makes sure the global conf
+// is respected
+		suite.add(
+			"suite one",
+			{
+// it is ok of topicCb to give cb err
+				topicCb:
+				function()
+				{
+					var cb = this.getCb();
+					
+					cb( new TestingError() );
+				},
+// child suites are executed in order 'suite one one' and then
+// 'suite one two', even if the first one delays its topicCb
+// while the second has a topic
+				next:
+				[
+					"suite one one",
+					{
+						topicCb:
+						getCbFunc(
+							300,
+							undefined,
+							function()
+							{
+								suiteOneSuiteOrder.push( "suite one one" );
+							}
+						),
+						vows:[ "suite one one vow one", emptyFunc ]
+					},
+					"suite one two",
+					{
+						topic:
+						function()
+						{
+							suiteOneSuiteOrder.push( "suite one two" );
+						},
+						vows:[ "suite one one vow one", emptyFunc ]
+					}
+				],
+// afterCb fails since its cb call isnt within the allowed cb
+// timeout limit of global conf
+				afterCb: getCbFunc( 1000 ),
+			}
+		);
+		
+// this suite has its own conf and thus makes sure the global
+// conf is overridden
+		suite.add(
+			"suite two",
+			{
+// allowThrownErr/allowCbErr arent tested here but are instead
+// taken care of by the third child suite
+				conf:
+				{
+					verifyArgs: true,
+					cbTimeout: 5000,
+					sequential: false
+				},
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+// the first two child suites are finished in the order
+// "suite two two" and then "suite two one"
+				next:
+				[
+					"suite two one",
+					{
+						topicCb:
+						getCbFunc(
+							300,
+							undefined,
+							function()
+							{
+								suiteTwoSuiteOrder.push( "suite two one" );
+							}
+						),
+						vows:[ "suite two one vow one", emptyFunc ]
+					},
+					"suite two two",
+					{
+						topic:
+						function()
+						{
+							suiteTwoSuiteOrder.push( "suite two two" );
+						},
+						vows:[ "suite two one vow one", emptyFunc ]
+					},
+// suite is allowed by its conf to throw topic err even if
+// global conf says no
+					"suite two three",
+					{
+						conf:{ allowThrownErr: false },
+						topic: faultyFunc,
+						vows:[ "suite two one vow one", emptyFunc ]
+					}
+				],
+// afterCb doesnt fail since the local conf allows the amount of
+// time its cb call takes
+				afterCb: getCbFunc( 1000 ),
+			}
+		);
+		
+		return(
+			{
+				suite: suite,
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === false &&
+						run.next[ 0 ].runOk === false &&
+						run.next[ 0 ].topic.stepOk === true &&
+						run.next[ 0 ].topic.cbErr.constructor ===
+							TestingError
+						&&
+						run.next[ 0 ].argsVer === undefined &&
+						run.next[ 0 ].after.stepOk === false &&
+						
+						run.next[ 1 ].runOk === false &&
+						run.next[ 1 ].argsVer.stepOk === true &&
+						run.next[ 1 ].after.stepOk === true &&
+						
+						run.next[ 1 ].next[ 2 ].runOk === false &&
+						run.next[ 1 ].next[ 2 ].topic.stepOk === false &&
+						
+						suiteOneSuiteOrder[ 0 ] === "suite one one" &&
+						suiteOneSuiteOrder[ 1 ] === "suite one two" &&
+						suiteTwoSuiteOrder[ 0 ] === "suite two two" &&
+						suiteTwoSuiteOrder[ 1 ] === "suite two one",
 						"run result is invalid"
 					);
 				}

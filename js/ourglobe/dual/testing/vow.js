@@ -75,4 +75,13 @@ function()
 	return "vow '"+this.vowName+"'";
 });
 
+Vow.prototype.getVowName =
+getF(
+getV()
+	.setR( "str" ),
+function()
+{
+	return this.vowName;
+});
+
 });

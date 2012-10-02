@@ -204,14 +204,9 @@ function( stepName )
 		);
 	}
 	
-	var suiteRun = this.suiteStep.suiteRun;
-	var failedStep = this.suiteStep.suiteRun.failedSuiteStep;
-	var failedSuiteRun = this.suiteStep.suiteRun.failedSuiteRun;
+	var failedSteps = this.suiteStep.suiteRun.failedSteps;
 	
-	var beforeOk =
-		failedStep instanceof Before === false &&
-		failedStep instanceof BeforeCb === false
-	;
+	var beforeOk = failedSteps.before === undefined;
 	
 	var topicOk;
 	
@@ -221,10 +216,7 @@ function( stepName )
 	}
 	else
 	{
-		var topicOk =
-			failedStep instanceof Topic === false &&
-			failedStep instanceof TopicCb === false
-		;
+		var topicOk = failedSteps.topic === undefined;
 	}
 	
 	var argsVerOk;
@@ -235,7 +227,7 @@ function( stepName )
 	}
 	else
 	{
-		var argsVerOk = failedStep instanceof ArgsVer === false;
+		var argsVerOk = failedSteps.argsVer === undefined;
 	}
 	
 	var vowsOk;
@@ -246,7 +238,7 @@ function( stepName )
 	}
 	else
 	{
-		var vowsOk = failedStep instanceof Vow === false;
+		var vowsOk = failedSteps.vows === undefined;
 	}
 	
 	var nextOk;
@@ -257,7 +249,7 @@ function( stepName )
 	}
 	else
 	{
-		var nextOk = failedSuiteRun === undefined;
+		var nextOk = failedSteps.next === undefined;
 	}
 	
 	if( stepName === "before" || stepName === "beforeCb" )

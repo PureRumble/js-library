@@ -116,6 +116,8 @@ function( cb )
 	var returnVar = undefined;
 	var err = undefined;
 	
+	this.suiteRun.stepStartsCb( this.suiteRun, this );
+	
 	try
 	{
 		returnVar = this.func.apply( stepObj, args );
@@ -145,6 +147,8 @@ function( err, stepErr )
 	this.err = stepErr;
 	
 	this.stepOk = this.err === undefined;
+	
+	this.suiteRun.stepEndsCb( this.suiteRun, this );
 	
 	this.suiteStepCb( undefined, this.stepOk );
 });

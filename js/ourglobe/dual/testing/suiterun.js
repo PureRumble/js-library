@@ -21,6 +21,7 @@ var getV = ourglobe.getV;
 
 var CbStepQueue = undefined;
 var SuiteHolder = undefined;
+var SuiteStep = undefined;
 var Before = undefined;
 var BeforeCb = undefined;
 var Topic = undefined;
@@ -35,6 +36,7 @@ mods.delay(
 	{
 		CbStepQueue = mods.get( "cbstepqueue" );
 		SuiteHolder = mods.get( "suiteholder" );
+		SuiteStep = mods.get( "suitestep" );
 		Before = mods.get( "before" );
 		BeforeCb = mods.get( "beforecb" );
 		Topic = mods.get( "topic" );
@@ -43,6 +45,13 @@ mods.delay(
 		Vow = mods.get( "vow" );
 		After = mods.get( "after" );
 		AfterCb = mods.get( "aftercb" );
+		
+		SuiteRun.STEP_STARTS_CB_FV =
+			getV()
+				.addA( SuiteRun, [ SuiteStep, "undef" ] )
+		;
+
+		SuiteRun.STEP_ENDS_CB_FV = SuiteRun.STEP_STARTS_CB_FV;
 	}
 );
 
@@ -52,21 +61,66 @@ function()
 {
 	return(
 		getV()
-			.addA( SuiteHolder, [ SuiteRun, "undef" ] )
+			.addA( SuiteHolder, "func/undef", "func/undef" )
+			.addA( SuiteHolder, SuiteRun )
 	);
 },
-function( suiteHolder, parentRun )
+function( suiteHolder, stepStartsCb, stepEndsCb )
 {
+	var parentRun = undefined;
+	
+	if( stepStartsCb instanceof SuiteRun === true )
+	{
+		parentRun = stepStartsCb;
+		stepStartsCb = undefined;
+		stepEndsCb = undefined;
+	}
+	
+	if( parentRun !== undefined )
+	{
+		stepStartsCb = parentRun.stepStartsCb;
+		stepEndsCb = parentRun.stepEndsCb;
+	}
+	else
+	{
+		if( stepStartsCb === undefined )
+		{
+			stepStartsCb =
+			function()
+			{
+				
+			};
+		}
+		
+		if( stepEndsCb === undefined )
+		{
+			stepEndsCb =
+			function()
+			{
+				
+			};
+		}
+	}
+	
 	this.parentRun = parentRun;
 	this.suiteHolder = suiteHolder;
+	this.stepStartsCb = stepStartsCb;
+	this.stepEndsCb = stepEndsCb;
 	
 	this.nrChildSuitesDone = 0;
 	this.suiteErrOccurred = false;
 	
 	this.suiteRunCb = undefined;
 	this.runOk = undefined;
-	this.failedSuiteStep = undefined;
-	this.failedSuiteRun = undefined;
+	this.failedSteps =
+	{
+		before: undefined,
+		topic: undefined,
+		argsVer: undefined,
+		vows: undefined,
+		next: undefined,
+		after: undefined
+	};
 	
 	if( parentRun === undefined )
 	{
@@ -143,7 +197,14 @@ var getV = ourglobe.getV;
 
 var SuiteResult = mods.get( "suiteresult" );
 var SuiteStep = mods.get( "suitestep" );
+var Before = mods.get( "before" );
+var BeforeCb = mods.get( "beforecb" );
+var Topic = mods.get( "topic" );
+var TopicCb = mods.get( "topiccb" );
+var ArgsVer = mods.get( "argsver" );
+var Vow = mods.get( "vow" );
 var After = mods.get( "after" );
+var AfterCb = mods.get( "aftercb" );
 
 SuiteRun.prototype.markChildSuiteDone =
 getF(
@@ -228,6 +289,8 @@ function( err )
 	{
 		this.markRunFailed( this.after );
 	}
+	
+	this.stepEndsCb( this );
 	
 	this.suiteRunCb( undefined, this );
 	
@@ -490,28 +553,74 @@ function( failedStep )
 	this.runOk = false;
 	
 	if(
-		failedStep instanceof SuiteStep === true &&
-		this.failedSuiteStep === undefined
+		failedStep instanceof Before === true ||
+		failedStep instanceof BeforeCb === true
 	)
 	{
-		this.failedSuiteStep = failedStep;
+		this.failedSteps.before = failedStep;
 	}
 	else if(
-		failedStep instanceof SuiteRun === true &&
-		this.failedSuiteRun === undefined
+		failedStep instanceof Topic === true ||
+		failedStep instanceof TopicCb === true
 	)
 	{
-		this.failedSuiteRun = failedStep;
+		this.failedSteps.topic = failedStep;
+	}
+	else if( failedStep instanceof ArgsVer === true )
+	{
+		this.failedSteps.argsVer = failedStep;
+	}
+	else if( failedStep instanceof Vow === true )
+	{
+		if( this.failedSteps.vows === undefined )
+		{
+			this.failedSteps.vows = [];
+		}
+		
+		this.failedSteps.vows.push( failedStep );
+	}
+	else if(
+		failedStep instanceof After === true ||
+		failedStep instanceof AfterCb === true
+	)
+	{
+		this.failedSteps.after = failedStep;
+	}
+	else
+	{
+		if( this.failedSteps.next === undefined )
+		{
+			this.failedSteps.next = [];
+		}
+		
+		this.failedSteps.next.push( failedStep );
 	}
 });
 
 SuiteRun.prototype.run =
 getF(
 getV()
-	.addA( "func" ),
+	.addA( "func/undef" ),
 function( cb )
 {
 	this.suiteRunCb = cb;
+	
+	if( this.suiteRunCb === undefined )
+	{
+		this.suiteRunCb =
+		getF(
+			SuiteRun.RUN_CB_FV,
+			function( err )
+			{
+				if( err !== undefined )
+				{
+					throw err;
+				}
+			}
+		);
+	}
+	
+	this.stepStartsCb( this );
 	
 	this.runBefore();
 	

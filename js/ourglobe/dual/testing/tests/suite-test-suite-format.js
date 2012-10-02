@@ -17,8 +17,14 @@ var test = mods.get( "testing" ).Test;
 var Suite = mods.get( "suite" );
 
 var emptyFunc = function() {};
+var emptyCbFunc =
+function()
+{
+	var cb = this.getCb();
+	cb();
+};
 
-var validSuite =
+var healthySuite =
 {
 	topic: emptyFunc,
 	argsVer: [ "undef" ],
@@ -28,18 +34,42 @@ var validSuite =
 var expectErr =
 getF(
 getV()
-	.addA( "str", "str/undef", "obj", "obj", "bool/undef" ),
+	.addA( "str", "str/undef", "obj", "obj", "bool/undef" )
+	.addA( "str", "str/undef", "func" ),
 function(
-	testName,
-	errCode,
-	faultySuite,
-	healthySuite,
-	doRecTest
+	testName, errCode, faultySuite, healthySuite, doRecTest
 )
 {
-	if( doRecTest === undefined )
+	if(
+		sys.hasType( faultySuite, "obj" ) === true &&
+		doRecTest === undefined
+	)
 	{
 		doRecTest = true;
+	}
+	
+	if( sys.hasType( faultySuite, "func" ) === true )
+	{
+		var returnVar = faultySuite();
+		
+		faultySuite = returnVar.faulty;
+		healthySuite = returnVar.healthy;
+		
+		test.expectErr(
+			testName,
+			SuiteRuntimeError,
+			errCode,
+			function()
+			{
+				faultySuite.run( emptyFunc );
+			},
+			function()
+			{
+				healthySuite.run( emptyFunc );
+			}
+		);
+		
+		return;
 	}
 	
 	test.expectErr(
@@ -62,42 +92,44 @@ function(
 		}
 	);
 	
-	if( doRecTest === true )
+	if( doRecTest === false )
 	{
-		test.expectErr(
-			testName + " - testing with child suites",
-			SuiteRuntimeError,
-			errCode,
-			function()
-			{
-				var suite = new Suite( "suite for testing purposes" );
-				
-				suite.add(
-					"recursive suite obj",
-					{
-						topic: emptyFunc,
-						argsVer:[ "undef" ],
-						vows:[ "vow one", emptyFunc ],
-						next:[ "faulty suite", faultySuite ]
-					}
-				);
-			},
-			function()
-			{
-				var suite = new Suite( "suite for testing purposes" );
-				
-				suite.add(
-					"recursive suite obj",
-					{
-						topic: emptyFunc,
-						argsVer:[ "undef" ],
-						vows:[ "vow one", emptyFunc ],
-						next:[ "healthy suite", healthySuite ]
-					}
-				);
-			}
-		);
+		return;
 	}
+	
+	test.expectErr(
+		testName + " - testing with child suites",
+		SuiteRuntimeError,
+		errCode,
+		function()
+		{
+			var suite = new Suite( "suite for testing purposes" );
+			
+			suite.add(
+				"recursive suite obj",
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "faulty suite", faultySuite ]
+				}
+			);
+		},
+		function()
+		{
+			var suite = new Suite( "suite for testing purposes" );
+			
+			suite.add(
+				"recursive suite obj",
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ],
+					next:[ "healthy suite", healthySuite ]
+				}
+			);
+		}
+	);
 });
 
 // testing verification of empty suites
@@ -506,7 +538,7 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next: validSuite
+		next: healthySuite
 	},
 	{
 		topic: emptyFunc,
@@ -537,7 +569,7 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite ]
+		next:[ "dingo", healthySuite ]
 	}
 );
 
@@ -548,13 +580,13 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "", validSuite ]
+		next:[ "", healthySuite ]
 	},
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite ]
+		next:[ "dingo", healthySuite ]
 	}
 );
 
@@ -571,7 +603,7 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite ]
+		next:[ "dingo", healthySuite ]
 	}
 );
 
@@ -582,13 +614,13 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ validSuite, "dingo", validSuite ]
+		next:[ healthySuite, "dingo", healthySuite ]
 	},
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite, "dango", validSuite ]
+		next:[ "dingo", healthySuite, "dango", healthySuite ]
 	}
 );
 
@@ -599,13 +631,13 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite, "dango" ]
+		next:[ "dingo", healthySuite, "dango" ]
 	},
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite, "dango", validSuite ]
+		next:[ "dingo", healthySuite, "dango", healthySuite ]
 	}
 );
 
@@ -616,13 +648,13 @@ expectErr(
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite, "dingo", validSuite ]
+		next:[ "dingo", healthySuite, "dingo", healthySuite ]
 	},
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ],
-		next:[ "dingo", validSuite, "dango", validSuite ]
+		next:[ "dingo", healthySuite, "dango", healthySuite ]
 	}
 );
 
@@ -835,6 +867,97 @@ expectErr(
 		{
 			var cb = this.getCb();
 		}
+	}
+);
+
+// test group
+// testing instances of class Suite
+
+expectErr(
+	"A Suite instance may not have both before and beforeCb set",
+	"BeforeIsNotValid",
+	function()
+	{
+		var faulty = new Suite( "faulty suite" );
+		var healthy = new Suite( "healthy suite" );
+		
+		faulty.setBefore( emptyFunc );
+		faulty.setBeforeCb( emptyCbFunc );
+		faulty.add( "suite", healthySuite );
+		
+		healthy.setBefore( emptyFunc );
+		healthy.add( "suite", healthySuite );
+		
+		return { faulty: faulty, healthy: healthy };
+	}
+);
+
+expectErr(
+	"A Suite instance may not have both after and afterCb set",
+	"AfterIsNotValid",
+	function()
+	{
+		var faulty = new Suite( "faulty suite" );
+		var healthy = new Suite( "healthy suite" );
+		
+		faulty.setAfter( emptyFunc );
+		faulty.setAfterCb( emptyCbFunc );
+		faulty.add( "suite", healthySuite );
+		
+		healthy.setAfter( emptyFunc );
+		healthy.add( "suite", healthySuite );
+		
+		return { faulty: faulty, healthy: healthy };
+	}
+);
+
+expectErr(
+	"A Suite instance may not have both after and afterCb set",
+	"AfterIsNotValid",
+	function()
+	{
+		var faulty = new Suite( "faulty suite" );
+		var healthy = new Suite( "healthy suite" );
+		
+		faulty.setAfter( emptyFunc );
+		faulty.setAfterCb( emptyCbFunc );
+		faulty.add( "suite", healthySuite );
+		
+		healthy.setAfter( emptyFunc );
+		healthy.add( "suite", healthySuite );
+		
+		return { faulty: faulty, healthy: healthy };
+	}
+);
+
+expectErr(
+	"A Suite instance must have child suites to run",
+	"NoSuitesToRun",
+	function()
+	{
+		var faulty = new Suite( "faulty suite" );
+		var healthy = new Suite( "healthy suite" );
+		
+		healthy.add( "suite", healthySuite );
+		
+		return { faulty: faulty, healthy: healthy };
+	}
+);
+
+expectErr(
+	"A Suite instance must have a valid conf obj to run",
+	"ConfIsNotValid",
+	function()
+	{
+		var faulty = new Suite( "faulty suite" );
+		faulty.setConf( { seq: true } );
+		faulty.add( "suite", healthySuite );
+		
+		var healthy = new Suite( "healthy suite" );
+		healthy.setConf( { sequential: true } );
+		healthy.add( "suite", healthySuite );
+		
+		return { faulty: faulty, healthy: healthy };
 	}
 );
 
