@@ -21,7 +21,7 @@ function SchemaError( msg, errorVar, errorCode, errorPlace )
 	
 	if( errorPlace === undefined )
 	{
-		errorPlace = SchemaError;
+		errorPlace = this.constructor;
 	}
 	
 	SchemaError.ourGlobeSuper.call(

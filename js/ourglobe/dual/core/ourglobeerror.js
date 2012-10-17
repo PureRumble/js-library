@@ -24,7 +24,7 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 	
 	if( errorPlace === undefined )
 	{
-		errorPlace = OurGlobeError;
+		errorPlace = this.constructor;
 	}
 	
 	OurGlobeError.ourGlobeSuper.call( this, msg );

@@ -21,7 +21,7 @@ function RuntimeError( msg, errorVar, errorCode, errorPlace )
 	
 	if( errorPlace === undefined )
 	{
-		errorPlace = RuntimeError;
+		errorPlace = this.constructor;
 	}
 	
 	RuntimeError.ourGlobeSuper.call(

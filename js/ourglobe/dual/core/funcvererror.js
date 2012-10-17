@@ -21,7 +21,7 @@ function FuncVerError( msg, errorVar, errorCode, errorPlace )
 	
 	if( errorPlace === undefined )
 	{
-		errorPlace = FuncVerError;
+		errorPlace = this.constructor;
 	}
 	
 	FuncVerError.ourGlobeSuper.call(
