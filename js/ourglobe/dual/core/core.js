@@ -2,31 +2,42 @@ ourglobe.core.define(
 [
 	"./ourglobeerror",
 	"./runtimeerror",
+	"./funccreationruntimeerror",
 	"./schemaerror",
 	"./funcvererror",
 	"./conf",
 	"./sys",
 	"./assert",
-	"./ourglobeobject",
 	"./funcver",
-	"./schema"
+	"./schema",
+	"./funcparamver",
+	"./argsver",
+	"./extraargsver",
+	"./returnvarver"
 ],
 function(
 	OurGlobeError,
 	RuntimeError,
+	FuncCreationRuntimeError,
 	SchemaError,
 	FuncVerError,
 	conf,
 	sys,
 	assert,
-	OurGlobeObject,
 	FuncVer,
-	Schema
+	Schema,
+	FuncParamVer,
+	ArgsVer,
+	ExtraArgsVer,
+	ReturnVarVer
 )
 {
 
 var getF = sys.getFunc;
-var getV = FuncVer.getFuncVer;
+var getV = FuncVer.constrFuncVer;
+var getA = ArgsVer.getA;
+var getR = ReturnVarVer.getR;
+var getE = ExtraArgsVer.getE;
 
 ourglobe.OurGlobeError = OurGlobeError;
 ourglobe.RuntimeError = RuntimeError;
@@ -37,9 +48,22 @@ ourglobe.sys = sys;
 ourglobe.getF = getF;
 ourglobe.getV = getV;
 ourglobe.assert = assert;
-ourglobe.OurGlobeObject = OurGlobeObject;
 ourglobe.FuncVer = FuncVer;
 ourglobe.Schema = Schema;
+ourglobe.getA = getA;
+ourglobe.getE = getE;
+ourglobe.getR = getR;
+
+ourglobe.core.SchemaError = SchemaError;
+ourglobe.core.FuncVerError = FuncVerError;
+ourglobe.core.FuncCreationRuntimeError =
+	FuncCreationRuntimeError
+;
+ourglobe.core.conf = conf;
+ourglobe.core.FuncParamVer = FuncParamVer;
+ourglobe.core.ArgsVer = ArgsVer;
+ourglobe.core.ExtraArgsVer = ExtraArgsVer;
+ourglobe.core.ReturnVarVer = ReturnVarVer;
 
 OurGlobeError.prototype.__proto__ = Error.prototype;
 OurGlobeError.ourGlobeSuper = Error;
@@ -49,9 +73,11 @@ RuntimeError.ourGlobeSuper = OurGlobeError;
 
 sys.extend( SchemaError, RuntimeError );
 sys.extend( FuncVerError, RuntimeError );
-sys.extend( FuncVer, OurGlobeObject );
-sys.extend( Schema, OurGlobeObject );
-sys.extend( OurGlobeObject, Object );
+sys.extend( FuncCreationRuntimeError, RuntimeError );
+
+sys.extend( ArgsVer, FuncParamVer );
+sys.extend( ExtraArgsVer, FuncParamVer );
+sys.extend( ReturnVarVer, FuncParamVer );
 
 RuntimeError.MSG_S = OurGlobeError.MSG_S;
 RuntimeError.VAR_S = OurGlobeError.VAR_S;
@@ -84,6 +110,7 @@ var returnVar =
 {
 	OurGlobeError: OurGlobeError,
 	RuntimeError: RuntimeError,
+	FuncCreationRuntimeError: FuncCreationRuntimeError,
 	SchemaError: SchemaError,
 	FuncVerError: FuncVerError,
 	conf: conf,
@@ -91,9 +118,14 @@ var returnVar =
 	getF: getF,
 	getV: getV,
 	assert: assert,
-	OurGlobeObject: OurGlobeObject,
 	FuncVer: FuncVer,
-	Schema: Schema
+	Schema: Schema,
+	ArgsVer: ArgsVer,
+	ExtraArgsVer: ExtraArgsVer,
+	ReturnVarVer: ReturnVarVer,
+	getA: getA,
+	getE: getE,
+	getR: getR
 };
 
 return returnVar;

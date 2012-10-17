@@ -47,7 +47,7 @@ function( args )
 	);
 };
 
-FuncVer.getFuncVer =
+FuncVer.constrFuncVer =
 function( argSchemas, returnSchema, extraArgsSchema )
 {
 	if( ourglobe.conf.doVer() === true )
@@ -58,6 +58,88 @@ function( argSchemas, returnSchema, extraArgsSchema )
 	return(
 		new FuncVer( argSchemas, returnSchema, extraArgsSchema )
 	);
+};
+
+FuncVer.getFuncVer =
+function( fvParamVers )
+{
+	if( ourglobe.conf.doVer() === true )
+	{
+		if( arguments.length !== 1 )
+		{
+			throw new ourglobe.RuntimeError(
+				"Exactly one arg must be provided",
+				{ providedArgs: arguments }
+			);
+		}
+		
+		if( ourglobe.sys.hasType( fvParamVers, "arr" ) === false )
+		{
+			throw new ourglobe.RuntimeError(
+				"Arg fvParamVers must be an arr",
+				{ fvParamVers: fvParamVers }
+			);
+		}
+	}
+	
+	var ArgsVer = ourglobe.core.ArgsVer;
+	var ExtraArgsVer = ourglobe.core.ExtraArgsVer;
+	var ReturnVarVer = ourglobe.core.ReturnVarVer;
+	
+	var fV = new FuncVer();
+	
+	var eSet = false;
+	var rSet = false;
+	var currVer = 0;
+	
+	for(
+		currVer = 0;
+		currVer < fvParamVers.length &&
+		fvParamVers[ currVer ] instanceof ArgsVer === true;
+		currVer++
+	)
+	{
+		fV.addArgs( fvParamVers[ currVer ].schema );
+	}
+	
+	if(
+		currVer < fvParamVers.length &&
+		fvParamVers[ currVer ] instanceof ExtraArgsVer === true
+	)
+	{
+		fV.setExtraArgs( fvParamVers[ currVer ].schema );
+		currVer++;
+	}
+	
+	if(
+		currVer < fvParamVers.length &&
+		fvParamVers[ currVer ] instanceof ReturnVarVer === true
+	)
+	{
+		fV.setReturn( fvParamVers[ currVer ].schema );
+		currVer++;
+	}
+	
+	if( currVer !== fvParamVers.length )
+	{
+		throw new ourGlobe.core.FuncVerError(
+			"The args given to construct a FuncVer arent valid. "+
+			"Every arg must be a FuncParamVer (constructed by "+
+			"getA(), getE() and getR()) and they must be given in the "+
+			"following order:\n"+
+			"* Any number of ArgsVers (constr by getA())\n"+
+			"* No more than one ExtraArgsVer (constr by getE())\n"+
+			"* No more than one ReturnVarVer (constr by getR())\n",
+			{
+				nrProvidedArgs: fvParamVers.length,
+				faultyArgItem: currVer,
+				faultyArg: fvParamVers[ currVer ]
+			},
+			"InvalidArgsForFuncVerCreation"
+		);
+	}
+	
+	return fV;
 };
 
 FuncVer.prototype.addArgs =
@@ -143,10 +225,10 @@ function( args )
 	
 	if( this.argsAreValid( args ) === false )
 	{
-		throw new ourglobe.FuncVerError(
-			"This FuncVer doesnt approve the provided args",
+		throw new ourGlobe.core.FuncVerError(
+			"The provided args are invalid",
 			{ argSchemas: this.argsSchemas, providedArgs: args },
-			undefined,
+			"InvalidArgsAtFuncCall",
 			FuncVer.prototype.verArgs
 		);
 	}
@@ -239,13 +321,13 @@ function( returnVar )
 		return;
 	}
 	
-	throw new ourglobe.FuncVerError(
-		"This FuncVer doesnt approve the provided return variable",
+	throw new ourGlobe.core.FuncVerError(
+		"The returned var from the function call is invalid",
 		{
 			returnSchema: this.returnSchema,
 			providedReturnVar: returnVar
 		},
-		undefined,
+		"InvalidReturnedVarFromFuncCall",
 		FuncVer.prototype.verReturn
 	);
 };

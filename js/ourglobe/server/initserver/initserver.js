@@ -13,6 +13,7 @@ requirejs.config({
 		"ourglobe/dual/modulehandling",
 		"ourglobe/dual/testing",
 		"ourglobe/dual/moremath",
+		"ourglobe/dual/classes",
 		"ourglobe/server/initserver",
 		"ourglobe/server/morehttp",
 		"ourglobe/server/cluster",
@@ -31,6 +32,7 @@ function( err )
 {
 	if( err.originalError !== undefined )
 	{
+		console.log( err.message );
 		err = err.originalError;
 	}
 	
@@ -42,6 +44,8 @@ ourglobe = {};
 ourglobe.core = {};
 ourglobe.core.require = requirejs;
 ourglobe.core.define = requirejs.define;
+
+ourGlobe = ourglobe;
 
 ourglobe.core.require(
 [

@@ -1,10 +1,12 @@
 ourglobe.core.define(
 [
 	"./core",
-	"ourglobe/dual/modulehandling"
+	"ourglobe/dual/classes",
+	"ourglobe/dual/modulehandling",
 ],
 function(
 	core,
+	Classes,
 	ModuleHandling
 )
 {
@@ -15,14 +17,20 @@ return(
 		RuntimeError: core.RuntimeError,
 		SchemaError: core.SchemaError,
 		FuncVerError: core.FuncVerError,
+		FuncCreationRuntimeError: core.FuncCreationRuntimeError,
 		conf: core.conf,
 		sys: core.sys,
 		getF: core.getF,
 		getV: core.getV,
 		assert: core.assert,
-		OurGlobeObject: core.OurGlobeObject,
 		FuncVer: core.FuncVer,
-		Schema: core.Schema
+		Schema: core.Schema,
+		ArgsVer: core.ArgsVer,
+		ExtraArgsVer: core.ExtraArgsVer,
+		ReturnVarVer: core.ReturnVarVer,
+		getA: core.getA,
+		getE: core.getE,
+		getR: core.getR
 	}
 );
 
