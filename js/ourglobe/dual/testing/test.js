@@ -20,34 +20,73 @@ function(
 	testName, errClass, errCode, verError, errFunc, refFunc
 )
 {
-	if( arguments.length < 4 || arguments.length > 6 )
+	if( arguments.length < 3 || arguments.length > 6 )
 	{
 		throw new TestRuntimeError(
 			"Between four and six args must be provided"
 		);
 	}
 	
-	if(
-		refFunc === undefined &&
-		( errFunc === undefined || errFunc instanceof Function ) &&
-		verError instanceof Function &&
-		errCode instanceof Function
-	)
-	{
-		refFunc = errFunc;
-		errFunc = verError;
-		verError = errCode;
-		errCode = undefined;
-	}
+	var func = undefined;
 	
 	if(
-		refFunc === undefined &&
-		errFunc instanceof Function === true &&
-		verError instanceof Function === true
+		arguments.length === 3 && errCode instanceof Object === true
 	)
 	{
-		refFunc = errFunc;
-		errFunc = verError;
+		var obj = errCode;
+		
+		for( var prop in obj )
+		{
+			if(
+				prop !== "errCode" &&
+				prop !== "verError" &&
+				prop !== "errFunc" &&
+				prop !== "refFunc" &&
+				prop !== "func"
+			)
+			{
+				throw new TestRuntimeError(
+					"Prop '"+prop+"' isnt valid for the obj provided to "+
+					"Test.expectErr()"
+				);
+			}
+		}
+		
+		errCode = obj.errCode;
+		verError = obj.verError;
+		errFunc = obj.errFunc;
+		refFunc = obj.refFunc;
+		func = obj.func;
+	}
+	else
+	{
+		if(
+			refFunc === undefined &&
+			( errFunc === undefined || errFunc instanceof Function ) &&
+			verError instanceof Function &&
+			errCode instanceof Function
+		)
+		{
+			refFunc = errFunc;
+			errFunc = verError;
+			verError = errCode;
+			errCode = undefined;
+		}
+		
+		if(
+			refFunc === undefined &&
+			errFunc instanceof Function === true &&
+			verError instanceof Function === true
+		)
+		{
+			refFunc = errFunc;
+			errFunc = verError;
+			verError = undefined;
+		}
+	}
+	
+	if( verError === undefined )
+	{
 		verError =
 		function( err )
 		{
@@ -69,29 +108,98 @@ function(
 		);
 	}
 	
-	if( errFunc instanceof Function === false )
+	if(
+		errFunc !== undefined &&
+		errFunc instanceof Function === false
+	)
 	{
-		throw new TestRuntimeError( "Arg errFunc must be a func" );
+		throw new TestRuntimeError(
+			"Arg errFunc must be a func", { errFunc: errFunc }
+		);
 	}
 	
-	if( refFunc instanceof Function === false )
+	if(
+		refFunc !== undefined &&
+		refFunc instanceof Function === false
+	)
 	{
-		throw new TestRuntimeError( "Arg refFunc must be a func" );
+		throw new TestRuntimeError(
+			"Arg refFunc must be a func", { refFunc: refFunc }
+		);
 	}
 	
 	if( errClass instanceof Function === false )
 	{
 		throw new TestRuntimeError(
-			"Arg errClass must be a class constr"
+			"Arg errClass must be a class constr",
+			{ errClass: errClass }
 		);
 	}
 	
 	if( errCode !== undefined && typeof( errCode ) !== "string" )
 	{
 		throw new TestRuntimeError(
-			"Arg errCode must be a str"
+			"Arg errCode must be undef or a str", { errCode: errCode }
 		);
 	}
+	
+	if( func !== undefined && func instanceof Function === false )
+	{
+		throw new TestRuntimeError(
+			"Arg func must be undef or a func", { func: func }
+		);
+	}
+	
+	if(
+		false ===
+		(
+			(
+				func !== undefined &&
+				errFunc === undefined &&
+				refFunc === undefined
+			)
+			||
+			(
+				func === undefined &&
+				errFunc !== undefined &&
+				refFunc !== undefined
+			)
+		)
+	)
+	{
+		throw new TestRuntimeError(
+			"Either func must be defined while errFunc and refFunc "+
+			"are both undefined or the opposite must be true",
+			{ errFunc: errFunc, refFunc: refFunc, func: func }
+		);
+	}
+	
+	if( func === undefined )
+	{
+		func =
+		function()
+		{
+			return( { errFunc: errFunc, refFunc: refFunc } );
+		};
+	}
+	
+	var returnVar = func();
+	
+	if(
+		returnVar instanceof Object === false ||
+		returnVar.errFunc instanceof Function === false ||
+		returnVar.refFunc instanceof Function === false
+	)
+	{
+		throw new TestRuntimeError(
+			"Arg func must return an obj with the props errFunc and "+
+			"refFunc set to funcs",
+			{ returnedVar: returnVar }
+		);
+	}
+	
+	errFunc = returnVar.errFunc;
+	refFunc = returnVar.refFunc;
 	
 	console.log( testName );
 	
@@ -383,10 +491,10 @@ function(
 Test.assert =
 function( boolVar, msg )
 {
-	if( arguments.length !== 2 )
+	if( arguments.length < 1 || arguments.length > 2 )
 	{
 		throw new TestRuntimeError(
-			"Exactly two args must be provided",
+			"Between one and two args must be provided",
 			{ providedArgs: arguments }
 		);
 	}
@@ -399,12 +507,17 @@ function( boolVar, msg )
 		);
 	}
 	
-	if( typeof( msg ) !== "string" )
+	if( msg !== undefined && typeof( msg ) !== "string" )
 	{
 		throw new TestRuntimeError(
-			"Arg msg must be a str",
+			"Arg msg must be a str or undef",
 			{ msg: msg }
 		);
+	}
+	
+	if( msg === undefined )
+	{
+		msg = "An assertion has failed";
 	}
 	
 	if( boolVar === false )
