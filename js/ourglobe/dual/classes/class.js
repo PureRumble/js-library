@@ -39,8 +39,9 @@ function( args )
 		if(
 			prop !== undefined &&
 			prop !== "name" &&
-			prop !== "super" &&
-			prop !== "constr"
+			prop !== "extends" &&
+			prop !== "constr" &&
+			prop !== "instVars"
 		)
 		{
 			throw new ClassRuntimeError(
@@ -52,8 +53,9 @@ function( args )
 	}
 	
 	var className = args.name;
-	var superClass = args.super;
+	var superClass = args.extends;
 	var constrArr = args.constr;
+	var instVars = args.instVars;
 	
 	if(
 		sys.hasType( className, "str" ) === false ||
@@ -63,7 +65,7 @@ function( args )
 		throw new ClassRuntimeError(
 			"A class name must be a proper str",
 			{ className: className },
-			"InvalidClassName"
+			"InvalidPropClassNameForClassCreation"
 		);
 	}
 	
@@ -73,9 +75,9 @@ function( args )
 	)
 	{
 		throw new ClassRuntimeError(
-			"Prop super must be undef or the desired super class",
-			{ super: superClass },
-			"InvalidSuperClass"
+			"Prop extends must be undef or the desired super class",
+			{ extends: superClass },
+			"InvalidPropExtendsForClassCreation"
 		);
 	}
 	
@@ -89,8 +91,41 @@ function( args )
 	{
 		throw new ClassRuntimeError(
 			"Prop constr must be undef, a func or a proper arr",
-			{ constr: constrArr }
+			{ constr: constrArr },
+			"InvalidPropConstrForClassCreation"
 		);
+	}
+	
+	if( sys.hasType( instVars, "undef", "obj" ) === false )
+	{
+		throw new ClassRuntimeError(
+			"Prop instVars must be undef or an obj",
+			{ instVars: instVars },
+			"InvalidPropInstVarsForClassCreation"
+		);
+	}
+	
+	if( instVars === undefined )
+	{
+		instVars = {};
+	}
+	
+	for( var prop in instVars )
+	{
+		var instVar = instVars[ prop ];
+		
+		if( instVar !== "final" && instVar !== "extendable" )
+		{
+			throw new ClassRuntimeError(
+				"Instance var '"+prop+"' doesnt have its prop in "+
+				"instVars set to a correct value",
+				{
+					faultyInstVarsProp: prop,
+					faultyInstVarsPropValue: instVar
+				},
+				"InvalidPropInstVarsForClassCreation"
+			);
+		}
 	}
 	
 	if( constrArr === undefined )
@@ -120,6 +155,15 @@ function( args )
 	
 	var constr = getF.apply( {}, constrArr );
 	
+	if( constr.ourGlobe === undefined )
+	{
+		constr.ourGlobe = {};
+	}
+	
+	constr.ourGlobe.class = {};
+	constr.ourGlobe.class.subClasses = [];
+	constr.ourGlobe.class.className = className;
+	
 	if( superClass !== undefined )
 	{
 		constr.prototype.__proto__ = superClass.prototype;
@@ -135,17 +179,139 @@ function( args )
 		constr.prototype.ourGlobeCallSuper = Class.callSuper;
 		constr.prototype.ourGlobeApplySuper = Class.applySuper;
 	}
-	
-	if( constr.ourGlobe === undefined )
+	else
 	{
-		constr.ourGlobe = {};
+		superClass.ourGlobe.class.subClasses.push( constr );
 	}
 	
-	constr.ourGlobe.class = {};
+	constr.ourGlobe.class.instVars = {};
 	
-	constr.ourGlobe.class.className = className;
+	for( var instVar in instVars )
+	{
+		constr.ourGlobe.class.instVars[ instVar ] =
+			instVars[ instVar ]
+		;
+	}
+	
+	Class.verifyExtensions( constr );
 	
 	return constr;
+});
+
+Class.verifyExtensions =
+getF(
+getV()
+	.addA( "func" ),
+function( classVar )
+{
+	if( Class.isNative( classVar ) === true )
+	{
+		throw new RuntimeError(
+			"Arg classVar may not be a native class"
+		);
+	}
+	
+	for(
+		var superClass = classVar.ourGlobeSuper;
+		superClass !== undefined &&
+		Class.isNative( superClass ) === false;
+		superClass = superClass.ourGlobeSuper
+	)
+	{
+		Class.verifyClassExtension( superClass, classVar );
+	}
+	
+	var subClasses = classVar.ourGlobe.class.subClasses.slice();
+	
+	if( subClasses.length === 0 )
+	{
+		return;
+	}
+	
+	for(
+		var subClass = subClasses.pop();
+		subClasses.length !== 0;
+		subClass = subClasses.pop()
+	)
+	{
+		Class.verifyClassExtension( classVar, subClass );
+		
+		subClasses.concat( subClass.ourGlobe.class.subClasses );
+	}
+});
+
+Class.verifyClassExtension =
+getF(
+getV()
+	.addA( "func", "func" ),
+function( superClass, subClass )
+{
+	if( subClass.prototype instanceof superClass === false )
+	{
+		throw new RuntimeError(
+			"Arg superClass must be a super class of arg subClass"
+		);
+	}
+	
+	if( Class.isNative( superClass ) === true )
+	{
+		throw new RuntimeError(
+			"Arg superClass may not be a native class"
+		);
+	}
+	
+	if( Class.isNative( subClass ) === true )
+	{
+		throw new RuntimeError(
+			"Arg subClass may not be a native class"
+		);
+	}
+	
+	var superInstVars = superClass.ourGlobe.class.instVars;
+	var superClassName = superClass.ourGlobe.class.className;
+	var subInstVars = subClass.ourGlobe.class.instVars;
+	var subClassName = subClass.ourGlobe.class.className;
+	
+	for( var instVar in superInstVars )
+	{
+		if(
+			superInstVars[ instVar ] === "final" &&
+			subInstVars[ instVar ] !== undefined
+		)
+		{
+			throw new ClassRuntimeError(
+				"Class '"+subClassName+"' may not have an instance var "+
+				"named '"+instVar+"' since its (direct or indirect) "+
+				"super class '"+superClassName+"' declares the same "+
+				"instance var as final",
+				{
+					superClass: superClassName,
+					subClass: subClassName,
+					conflictingInstVar: instVar
+				},
+				"SubClassExtendsFinalInstanceVar"
+			);
+		}
+		
+		if(
+			superInstVars[ instVar ] === "extendable" &&
+			subInstVars[ instVar ] === "final"
+		)
+		{
+			throw new ClassRuntimeError(
+				"Class '"+subClassName+"' may not declare instance var "+
+				"'"+instVar+"' as final since its (direct or indirect) "+
+				"super class '"+superClassName+"' declares the same "+
+				"instance var as extendable",
+				{
+					superClass: superClassName,
+					subClass: subClassName,
+					conflictingInstVar: instVar
+				},
+				"SubClassReDeclaresExtendableInstVarAsFinal"
+			);
+		}
+	}
 });
 
 Class.applySuper =

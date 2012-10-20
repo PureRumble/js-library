@@ -35,6 +35,186 @@ function()
 	);
 });
 
+var expectExtErr =
+getF(
+getV()
+	.addA( "str", "str", "obj", "obj", "obj" ),
+function(
+	testName,
+	errCode,
+	superClassCreate,
+	faultySubClassCreate,
+	healthySubClassCreate
+)
+{
+	healthySubClassCreate.constr =
+	[
+		getE( "any" ),
+		function()
+		{
+			this.dingo = "dingo";
+		}
+	];
+	
+	var subClassCreate =
+	{
+		name: "ClassName",
+		instVars:
+		{
+			dingoDingoDingo: "extendable",
+			dangoDangoDango: "extendable",
+			dongoDongoDongo: "extendable"
+		}
+	};
+	
+	Test.expectErr(
+		testName+
+		" - testing with immediate sub class of super class",
+		ClassRuntimeError,
+		errCode,
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			faultySubClassCreate.extends = SuperClass;
+			
+			Class.create( faultySubClassCreate );
+		},
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			healthySubClassCreate.extends = SuperClass;
+			
+			var HealthySubClass =
+				Class.create( healthySubClassCreate )
+			;
+			
+			var healthy = new HealthySubClass();
+			
+			assert( healthy.dingo === "dingo" );
+		}
+	);
+	
+	Test.expectErr(
+		testName+
+		" - testing with immediate sub class of super class "+
+		"but with other sub classes at the side too",
+		ClassRuntimeError,
+		errCode,
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			subClassCreate.extends = SuperClass;
+			
+			var firstSubClassOne = Class.create( subClassCreate );
+			var firstSubClassTwo = Class.create( subClassCreate );
+			var firstSubClassThree =
+				Class.create( subClassCreate )
+			;
+			
+			faultySubClassCreate.extends = SuperClass;
+			
+			Class.create( faultySubClassCreate );
+		},
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			subClassCreate.extends = SuperClass;
+			
+			var firstSubClassOne = Class.create( subClassCreate );
+			var firstSubClassTwo = Class.create( subClassCreate );
+			var firstSubClassThree =
+				Class.create( subClassCreate )
+			;
+			
+			healthySubClassCreate.extends = SuperClass;
+			
+			var HealthySubClass =
+				Class.create( healthySubClassCreate )
+			;
+			
+			var healthy = new HealthySubClass();
+			
+			assert( healthy.dingo === "dingo" );
+		}
+	);
+	
+	Test.expectErr(
+		testName+
+		" - testing with many levels of sub classes under "+
+		"the super class",
+		ClassRuntimeError,
+		errCode,
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			subClassCreate.extends = SuperClass;
+			
+			var SubClassOne = Class.create( subClassCreate );
+			var SubClassTwo = Class.create( subClassCreate );
+			var SubClassThree = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassOne;
+			
+			var SubClassOneOne = Class.create( subClassCreate );
+			var SubClassOneTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassThree;
+			
+			var SubClassThreeOne = Class.create( subClassCreate );
+			var SubClassThreeTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassTwo;
+			
+			var SubClassTwoOne = Class.create( subClassCreate );
+			var SubClassTwoTwo = Class.create( subClassCreate );
+			
+			faultySubClassCreate.extends = SubClassTwo;
+			
+			Class.create( faultySubClassCreate );
+		},
+		function()
+		{
+			var SuperClass = Class.create( superClassCreate );
+			
+			subClassCreate.extends = SuperClass;
+			
+			var SubClassOne = Class.create( subClassCreate );
+			var SubClassTwo = Class.create( subClassCreate );
+			var SubClassThree = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassOne;
+			
+			var SubClassOneOne = Class.create( subClassCreate );
+			var SubClassOneTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassThree;
+			
+			var SubClassThreeOne = Class.create( subClassCreate );
+			var SubClassThreeTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = SubClassTwo;
+			
+			var SubClassTwoOne = Class.create( subClassCreate );
+			var SubClassTwoTwo = Class.create( subClassCreate );
+			
+			healthySubClassCreate.extends = SubClassTwo;
+			
+			var HealthySubClass =
+				Class.create( healthySubClassCreate )
+			;
+			
+			var healthy = new HealthySubClass();
+			
+			assert( healthy.dingo === "dingo" );
+		}
+	);
+});
+
 var runClassTest =
 getF(
 getV()
@@ -77,7 +257,7 @@ function(
 	
 	if( subClass !== undefined )
 	{
-		subClass.super = SupClass;
+		subClass.extends = SupClass;
 		
 		SubClass = Class.create.call( {}, subClass );
 		subInst = new SubClass();
@@ -503,7 +683,7 @@ FuncVerError,
 		Class.create(
 			{
 				name: "ClassName",
-				super: Dingo,
+				extends: Dingo,
 				constr:
 				[
 					getE( "any" ),
@@ -531,6 +711,61 @@ FuncVerError,
 				}
 			}
 		);
+	}
+});
+
+// test group
+// testing that sub classes instance vars are compared correctly
+// to super classes' instance vars
+
+expectExtErr(
+"sub class may not extend final instance var of super class",
+"SubClassExtendsFinalInstanceVar",
+{
+	name: "ClassName",
+	instVars:
+	{
+		dingo: "extendable", dango: "final", dongo: "extendable"
+	}
+},
+{
+	name: "ClassName",
+	instVars:
+	{
+		dango: "final"
+	}
+},
+{
+	name: "ClassName",
+	instVars:
+	{
+		dingo: "extendable", dongo: "extendable", dingi: "extendable"
+	}
+});
+
+expectExtErr(
+"sub class may not redeclare extendable instance var from "+
+"super class as being final",
+"SubClassReDeclaresExtendableInstVarAsFinal",
+{
+	name: "ClassName",
+	instVars:
+	{
+		dingo: "extendable", dango: "extendable", dongo: "extendable"
+	}
+},
+{
+	name: "ClassName",
+	instVars:
+	{
+		dingo: "extendable", dango: "final", dongo: "extendable"
+	}
+},
+{
+	name: "ClassName",
+	instVars:
+	{
+		dingo: "extendable", dango: "extendable"
 	}
 });
 

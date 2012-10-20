@@ -18,11 +18,8 @@ function( subClass, superClass )
 	
 	subClass.prototype.__proto__ = superClass.prototype;
 	
-	Object.defineProperty(
-		subClass,
-		"ourGlobeSuper",
-		{ value: superClass, enumerable:false }
-	);
+	subClass.ourGlobeSuper = superClass;
+	subClass.ourGlobeSuperProto = superClass.prototype;
 };
 
 sys.getClass =

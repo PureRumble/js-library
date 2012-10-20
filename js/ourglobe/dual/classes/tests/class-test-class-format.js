@@ -73,7 +73,7 @@ expectErr(
 	"InvalidPropForClassCreation",
 	{
 		name: "ClassName",
-		supere: getFunc()
+		super: getFunc()
 	},
 	{
 		name: "ClassName"
@@ -82,7 +82,7 @@ expectErr(
 
 expectErr(
 	"A class name must be valid",
-	"InvalidClassName",
+	"InvalidPropClassNameForClassCreation",
 	{
 		name: ""
 	},
@@ -187,6 +187,39 @@ expectErr(
 			getA( "str" ),
 			getFunc()
 		]
+	}
+);
+
+expectErr(
+	"Prop instVars must be an obj or undef",
+	"InvalidPropInstVarsForClassCreation",
+	{
+		name: "ClassName",
+		instVars:[ "final", "final" ]
+	},
+	{
+		name: "ClassName",
+		instVars:{ dingo: "final", dango: "extendable" }
+	}
+);
+
+expectErr(
+	"The declared instance vars in prop instVars must have "+
+	"correct values",
+	"InvalidPropInstVarsForClassCreation",
+	{
+		name: "ClassName",
+		instVars:
+		{
+			dingo: "final", dango:"extendable", dengo:"finale"
+		}
+	},
+	{
+		name: "ClassName",
+		instVars:
+		{
+			dingo: "final", dango:"extendable", dongo:"final"
+		}
 	}
 );
 
