@@ -15,6 +15,38 @@ function( mods, Test )
 
 var TestRuntimeError = mods.get( "testruntimeerror" );
 
+Test.runTest =
+function( testName, func )
+{
+	if( arguments.length !== 2 )
+	{
+		throw new TestRuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if( typeof( testName ) !== "string" )
+	{
+		throw new TestRuntimeError(
+			"Arg testName must be a str",
+			{ testName: testName }
+		);
+	}
+	
+	if( typeof( func ) !== "function" )
+	{
+		throw new TestRuntimeError(
+			"Arg func must be a func",
+			{ func: func }
+		);
+	}
+	
+	console.log( testName );
+	
+	func();
+};
+
 Test.expectErr =
 function(
 	testName, errClass, errCode, verError, errFunc, refFunc
