@@ -120,6 +120,7 @@ var returnVar =
 	assert: assert,
 	FuncVer: FuncVer,
 	Schema: Schema,
+	FuncParamVer: FuncParamVer,
 	ArgsVer: ArgsVer,
 	ExtraArgsVer: ExtraArgsVer,
 	ReturnVarVer: ReturnVarVer,

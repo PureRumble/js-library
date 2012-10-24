@@ -273,7 +273,7 @@ function()
 				"  + Any number of FuncParamVers (constr by getA(), "+
 				"getE() or getR())"+
 				"  + A func that returns a FuncVer or FuncParamVers\n"+
-				"(2) The function body itself as a func",
+				"(2) The function itself",
 				{ providedArgs: args },
 				"InvalidArgsForFuncCreation"
 			);

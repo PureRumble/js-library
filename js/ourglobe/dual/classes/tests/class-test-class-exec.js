@@ -38,23 +38,52 @@ function()
 var expectExtErr =
 getF(
 getV()
-	.addA( "str", "str", "obj", "obj", "obj" ),
+	.addA( "str", "str", "obj", "obj", "obj" )
+	.addA(
+		"str",
+		"str",
+		"obj",
+		"obj/undef",
+		"obj",
+		"obj/undef",
+		"obj",
+		"obj/undef"
+	),
 function(
 	testName,
 	errCode,
 	superClassCreate,
+	superClassAdd,
 	faultySubClassCreate,
-	healthySubClassCreate
+	faultySubClassAdd,
+	healthySubClassCreate,
+	healthySubClassAdd
 )
 {
+	if( healthySubClassCreate === undefined )
+	{
+		healthySubClassCreate = faultySubClassCreate;
+		faultySubClassCreate = superClassAdd;
+		superClassAdd = undefined;
+	}
+	
 	healthySubClassCreate.constr =
 	[
 		getE( "any" ),
 		function()
 		{
-			this.dingo = "dingo";
+			this.dingoDangoDongo = "dingo";
 		}
 	];
+	
+	if( healthySubClassCreate.instVars === undefined )
+	{
+		healthySubClassCreate.instVars = {};
+	}
+	
+	healthySubClassCreate.instVars[ "dingoDangoDongo" ] =
+		"extendable"
+	;
 	
 	var subClassCreate =
 	{
@@ -78,7 +107,17 @@ function(
 			
 			faultySubClassCreate.extends = SuperClass;
 			
-			Class.create( faultySubClassCreate );
+			var FaultySubClass = Class.create( faultySubClassCreate );
+			
+			if( faultySubClassAdd !== undefined )
+			{
+				Class.add( FaultySubClass, faultySubClassAdd );
+			}
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
 		},
 		function()
 		{
@@ -90,9 +129,19 @@ function(
 				Class.create( healthySubClassCreate )
 			;
 			
+			if( healthySubClassAdd !== undefined )
+			{
+				Class.add( HealthySubClass, healthySubClassAdd );
+			}
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingo === "dingo" );
+			assert( healthy.dingoDangoDongo === "dingo" );
 		}
 	);
 	
@@ -116,7 +165,17 @@ function(
 			
 			faultySubClassCreate.extends = SuperClass;
 			
-			Class.create( faultySubClassCreate );
+			var FaultySubClass = Class.create( faultySubClassCreate );
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
+			if( faultySubClassAdd !== undefined )
+			{
+				Class.add( FaultySubClass, faultySubClassAdd );
+			}
 		},
 		function()
 		{
@@ -136,9 +195,19 @@ function(
 				Class.create( healthySubClassCreate )
 			;
 			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
+			if( healthySubClassAdd !== undefined )
+			{
+				Class.add( HealthySubClass, healthySubClassAdd );
+			}
+			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingo === "dingo" );
+			assert( healthy.dingoDangoDongo === "dingo" );
 		}
 	);
 	
@@ -175,7 +244,17 @@ function(
 			
 			faultySubClassCreate.extends = SubClassTwo;
 			
-			Class.create( faultySubClassCreate );
+			var FaultySubClass = Class.create( faultySubClassCreate );
+			
+			if( faultySubClassAdd !== undefined )
+			{
+				Class.add( FaultySubClass, faultySubClassAdd );
+			}
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
 		},
 		function()
 		{
@@ -208,9 +287,19 @@ function(
 				Class.create( healthySubClassCreate )
 			;
 			
+			if( healthySubClassAdd !== undefined )
+			{
+				Class.add( HealthySubClass, healthySubClassAdd );
+			}
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingo === "dingo" );
+			assert( healthy.dingoDangoDongo === "dingo" );
 		}
 	);
 });
@@ -249,7 +338,13 @@ function(
 	
 	console.log( testName );
 	
-	var SupClass = Class.create.call( {}, supClass );
+	var SupClass = Class.create( supClass );
+	
+	if( supClassAddArgs !== undefined )
+	{
+		Class.add( SupClass, supClassAddArgs );
+	}
+	
 	var supInst = new SupClass();
 	
 	var SubClass = undefined;
@@ -259,8 +354,13 @@ function(
 	{
 		subClass.extends = SupClass;
 		
-		SubClass = Class.create.call( {}, subClass );
+		SubClass = Class.create( subClass );
 		subInst = new SubClass();
+		
+		if( subClassAddArgs !== undefined )
+		{
+			Class.add( SubClass, subClassAddArgs );
+		}
 	}
 	
 	assert(
@@ -285,8 +385,8 @@ function(
 });
 
 // test group
-// testing simple classes without super classes. Some of the
-// classes have constrs
+// testing constructors are handled correctly on simple classes
+// without super classes
 
 runClassTest(
 	"Testing simple class with default empty constr",
@@ -316,8 +416,8 @@ runClassTest(
 );
 
 // test group
-// testing classes with super classes. Some classes have constrs
-// and none have inst funcs
+// testing constructors are handled correctly on sub classes
+// and their super classes
 
 runClassTest(
 	"Testing super class with constr and sub class without constr",
@@ -375,7 +475,7 @@ runClassTest(
 );
 
 // test group
-// testing ourGlobeCallSuper()
+// testing ourGlobeCallSuper() in constrs and inst funcs
 
 runClassTest(
 	"Testing sub class with constr that calls super class' "+
@@ -404,10 +504,7 @@ runClassTest(
 	},
 	function( sup, sub )
 	{
-		assert(
-			sub.dongo === "dongo" &&
-			sub.dango === "dango"
-		);
+		assert( sub.dongo === "dongo" && sub.dango === "dango" );
 	}
 );
 
@@ -489,8 +586,66 @@ runClassTest(
 	}
 );
 
+runClassTest(
+	"Testing sub class with inst func that calls super class' "+
+	"inst func with many args via ourGlobeCallSuper()",
+	{ name: "SuperClass" },
+	{
+		dingo:
+		[
+			getE( "any" ),
+			getR( "any" ),
+			function( dingoDingo, dangoDango, dongoDongo )
+			{
+				this.dingoDingo = dingoDingo;
+				this.dangoDango = dangoDango;
+				this.dongoDongo = dongoDongo;
+				
+				return 42;
+			}
+		]
+	},
+	{ name: "SubClass" },
+	{
+// making sure that dango() doesnt call dingo() of the sub class
+// instead of the super class'
+		dingo:
+		[
+			getE( "any" ),
+			function()
+			{
+				
+			}
+		],
+		dango:
+		[
+			getR( "any" ),
+			function()
+			{
+				var returnVar =
+				this.ourGlobeCallSuper(
+					"dingo", "dingoDingo", "dangoDango", "dongoDongo"
+				);
+				
+				return returnVar;
+			}
+		]
+	},
+	function( sup, sub )
+	{
+		var returnVar = sub.dango();
+		
+		assert(
+			sub.dingoDingo === "dingoDingo" &&
+			sub.dangoDango === "dangoDango" &&
+			sub.dongoDongo === "dongoDongo" &&
+			returnVar === 42
+		);
+	}
+);
+
 // test group
-// testing ourGlobeApplySuper()
+// testing ourGlobeApplySuper() in constrs and inst funcs
 
 runClassTest(
 	"Testing sub class with constr that calls super class' "+
@@ -605,9 +760,67 @@ runClassTest(
 	}
 );
 
+runClassTest(
+	"Testing sub class with inst func that calls super class' "+
+	"inst func with many args via ourGlobeApplySuper()",
+	{ name: "SuperClass" },
+	{
+		dingo:
+		[
+			getE( "any" ),
+			getR( "any" ),
+			function( dingoDingo, dangoDango, dongoDongo )
+			{
+				this.dingoDingo = dingoDingo;
+				this.dangoDango = dangoDango;
+				this.dongoDongo = dongoDongo;
+				
+				return 42;
+			}
+		]
+	},
+	{ name: "SubClass" },
+	{
+// making sure that dango() doesnt call dingo() of the sub class
+// instead of the super class'
+		dingo:
+		[
+			getE( "any" ),
+			function()
+			{
+				
+			}
+		],
+		dango:
+		[
+			getR( "any" ),
+			function()
+			{
+				return(
+					this.ourGlobeApplySuper(
+						"dingo",
+						[ "dingoDingo", "dangoDango", "dongoDongo" ]
+					)
+				);
+			}
+		]
+	},
+	function( sup, sub )
+	{
+		var returnVar = sub.dango();
+		
+		assert(
+			sub.dingoDingo === "dingoDingo" &&
+			sub.dangoDango === "dangoDango" &&
+			sub.dongoDongo === "dongoDongo" &&
+			returnVar === 42
+		);
+	}
+);
+
 // test group
-// testing that verification of args provided to constr is done
-// correctly
+// testing that verification of args provided to constrs and
+// class funcs is done correctly
 
 Test.expectErr(
 "The args provided to the constr must be correct as specified "+
@@ -714,9 +927,269 @@ FuncVerError,
 	}
 });
 
+Test.expectErr(
+"The args provided to a static func must be correct as "+
+"specified by the func's FuncParamVers",
+FuncVerError,
+{
+	errCode: "InvalidArgsAtFuncCall",
+	func:
+	function()
+	{
+		var Dingo = Class.create( { name: "ClassName" } );
+		
+		Class.add(
+			Dingo,
+			{
+				dingo:
+				[
+					"static",
+					getA( "str" ),
+					getA( "int" ),
+					getA( { types: "bool" }, "int", "str" ),
+					getE( { minItems: 0 } ),
+					getR( "int" ),
+					function()
+					{
+						return 42;
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				errFunc:
+				function()
+				{
+					Dingo.dingo( false, 43, "dengo", {} );
+				},
+				refFunc:
+				function()
+				{
+					var returnVar = Dingo.dingo( false, 43, "dengo", [] );
+					
+					assert( returnVar === 42 );
+				}
+			}
+		);
+	}
+});
+
+Test.expectErr(
+"The return var of a static func must be correct as specified "+
+"by the func's FuncParamVers",
+FuncVerError,
+{
+	errCode: "InvalidReturnedVarFromFuncCall",
+	func:
+	function()
+	{
+		var Dingo = Class.create( { name: "ClassName" } );
+		
+		Class.add(
+			Dingo,
+			{
+				dingo:
+				[
+					"static",
+					getA( "any" ),
+					getR( "int" ),
+					function( arg )
+					{
+						return arg;
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				errFunc:
+				function()
+				{
+					Dingo.dingo( "dingo" );
+				},
+				refFunc:
+				function()
+				{
+					var returnVar = Dingo.dingo( 42 );
+					
+					assert( returnVar === 42 );
+				}
+			}
+		);
+	}
+});
+
+Test.expectErr(
+"The args provided to an inst func must be correct as "+
+"specified by the inst func's FuncParamVers",
+FuncVerError,
+{
+	errCode: "InvalidArgsAtFuncCall",
+	func:
+	function()
+	{
+		var Dingo = Class.create( { name: "ClassName" } );
+		
+		Class.add(
+			Dingo,
+			{
+				dingo:
+				[
+					getA( "str" ),
+					getA( "int" ),
+					getA( { types: "bool" }, "int", "str" ),
+					getE( { minItems: 0 } ),
+					getR( "str" ),
+					function()
+					{
+						return "dingo";
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				errFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					dingo.dingo( false, 43, "dengo", {} );
+				},
+				refFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					var returnVar = dingo.dingo( false, 43, "dengo", [] );
+					
+					assert( returnVar === "dingo" );
+				}
+			}
+		);
+	}
+});
+
+Test.expectErr(
+"The return var of an inst func must be correct as specified "+
+"by the inst func's FuncParamVers",
+FuncVerError,
+{
+	errCode: "InvalidReturnedVarFromFuncCall",
+	func:
+	function()
+	{
+		var Dingo = Class.create( { name: "ClassName" } );
+		
+		Class.add(
+			Dingo,
+			{
+				dingo:
+				[
+					getA( "any" ),
+					getR( "int" ),
+					function( arg )
+					{
+						return arg;
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				errFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					dingo.dingo( "dengo" );
+				},
+				refFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					var returnVar = dingo.dingo( 42 );
+					
+					assert( returnVar === 42 );
+				}
+			}
+		);
+	}
+});
+
+Test.expectErr(
+"The args provided to an inst func of the super class must be "+
+"correct as specified by the inst func's FuncParamVers",
+FuncVerError,
+{
+	errCode: "InvalidArgsAtFuncCall",
+	func:
+	function()
+	{
+		var Dingo = Class.create( { name: "ClassName" } );
+		
+		Class.add(
+			Dingo,
+			{
+				dingo:
+				[
+					getA( "str" ),
+					getA( "int" ),
+					getA( { types: "bool" }, "int", "str" ),
+					getE( { minItems: 0 } ),
+					getR( "str" ),
+					function()
+					{
+						return "dingo";
+					}
+				]
+			}
+		);
+		
+		var Dango =
+			Class.create( { extends: Dingo, name: "Dango" } )
+		;
+		
+		Class.add(
+			Dango,
+			{
+				dingo:
+				[
+					getR( "str" ),
+					function()
+					{
+						return this.ourGlobeApplySuper( "dingo", arguments );
+					}
+				]
+			}
+		);
+		
+		return(
+			{
+				errFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					dingo.dingo( false, 43, "dengo", {} );
+				},
+				refFunc:
+				function()
+				{
+					var dingo = new Dingo();
+					var returnVar = dingo.dingo( true, 42, "dingo", [] );
+					
+					assert( returnVar === "dingo" );
+				}
+			}
+		);
+	}
+});
+
 // test group
 // testing that sub classes instance vars are compared correctly
-// to super classes' instance vars
+// to super classes' instance vars and instance funcs
 
 expectExtErr(
 "sub class may not extend final instance var of super class",
@@ -744,29 +1217,101 @@ expectExtErr(
 });
 
 expectExtErr(
-"sub class may not redeclare extendable instance var from "+
-"super class as being final",
-"SubClassReDeclaresExtendableInstVarAsFinal",
+"sub class may not have instance func named as super class' "+
+"instance var",
+"DuplicateSuperClassInstanceMember",
 {
 	name: "ClassName",
+	instVars:{ dingo: "extendable" }
+},
+undefined,
+{ name: "ClassName" },
+{
+	dingo:
+	[
+		getFunc()
+	]
+},
+{ name: "ClassName" },
+{
+	dingo:
+	[
+		"static",
+		getFunc()
+	]
+});
+
+// test group
+// testing that sub classes instance funcs are compared correctly
+// to super classes' instance vars and instance funcs
+
+expectExtErr(
+"sub class may not declare instance func with the same name as "+
+"final super class' instance func",
+"SubClassExtendsFinalInstanceFunc",
+{ name: "SuperClass" },
+{
+	dingo:
+	[
+		"final",
+		getFunc()
+	],
+	dongo:
+	[
+		"extendable",
+		getFunc()
+	]
+},
+{ name: "FaultySubClass" },
+{
+	dingo:
+	[
+		getFunc()
+	],
+	dongo:
+	[
+		getFunc()
+	]
+},
+{ name: "HealthySubClass" },
+{
+	dongo:
+	[
+		getFunc()
+	]
+});
+
+expectExtErr(
+"sub class may not declare instance func with the same name as "+
+"super class' instance var",
+"DuplicateSuperClassInstanceMember",
+{
+	name: "SuperClass",
 	instVars:
 	{
-		dingo: "extendable", dango: "extendable", dongo: "extendable"
+		dingo: "extendable"
+	}
+},
+undefined,
+{ name: "FaultySubClass" },
+{
+	dingo:
+	[
+		getFunc()
+	]
+},
+{
+	name: "HealthySubClass",
+	instVars:
+	{
+		dingo: "extendable"
 	}
 },
 {
-	name: "ClassName",
-	instVars:
-	{
-		dingo: "extendable", dango: "final", dongo: "extendable"
-	}
-},
-{
-	name: "ClassName",
-	instVars:
-	{
-		dingo: "extendable", dango: "extendable"
-	}
+	dongo:
+	[
+		getFunc()
+	]
 });
 
 });

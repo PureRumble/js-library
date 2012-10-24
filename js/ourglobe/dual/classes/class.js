@@ -1,9 +1,11 @@
 ourglobe.core.define(
 [
-	"./classruntimeerror"
+	"./classruntimeerror",
+	"ourglobe/dual/core/core"
 ],
 function(
-	ClassRuntimeError
+	ClassRuntimeError,
+	core
 )
 {
 
@@ -13,9 +15,10 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 
-var ArgsVer = ourglobe.core.ArgsVer;
-var ExtraArgsVer = ourglobe.core.ExtraArgsVer;
-var ReturnVarVer = ourglobe.core.ReturnVarVer;
+var FuncParamVer = core.FuncParamVer;
+var ArgsVer = core.ArgsVer;
+var ExtraArgsVer = core.ExtraArgsVer;
+var ReturnVarVer = core.ReturnVarVer;
 
 var Class = {};
 
@@ -26,6 +29,14 @@ getV()
 	.setR( "func" ),
 function( args )
 {
+	if( arguments.length !== 1 )
+	{
+		throw new RuntimeError(
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
 	if( sys.hasType( args, "obj" ) === false )
 	{
 		throw new RuntimeError(
@@ -53,7 +64,7 @@ function( args )
 	}
 	
 	var className = args.name;
-	var superClass = args.extends;
+	var SuperClass = args.extends;
 	var constrArr = args.constr;
 	var instVars = args.instVars;
 	
@@ -70,13 +81,13 @@ function( args )
 	}
 	
 	if(
-		superClass !== undefined &&
-		sys.hasType( superClass, "func" ) === false
+		SuperClass !== undefined &&
+		sys.hasType( SuperClass, "func" ) === false
 	)
 	{
 		throw new ClassRuntimeError(
 			"Prop extends must be undef or the desired super class",
-			{ extends: superClass },
+			{ extends: SuperClass },
 			"InvalidPropExtendsForClassCreation"
 		);
 	}
@@ -130,7 +141,7 @@ function( args )
 	
 	if( constrArr === undefined )
 	{
-		if( superClass === undefined )
+		if( SuperClass === undefined )
 		{
 			constrArr =
 			function()
@@ -143,7 +154,7 @@ function( args )
 			constrArr =
 			function()
 			{
-				superClass.apply( this, arguments );
+				SuperClass.apply( this, arguments );
 			};
 		}
 	}
@@ -153,90 +164,365 @@ function( args )
 		constrArr = [ constrArr ];
 	}
 	
-	var constr = getF.apply( {}, constrArr );
+	var ClassVar = getF.apply( {}, constrArr );
 	
-	if( constr.ourGlobe === undefined )
+	if( ClassVar.ourGlobe === undefined )
 	{
-		constr.ourGlobe = {};
+		ClassVar.ourGlobe = {};
 	}
 	
-	constr.ourGlobe.class = {};
-	constr.ourGlobe.class.subClasses = [];
-	constr.ourGlobe.class.className = className;
+	ClassVar.ourGlobe.class = {};
+	ClassVar.ourGlobe.class.className = className;
+	ClassVar.ourGlobe.class.subClasses = [];
+	ClassVar.ourGlobe.class.instVars = {};
+	ClassVar.ourGlobe.class.instFuncs = {};
+	ClassVar.ourGlobe.class.staticFuncs = {};
 	
-	if( superClass !== undefined )
+	if( SuperClass !== undefined )
 	{
-		constr.prototype.__proto__ = superClass.prototype;
-		constr.ourGlobeSuper = superClass;
-		constr.ourGlobeSuperProto = superClass.prototype;
+		ClassVar.prototype.__proto__ = SuperClass.prototype;
+		ClassVar.ourGlobeSuper = SuperClass;
+		ClassVar.ourGlobeSuperProto = SuperClass.prototype;
 	}
 	
 	if(
-		superClass === undefined ||
-		Class.isNative( superClass ) === true
+		SuperClass === undefined ||
+		Class.isNative( SuperClass ) === true
 	)
 	{
-		constr.prototype.ourGlobeCallSuper = Class.callSuper;
-		constr.prototype.ourGlobeApplySuper = Class.applySuper;
+		ClassVar.prototype.ourGlobeCallSuper = Class.callSuper;
+		ClassVar.prototype.ourGlobeApplySuper = Class.applySuper;
 	}
 	else
 	{
-		superClass.ourGlobe.class.subClasses.push( constr );
+		SuperClass.ourGlobe.class.subClasses.push( ClassVar );
 	}
-	
-	constr.ourGlobe.class.instVars = {};
 	
 	for( var instVar in instVars )
 	{
-		constr.ourGlobe.class.instVars[ instVar ] =
+		ClassVar.ourGlobe.class.instVars[ instVar ] =
 			instVars[ instVar ]
 		;
 	}
 	
-	Class.verifyExtensions( constr );
+	Class.verifyExtensions( ClassVar );
 	
-	return constr;
+	return ClassVar;
+});
+
+Class.add =
+getF(
+getV()
+	.setE( "any" ),
+function( ClassVar, funcs )
+{
+	if( arguments.length !== 2 )
+	{
+		throw new RuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if(
+		sys.hasType( ClassVar, "func" ) === false ||
+		Class.isNative( ClassVar ) === true
+	)
+	{
+		throw new RuntimeError(
+			"Arg ClassVar must be a class created by Class.create()",
+			{ ClassVar: ClassVar }
+		);
+	}
+	
+	if(
+		sys.hasType( funcs, "obj" ) === false ||
+		Object.keys( funcs ).length === 0
+	)
+	{
+		throw new RuntimeError(
+			"Arg funcs must be a proper obj",
+			{ funcs: funcs }
+		);
+	}
+	
+	var className = Class.getName( ClassVar );
+	var classStaticFuncs = ClassVar.ourGlobe.class.staticFuncs;
+	var classInstFuncs = ClassVar.ourGlobe.class.instFuncs;
+	var classInstVars = ClassVar.ourGlobe.class.instVars;
+	
+	var preparedStaticFuncs = {};
+	var preparedInstFuncs = {};
+	
+	for( var funcName in funcs )
+	{
+		var funcArr = funcs[ funcName ];
+		
+		if(
+			sys.hasType( funcArr, "arr" ) === false ||
+			funcArr.length === 0
+		)
+		{
+			throw new ClassRuntimeError(
+				"Every func that is to be added must be defined "+
+				"by a proper arr",
+				{
+					className: className,
+					faultyFunc: funcName,
+					faultyFuncDef: funcArr
+				},
+				"InvalidClassFuncDefinition"
+			);
+		}
+		
+		var isStatic = undefined;
+		var isFinal = undefined;
+		
+		var currItem = 0;
+		
+		for(
+			;
+			currItem < 2 &&
+			currItem < funcArr.length &&
+			(
+				funcArr[ currItem ] === "static" ||
+				funcArr[ currItem ] === "instance" ||
+				funcArr[ currItem ] === "final" ||
+				funcArr[ currItem ] === "extendable"
+			);
+			currItem++
+		)
+		{
+			var funcArrItem = funcArr[ currItem ];
+			
+			if(
+				funcArrItem === "static" || funcArrItem === "instance"
+			)
+			{
+				if( isStatic !== undefined )
+				{
+					throw new ClassRuntimeError(
+						"static/instance is specified multiple times for "+
+						"class func '"+funcName+"'",
+						{ className: className, faultyClassFunc: funcName },
+						"InvalidClassFuncDefinition"
+					);
+				}
+				
+				isStatic = funcArrItem === "static";
+			}
+			else if(
+				funcArrItem === "final" || funcArrItem === "extendable"
+			)
+			{
+				if( isFinal !== undefined )
+				{
+					throw new ClassRuntimeError(
+						"final/extendable is specified multiple times for "+
+						"class func '"+funcName+"'",
+						{ className: className, faultyClassFunc: funcName },
+						"InvalidClassFuncDefinition"
+					);
+				}
+				
+				isFinal = funcArrItem === "final";
+			}
+		}
+		
+		if( isStatic === undefined )
+		{
+			isStatic = false;
+		}
+		
+		if( isStatic === false && isFinal === undefined )
+		{
+			isFinal = false;
+		}
+		
+		if( isStatic === true && isFinal !== undefined )
+		{
+			throw new ClassRuntimeError(
+				"final/extendable may not be defined for a static "+
+				"class func",
+				{ className: className, faultyClassFunc: funcName },
+				"InvalidClassFuncDefinition"
+			);
+		}
+		
+		var funcDefStart = currItem;
+		
+		while(
+			currItem < funcArr.length &&
+			funcArr[ currItem ] instanceof FuncParamVer === true
+		)
+		{
+			currItem++;
+		}
+		
+		if(
+			currItem !== funcArr.length - 1 ||
+			sys.hasType( funcArr[ currItem ], "func" ) === false
+		)
+		{
+			throw new ClassRuntimeError(
+				"The definition of the class func '"+funcName+"' isnt "+
+				"valid. A class func definition must be an arr with "+
+				"the following items in the stated order:\n"+
+				"(1) Optional specification of if the func is static "+
+				"(one of the strings 'static' or 'instance')\n"+
+				"(2) Optional specification of the funcs extendability "+
+				"(one of the strings 'final' or 'extendable', "+
+				"items (1) and (2) can be interchanged in order)\n"+
+				"(3) Any number of FuncParamVers ( constr by "+
+				"getA(), getE() or getR())\n"+
+				"(4) The function itself",
+				{
+					className: className,
+					faultyClassFunc: funcName,
+					faultyClassFuncDef: funcArr
+				},
+				"InvalidClassFuncDefinition"
+			);
+		}
+		
+		if(
+			isStatic === true &&
+			(
+				ClassVar.hasOwnProperty( funcName ) === true ||
+				classStaticFuncs[ funcName ] !== undefined
+			)
+		)
+		{
+			throw new ClassRuntimeError(
+				"The class '"+className+"' already has a static "+
+				"member named '"+funcName+"'",
+				{ 
+					className: className,
+					duplicateStaticMemberName: funcName,
+					existingStaticMember: ClassVar[ funcName ]
+				},
+				"DuplicateStaticMember"
+			);
+		}
+		else if( isStatic === false )
+		{
+			if(
+				ClassVar.prototype.hasOwnProperty( funcName ) === true ||
+				classInstFuncs[ funcName ] !== undefined
+			)
+			{
+				throw new ClassRuntimeError(
+					"The class '"+className+"' already has a "+
+					"prototype instance member named '"+funcName+"'",
+					{
+						className: className,
+						duplicateInstanceMemberName: funcName,
+						existingInstanceMember:
+							ClassVar.prototype[ funcName ]
+					},
+					"DuplicateInstanceMember"
+				);
+			}
+			
+			if( classInstVars[ funcName ] !== undefined )
+			{
+				throw new ClassRuntimeError(
+					"The class '"+className+"' already has an instance "+
+					"variable named as the instance func '"+funcName+"' "+
+					"that is to be added",
+					{
+						className: className,
+						duplicateInstanceMemberName: funcName
+					},
+					"DuplicateInstanceMember"
+				);
+			}
+		}
+		
+		var func = getF.apply( {}, funcArr.slice( funcDefStart ) );
+		
+		if( isStatic === true )
+		{
+			preparedStaticFuncs[ funcName ] = {};
+			preparedStaticFuncs[ funcName ].func = func;
+		}
+		else
+		{
+			preparedInstFuncs[ funcName ] = {};
+			preparedInstFuncs[ funcName ].func = func;
+		}
+		
+		if( isFinal === true )
+		{
+			preparedInstFuncs[ funcName ].extDec = "final";
+		}
+// Only instance funcs have extendability declared, therefore
+// isFinal can be undef
+		else if( isFinal === false )
+		{
+			preparedInstFuncs[ funcName ].extDec = "extendable";
+		}
+	}
+	
+	for( var funcName in preparedStaticFuncs )
+	{
+		var preparedStaticFunc = preparedStaticFuncs[ funcName ];
+		
+		ClassVar[ funcName ] = preparedStaticFunc.func;
+		
+		ClassVar.ourGlobe.class.staticFuncs[ funcName ] =
+			preparedStaticFunc
+		;
+	}
+	
+	for( var funcName in preparedInstFuncs )
+	{
+		var preparedInstFunc = preparedInstFuncs[ funcName ];
+		
+		ClassVar.prototype[ funcName ] = preparedInstFunc.func;
+		
+		ClassVar.ourGlobe.class.instFuncs[ funcName ] =
+			preparedInstFunc
+		;
+	}
+	
+	Class.verifyExtensions( ClassVar );
 });
 
 Class.verifyExtensions =
 getF(
 getV()
 	.addA( "func" ),
-function( classVar )
+function( ClassVar )
 {
-	if( Class.isNative( classVar ) === true )
+	if( Class.isNative( ClassVar ) === true )
 	{
 		throw new RuntimeError(
-			"Arg classVar may not be a native class"
+			"Arg ClassVar may not be a native class"
 		);
 	}
 	
 	for(
-		var superClass = classVar.ourGlobeSuper;
-		superClass !== undefined &&
-		Class.isNative( superClass ) === false;
-		superClass = superClass.ourGlobeSuper
+		var SuperClass = ClassVar.ourGlobeSuper;
+		SuperClass !== undefined &&
+		Class.isNative( SuperClass ) === false;
+		SuperClass = SuperClass.ourGlobeSuper
 	)
 	{
-		Class.verifyClassExtension( superClass, classVar );
+		Class.verifyClassExtension( SuperClass, ClassVar );
 	}
 	
-	var subClasses = classVar.ourGlobe.class.subClasses.slice();
+	var subClasses = ClassVar.ourGlobe.class.subClasses.slice();
 	
-	if( subClasses.length === 0 )
+	while( subClasses.length > 0 )
 	{
-		return;
-	}
-	
-	for(
-		var subClass = subClasses.pop();
-		subClasses.length !== 0;
-		subClass = subClasses.pop()
-	)
-	{
-		Class.verifyClassExtension( classVar, subClass );
+		var SubClass = subClasses.pop();
 		
-		subClasses.concat( subClass.ourGlobe.class.subClasses );
+		Class.verifyClassExtension( ClassVar, SubClass );
+		
+		subClasses =
+			subClasses.concat( SubClass.ourGlobe.class.subClasses )
+		;
 	}
 });
 
@@ -244,33 +530,35 @@ Class.verifyClassExtension =
 getF(
 getV()
 	.addA( "func", "func" ),
-function( superClass, subClass )
+function( SuperClass, SubClass )
 {
-	if( subClass.prototype instanceof superClass === false )
+	if( SubClass.prototype instanceof SuperClass === false )
 	{
 		throw new RuntimeError(
-			"Arg superClass must be a super class of arg subClass"
+			"Arg SuperClass must be a super class of arg SubClass"
 		);
 	}
 	
-	if( Class.isNative( superClass ) === true )
+	if( Class.isNative( SuperClass ) === true )
 	{
 		throw new RuntimeError(
-			"Arg superClass may not be a native class"
+			"Arg SuperClass may not be a native class"
 		);
 	}
 	
-	if( Class.isNative( subClass ) === true )
+	if( Class.isNative( SubClass ) === true )
 	{
 		throw new RuntimeError(
-			"Arg subClass may not be a native class"
+			"Arg SubClass may not be a native class"
 		);
 	}
 	
-	var superInstVars = superClass.ourGlobe.class.instVars;
-	var superClassName = superClass.ourGlobe.class.className;
-	var subInstVars = subClass.ourGlobe.class.instVars;
-	var subClassName = subClass.ourGlobe.class.className;
+	var superInstVars = SuperClass.ourGlobe.class.instVars;
+	var superInstFuncs = SuperClass.ourGlobe.class.instFuncs;
+	var superClassName = Class.getName( SuperClass );
+	var subInstVars = SubClass.ourGlobe.class.instVars;
+	var subInstFuncs = SubClass.ourGlobe.class.instFuncs;
+	var subClassName = Class.getName( SubClass );
 	
 	for( var instVar in superInstVars )
 	{
@@ -293,22 +581,57 @@ function( superClass, subClass )
 			);
 		}
 		
-		if(
-			superInstVars[ instVar ] === "extendable" &&
-			subInstVars[ instVar ] === "final"
-		)
+		if( subInstFuncs[ instVar ] !== undefined )
 		{
 			throw new ClassRuntimeError(
-				"Class '"+subClassName+"' may not declare instance var "+
-				"'"+instVar+"' as final since its (direct or indirect) "+
-				"super class '"+superClassName+"' declares the same "+
-				"instance var as extendable",
+				"Class '"+subClassName+"' may not declare an instance "+
+				"func named '"+instVar+"' since its (direct or "+
+				"indirect) super class '"+superClassName+"' has an "+
+				"instance var by the same name",
 				{
 					superClass: superClassName,
 					subClass: subClassName,
-					conflictingInstVar: instVar
+					duplicateSuperClassInstanceMemberName: instVar
 				},
-				"SubClassReDeclaresExtendableInstVarAsFinal"
+				"DuplicateSuperClassInstanceMember"
+			);
+		}
+	}
+	
+	for( var instFunc in superInstFuncs )
+	{
+		if(
+			superInstFuncs[ instFunc ].extDec === "final" &&
+			subInstFuncs[ instFunc ] !== undefined
+		)
+		{
+			throw new ClassRuntimeError(
+				"Class '"+subClassName+"' may not have an instance "+
+				"func named '"+instFunc+"' since its (direct or "+
+				"indirect) super class '"+superClassName+"' declares "+
+				"the same instance var func final",
+				{
+					superClass: superClassName,
+					subClass: subClassName,
+					conflictingInstFunc: instFunc
+				},
+				"SubClassExtendsFinalInstanceFunc"
+			);
+		}
+		
+		if( subInstVars[ instFunc ] !== undefined )
+		{
+			throw new ClassRuntimeError(
+				"Class '"+subClassName+"' may not declare an instance "+
+				"var named '"+instFunc+"' since its (direct or "+
+				"indirect) super class '"+superClassName+"' has an "+
+				"instance func by the same name",
+				{
+					superClass: superClassName,
+					subClass: subClassName,
+					duplicateSuperClassInstanceMemberName: instFunc
+				},
+				"DuplicateSuperClassInstanceMember"
 			);
 		}
 	}
@@ -345,7 +668,7 @@ function( funcName, args )
 		);
 	}
 	
-	Class.callSuper.apply( this, newArgs );
+	return Class.callSuper.apply( this, newArgs );
 });
 
 Class.callSuper =
@@ -398,25 +721,25 @@ getF(
 getV()
 	.addA( "func" )
 	.setR( "bool" ),
-function( classVar )
+function( ClassVar )
 {
-	return classVar.ourGlobe === undefined;
+	return ClassVar.ourGlobe === undefined;
 });
 
-Class.getClassName =
+Class.getName =
 getF(
 getV()
 	.addA( "func" )
 	.setR( "str/undef" ),
-function( classVar )
+function( ClassVar )
 {
-	if( Class.isNative( classVar ) === false )
+	if( Class.isNative( ClassVar ) === false )
 	{
-		return classVar.ourGlobe.class.className;
+		return ClassVar.ourGlobe.class.className;
 	}
 	else
 	{
-		return classVar.name;
+		return ClassVar.name;
 	}
 });
 

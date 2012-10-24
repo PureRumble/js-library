@@ -25,6 +25,7 @@ return(
 		assert: core.assert,
 		FuncVer: core.FuncVer,
 		Schema: core.Schema,
+		FuncParamVer: core.FuncParamVer,
 		ArgsVer: core.ArgsVer,
 		ExtraArgsVer: core.ExtraArgsVer,
 		ReturnVarVer: core.ReturnVarVer,

@@ -21,7 +21,8 @@ var FuncCreationRuntimeError =
 	mods.get( "core" ).FuncCreationRuntimeError
 ;
 
-var createdClass = Class.create( { name: "ClassName" } );
+var createClassObj = { name: "ClassName" };
+var ClassVar = Class.create( createClassObj );
 
 var getFunc =
 getF(
@@ -41,15 +42,35 @@ var expectErr =
 getF(
 getV()
 	.addA( "str", "str", "obj", "obj" )
-	.addA( "str", "func", "str", "obj", "obj" ),
-function( testName, errClass, errCode, faultyArgs, healthyArgs )
+	.addA( "str", "func", "str", "obj", "obj" )
+	.addA( "str", "str", "obj", "obj/undef", "obj", "obj/undef" )
+	.addA(
+		"str", "func", "str", "obj", "obj/undef", "obj", "obj/undef"
+	),
+function(
+	testName,
+	errClass,
+	errCode,
+	faultyArgs,
+	faultyAddArgs,
+	healthyArgs,
+	healthyAddArgs
+)
 {
 	if( sys.hasType( errClass, "str" ) === true )
 	{
-		healthyArgs = faultyArgs;
+		healthyAddArgs = healthyArgs;
+		healthyArgs = faultyAddArgs;
+		faultyAddArgs = faultyArgs;
 		faultyArgs = errCode;
 		errCode = errClass;
 		errClass = ClassRuntimeError;
+	}
+	
+	if( healthyArgs === undefined )
+	{
+		healthyArgs = faultyAddArgs;
+		faultyAddArgs = undefined;
 	}
 	
 	Test.expectErr(
@@ -58,14 +79,23 @@ function( testName, errClass, errCode, faultyArgs, healthyArgs )
 		errCode,
 		function()
 		{
-			Class.create( faultyArgs );
+			var FaultyClass = Class.create( faultyArgs );
+			
+			if( faultyAddArgs !== undefined )
+			{
+				Class.add( FaultyClass, faultyAddArgs );
+			}
 		},
 		function()
 		{
-			Class.create( healthyArgs );
+			var HealthyClass = Class.create( healthyArgs );
+			
+			if( healthyAddArgs !== undefined )
+			{
+				Class.add( HealthyClass, healthyAddArgs );
+			}
 		}
 	);
-	
 });
 
 expectErr(
@@ -177,7 +207,7 @@ expectErr(
 		constr:
 		[
 			getA( "str" ),
-			createdClass
+			ClassVar
 		]
 	},
 	{
@@ -220,6 +250,142 @@ expectErr(
 		{
 			dingo: "final", dango:"extendable", dongo:"final"
 		}
+	}
+);
+
+expectErr(
+	"A class func def must be an arr",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName: getFunc()
+	},
+	createClassObj,
+	{
+		funcName:[ getFunc() ]
+	}
+);
+
+expectErr(
+	"Unknown string tokens in class func defs are unallowed",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:[ "final", "instanca", getFunc() ]
+	},
+	createClassObj,
+	{
+		funcName:[ "final", "instance", getFunc() ]
+	}
+);
+
+expectErr(
+	"Static may be declared only once in a class func def",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:[ "static", "static", getFunc() ]
+	},
+	createClassObj,
+	{
+		funcName:[ "static", getFunc() ]
+	}
+);
+
+expectErr(
+	"Final may be declared only once in a class func def",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:[ "final", "final", getFunc() ]
+	},
+	createClassObj,
+	{
+		funcName:[ "final", getFunc() ]
+	}
+);
+
+expectErr(
+	"Static class func may not be declared as final",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:[ "static", "final", getFunc() ]
+	},
+	createClassObj,
+	{
+		funcName:[ "final", getFunc() ]
+	}
+);
+
+expectErr(
+	"The tokens in a class func def must be in correct order",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:
+		[
+			getA(), getE( "any" ), getR( "any" ), "final", getFunc()
+		]
+	},
+	createClassObj,
+	{
+		funcName:
+		[
+			"final", getA(), getE( "any" ), getR( "any" ), getFunc()
+		]
+	}
+);
+
+expectErr(
+	"The FuncParamVers must be in correct order",
+	FuncCreationRuntimeError,
+	"InvalidArgsForFuncCreation",
+	createClassObj,
+	{
+		funcName:
+		[
+			"final", getR( "any" ), getE( "any" ), getFunc()
+		]
+	},
+	createClassObj,
+	{
+		funcName:
+		[
+			"final", getE( "any" ), getR( "any" ), getFunc()
+		]
+	}
+);
+
+expectErr(
+	"The class func def must include the func itself",
+	"InvalidClassFuncDefinition",
+	createClassObj,
+	{
+		funcName:
+		[
+			"instance",
+			"final",
+			getA(),
+			getA(),
+			getA(),
+			getE( "any" ),
+			getR( "any" )
+		]
+	},
+	createClassObj,
+	{
+		funcName:
+		[
+			"instance",
+			"final",
+			getA(),
+			getA(),
+			getA(),
+			getE( "any" ),
+			getR( "any" ),
+			getFunc()
+		]
 	}
 );
 
