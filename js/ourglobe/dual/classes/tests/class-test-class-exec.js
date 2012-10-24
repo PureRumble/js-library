@@ -1314,4 +1314,113 @@ undefined,
 	]
 });
 
+// test group
+// testing that static members are added to the class and can
+// be used
+
+Test.runTest(
+"Testing that added static class members can be used",
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.addStatic( Dingo, { dingo: 42 } );
+	
+	assert( Dingo.dingo === 42 );
+});
+
+// test group
+// testing that static members are unallowed to be duplicate
+// with regard to their names
+
+Test.expectErr(
+"A static member added via Class.addStatic() may not have the "+
+"same name as an existing static class func",
+ClassRuntimeError,
+"DuplicateStaticMember",
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.add(
+		Dingo,
+		{
+			dingo:
+			[
+				"static",
+				getFunc()
+			]
+		}
+	);
+	
+	Class.addStatic(
+		Dingo,
+		{ dingo: "dingo" }
+	);
+},
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.add(
+		Dingo,
+		{
+			dingo:
+			[
+				getFunc()
+			]
+		}
+	);
+	
+	Class.addStatic(
+		Dingo,
+		{ dingo: "dingo" }
+	);
+});
+
+Test.expectErr(
+"A static class func may not have the same name as an existing "+
+"static member added via Class.addStatic()",
+ClassRuntimeError,
+"DuplicateStaticMember",
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.addStatic(
+		Dingo,
+		{ dingo: "dingo" }
+	);
+	
+	Class.add(
+		Dingo,
+		{
+			dingo:
+			[
+				"static",
+				getFunc()
+			]
+		}
+	);
+},
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.addStatic(
+		Dingo,
+		{ dingo: "dingo" }
+	);
+	
+	Class.add(
+		Dingo,
+		{
+			dingo:
+			[
+				getFunc()
+			]
+		}
+	);
+});
+
 });

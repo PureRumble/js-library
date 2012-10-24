@@ -14,6 +14,9 @@ var RuntimeError = ourglobe.RuntimeError;
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
+var getA = ourglobe.getA;
+var getE = ourglobe.getE;
+var getR = ourglobe.getR;
 
 var FuncParamVer = core.FuncParamVer;
 var ArgsVer = core.ArgsVer;
@@ -208,6 +211,74 @@ function( args )
 	Class.verifyExtensions( ClassVar );
 	
 	return ClassVar;
+});
+
+Class.addStatic =
+getF(
+getE( "any" ),
+function( ClassVar, staticMembers )
+{
+	if( arguments.length !== 2 )
+	{
+		throw new RuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if(
+		sys.hasType( ClassVar, "func" ) === false ||
+		Class.isNative( ClassVar ) === true
+	)
+	{
+		throw new RuntimeError(
+			"Arg ClassVar must be a class created by Class.create()",
+			{ ClassVar: ClassVar }
+		);
+	}
+	
+	if(
+		sys.hasType( staticMembers, "obj" ) === false ||
+		Object.keys( staticMembers ).length === 0
+	)
+	{
+		throw new RuntimeError(
+			"Arg staticMembers must be a proper obj",
+			{ staticMembers: staticMembers }
+		);
+	}
+	
+	var className = Class.getName( ClassVar );
+	
+	for( var staticMember in staticMembers )
+	{
+		if(
+			sys.hasType( staticMembers[ staticMember ], "func" ) ===
+			true
+		)
+		{
+			throw new ClassRuntimeError(
+				"Functions may not be added via Class.addStatic()",
+				{ faultyStaticMemberName: staticMember },
+				"FunctionGivenToAddStatic"
+			);
+		}
+		
+		if( ClassVar[ staticMember ] !== undefined )
+		{
+			throw new ClassRuntimeError(
+				"Class '"+className+"' already has a static member "+
+				"named '"+staticMember+"'",
+				{ duplicateStaticMemberName: staticMember },
+				"DuplicateStaticMember"
+			);
+		}
+	}
+	
+	for( var staticMember in staticMembers )
+	{
+		ClassVar[ staticMember ] = staticMembers[ staticMember ];
+	}
 });
 
 Class.add =

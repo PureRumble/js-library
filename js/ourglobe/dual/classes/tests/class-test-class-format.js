@@ -389,4 +389,24 @@ expectErr(
 	}
 );
 
+Test.expectErr(
+"Static members added via Cladd.addStatic() may not be funcs",
+ClassRuntimeError,
+"FunctionGivenToAddStatic",
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.addStatic(
+		Dingo,
+		{ dango: "dango", dingo: getFunc() }
+	);
+},
+function()
+{
+	var Dingo = Class.create( { name: "Dingo" } );
+	
+	Class.addStatic( Dingo, { dingo: "dingo" } );
+});
+
 });
