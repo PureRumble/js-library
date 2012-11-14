@@ -18,7 +18,8 @@ requirejs.config({
 		"ourglobe/server/morehttp",
 		"ourglobe/server/cluster",
 		"ourglobe/server/mongodb",
-		"ourglobe/server/elasticsearch"
+		"ourglobe/server/elasticsearch",
+		"ourglobe/server/river"
 	],
 	baseUrl: "/home/work-purerumble/files/projects/ourglobe/js"
 });

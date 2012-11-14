@@ -1,33 +1,33 @@
-var vows = require("vows");
+ourGlobe.require(
+[
+	"timers",
+	"crypto",
+	"ourglobe/dual/testing",
+	"ourglobe/server/morehttp",
+	"ourglobe/server/river"
+],
+function( mods )
+{
 
-var timers = require("timers");
-var crypto = require("crypto");
+var timers = mods.get( "timers" );
+var crypto = mods.get( "crypto" );
 
-var RuntimeError = require("ourglobe").RuntimeError;
-var TestError =
-	require("ourglobe/testing").TestError
-;
-var ServerRuntimeError =
-	require("ourglobe/webframework").ServerRuntimeError
-;
+var TestingError = mods.get( "testing" ).TestingError;
+var Testing = require( "testing" ).Testing;
 
-var Testing = require("ourglobe/testing").Testing;
+var MoreHttp = mods.get( "morehttp" ).MoreHttp;
 
-var assert = require("ourglobe").assert;
-var FuncVer = require("ourglobe").FuncVer;
+var RiverRuntimeError = mods.get( "river" ).RiverRuntimeError;
 
-var sys = require("ourglobe").sys;
 
-var MoreHttp = require("ourglobe/utils").MoreHttp;
+var RuntimeError = ourGlobe.RuntimeError;
+var assert = ourGlobe.assert;
+var FuncVer = ourGlobe.FuncVer;
+var sys = ourGlobe.sys;
 
-var Server = require("ourglobe/webframework").Server;
-var Request = require("ourglobe/webframework").Request;
-var RequestProvider =
-	require("ourglobe/webframework").RequestProvider
-;
-var ProviderCache =
-	require("ourglobe/webframework").ProviderCache
-;
+var River = mods.get( "river" ).River;
+var Stream = mods.get( "river" ).Stream;
+var Drop = mods.get( "river" ).Drop;
 
 var _REQUEST_PROVIDER_S =
 {
@@ -2010,3 +2010,5 @@ _testErrorsAtErrorLogging();
 _testEndingOfServerResponseAndErrors();
 
 suite.export( module );
+
+});
