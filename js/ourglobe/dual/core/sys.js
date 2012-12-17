@@ -177,9 +177,81 @@ function( err, cb )
 	return false;
 };
 
+sys.getCb =
+function( inst )
+{
+	var args = Array.prototype.slice.call( arguments );
+	
+	if( args.length < 2 )
+	{
+		throw new ourGlobe.RuntimeError(
+			"At least two args must be provided",
+			{ providedArgs: args }
+		)
+	}
+	
+	if(
+		sys.hasType( inst, "inst" ) === false ||
+		inst instanceof ourGlobe.core.FuncParamVer === true ||
+		sys.hasType( inst, "func" ) === true
+	)
+	{
+		throw new ourGlobe.RuntimeError(
+			"Args inst must be a class inst and may not be a "+
+			"FuncParamVer (created by getA(), getE() or getR()) "+
+			"nor may it be a func",
+			{ inst: inst }
+		);
+	}
+	
+// The remaining errs in this func are FuncCreationRuntimeErrors
+// in order to maintain consistency with the err profile of
+// getF()
+	
+	if( sys.hasType( args[ args.length-1 ], "func" ) === false )
+	{
+		throw new ourGlobe.core.FuncCreationRuntimeError(
+			"The last arg provided for cb func creation must be a "+
+			"func",
+			{ providedArgs: args },
+			"InvalidArgsForCbCreation"
+		);
+	}
+	
+	var func = args[ args.length-1 ];
+	
+	if(
+		func.ourGlobe !== undefined &&
+		func.ourGlobe.func !== undefined
+	)
+	{
+		throw new ourGlobe.core.FuncCreationRuntimeError(
+			"The func provided for cb func creation must be a "+
+			"newly declared function. It may not be a func "+
+			"previously created for some other purpose "+
+			"(for instance the constr of a class or a func of a "+
+			"class)",
+			undefined,
+			"InvalidArgsForCbCreation"
+		);
+	}
+	
+	args[ args.length-1 ] =
+		function()
+		{
+			return func.apply( inst, arguments );
+		}
+	;
+	
+	return sys.getFunc.apply( {}, args.slice( 1 ) );
+};
+
 sys.getFunc =
 function()
 {
+// The errs of this func must be FuncCreationRuntimeError for
+// testing purposes for module classes
+	
 	var args = arguments;
 	
 	if(
@@ -313,8 +385,12 @@ function()
 		{
 			try
 			{
+			
+// verArgs contains only FuncParamVers. It is therefore safe to
+// give it to getV() and expect a FuncVerError
+// with expected errCode if verArgs is faulty
 				newFunc.ourGlobe.func.funcVer =
-					ourGlobe.FuncVer.getFuncVer( verArgs )
+					ourGlobe.getV.apply( {}, verArgs )
 				;
 			}
 			catch( e )
@@ -362,7 +438,7 @@ function()
 					try
 					{
 						newFunc.ourGlobe.func.funcVer =
-							ourGlobe.FuncVer.getFuncVer( funcVer )
+							ourGlobe.getV.apply( {}, funcVer )
 						;
 					}
 					catch( e )

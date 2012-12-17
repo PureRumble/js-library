@@ -17,6 +17,27 @@ function Schema( schema )
 	this.schema = schema;
 }
 
+Schema.getSchema =
+function()
+{
+	if( arguments.length === 0 )
+	{
+		throw new ourglobe.RuntimeError(
+			"Atleast one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if( arguments.length === 1 )
+	{
+		return new Schema( arguments[ 0 ] );
+	}
+	else
+	{
+		return new Schema( Array.prototype.slice.call( arguments ) );
+	}
+};
+
 Schema.prototype.test = function( variable, varExists )
 {
 	if( ourglobe.conf.doVer() === true )

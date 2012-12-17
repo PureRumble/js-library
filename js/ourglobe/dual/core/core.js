@@ -33,8 +33,11 @@ function(
 )
 {
 
+var hasT = sys.hasType;
 var getF = sys.getFunc;
-var getV = FuncVer.constrFuncVer;
+var getCb = sys.getCb;
+var getS = Schema.getSchema;
+var getV = FuncVer.getFuncVer;
 var getA = ArgsVer.getA;
 var getR = ReturnVarVer.getR;
 var getE = ExtraArgsVer.getE;
@@ -45,7 +48,10 @@ ourglobe.SchemaError = SchemaError;
 ourglobe.FuncVerError = FuncVerError;
 ourglobe.conf = conf;
 ourglobe.sys = sys;
+ourglobe.hasT = hasT;
 ourglobe.getF = getF;
+ourglobe.getCb = getCb;
+ourglobe.getS = getS;
 ourglobe.getV = getV;
 ourglobe.assert = assert;
 ourglobe.FuncVer = FuncVer;
@@ -95,15 +101,33 @@ FuncVer.R_NON_NEG_INT = Schema.R_NON_NEG_INT;
 FuncVer.POS_INT = Schema.POS_INT;
 FuncVer.R_POS_INT = Schema.R_POS_INT;
 
+getA.ANY_ARGS = getE( "any" );
+
 OurGlobeError.CONSTR_FV =
-new FuncVer(
-	[
+new FuncVer()
+	.addA(
 		OurGlobeError.MSG_S,
 		OurGlobeError.VAR_S,
 		OurGlobeError.CODE_S,
 		OurGlobeError.PLACE_S
-	]
-);
+	)
+	.addA(
+		OurGlobeError.MSG_S,
+		OurGlobeError.VAR_S,
+		OurGlobeError.PLACE_S,
+		"undef"
+	)
+	.addA(
+		OurGlobeError.MSG_S, OurGlobeError.PLACE_S, "undef", "undef"
+	)
+	.addA(
+		OurGlobeError.MSG_S,
+		OurGlobeError.CODE_S,
+		OurGlobeError.PLACE_S,
+		"undef"
+	)
+;
+
 RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
 
 var returnVar = 
@@ -115,7 +139,10 @@ var returnVar =
 	FuncVerError: FuncVerError,
 	conf: conf,
 	sys: sys,
+	hasT: hasT,
 	getF: getF,
+	getCb: getCb,
+	getS: getS,
 	getV: getV,
 	assert: assert,
 	FuncVer: FuncVer,

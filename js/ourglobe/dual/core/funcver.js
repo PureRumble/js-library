@@ -5,30 +5,15 @@ function()
 
 function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 {
-	if( ourglobe.conf.doVer() === true )
-	{
-		FuncVer.verConstrArgs( arguments );
-	}
-	
-	this.argsSchemas =
-		argSchemas !== undefined ? [ argSchemas ] : []
-	;
-	this.extraArgsSchema = extraArgsSchema;
-	this.returnSchema = returnSchema;
-};
-
-FuncVer.verConstrArgs =
-function( args )
-{
-	ourglobe.assert.nrArgs( args, 0, 3 );
+	ourglobe.assert.nrArgs( arguments, 0, 3 );
 	
 	ourglobe.assert.argType(
-		"argSchemas", args[ 0 ], "arr", "undef"
+		"argSchemas", argSchemas, "arr", "undef"
 	);
 	
 	ourglobe.assert.argType(
 		"returnSchema",
-		args[ 1 ],
+		returnSchema,
 		"obj",
 		"arr",
 		"str",
@@ -38,58 +23,44 @@ function( args )
 	
 	ourglobe.assert.argType(
 		"extraArgsSchema",
-		args[ 2 ],
+		extraArgsSchema,
 		"obj",
 		"arr",
 		"str",
 		"func",
 		"undef"
 	);
-};
-
-FuncVer.constrFuncVer =
-function( argSchemas, returnSchema, extraArgsSchema )
-{
-	if( ourglobe.conf.doVer() === true )
-	{
-		FuncVer.verConstrArgs( arguments );
-	}
 	
-	return(
-		new FuncVer( argSchemas, returnSchema, extraArgsSchema )
-	);
+	this.argsSchemas =
+		argSchemas !== undefined ? [ argSchemas ] : []
+	;
+	this.extraArgsSchema = extraArgsSchema;
+	this.returnSchema = returnSchema;
 };
 
 FuncVer.getFuncVer =
-function( fvParamVers )
+function( argSchemas, returnSchema, extraArgsSchema )
 {
-	if( ourglobe.conf.doVer() === true )
-	{
-		if( arguments.length !== 1 )
-		{
-			throw new ourglobe.RuntimeError(
-				"Exactly one arg must be provided",
-				{ providedArgs: arguments }
-			);
-		}
-		
-		if( ourglobe.sys.hasType( fvParamVers, "arr" ) === false )
-		{
-			throw new ourglobe.RuntimeError(
-				"Arg fvParamVers must be an arr",
-				{ fvParamVers: fvParamVers }
-			);
-		}
-	}
-	
+	var FuncParamVer = ourGlobe.core.FuncParamVer;
 	var ArgsVer = ourglobe.core.ArgsVer;
 	var ExtraArgsVer = ourglobe.core.ExtraArgsVer;
 	var ReturnVarVer = ourglobe.core.ReturnVarVer;
 	
+	if(
+		arguments.length > 0 &&
+		arguments.length < 4 &&
+		arguments[ 0 ] instanceof FuncParamVer === false
+	)
+	{
+		return(
+			new FuncVer( argSchemas, returnSchema, extraArgsSchema )
+		);
+	}
+	
+	var fvParamVers = arguments;
+	
 	var fV = new FuncVer();
 	
-	var eSet = false;
-	var rSet = false;
 	var currVer = 0;
 	
 	for(
@@ -125,8 +96,8 @@ function( fvParamVers )
 		throw new ourGlobe.core.FuncVerError(
 			"The args given to construct a FuncVer arent valid. "+
 			"Every arg must be a FuncParamVer (constructed by "+
-			"getA(), getE() and getR()) and they must be given in the "+
-			"following order:\n"+
+			"getA(), getE() and getR()) and they must be given in "+
+			"the following order:\n"+
 			"* Any number of ArgsVers (constr by getA())\n"+
 			"* No more than one ExtraArgsVer (constr by getE())\n"+
 			"* No more than one ReturnVarVer (constr by getR())\n",
