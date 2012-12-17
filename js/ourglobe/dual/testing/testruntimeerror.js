@@ -4,6 +4,10 @@ function( mods )
 
 var OurGlobeError = ourglobe.OurGlobeError;
 
+// This class is used for handling unintentional errs that occur 
+// during testing. Since it is to be used to test anything within
+// ourGlobe, it doesnt extend OurGlobeError
+
 var TestRuntimeError =
 function( msg, errorVar, errorCode, errorPlace )
 {
@@ -16,9 +20,36 @@ function( msg, errorVar, errorCode, errorPlace )
 	
 	Error.call( this, msg );
 	
+	if(
+		typeof( errorCode ) === "function" &&
+		errorPlace === undefined
+	)
+	{
+		errorPlace = errorCode;
+		errorCode = undefined;
+	}
+	
+	if(
+		typeof( errorVar ) === "function" &&
+		errorCode === undefined &&
+		errorPlace === undefined
+	)
+	{
+		errorPlace = errorVar;
+		errorVar = undefined;
+	}
+	
+	if(
+		typeof( errorVar ) === "string" && errorCode === undefined
+	)
+	{
+		errorCode = errorVar;
+		errorVar = undefined;
+	}
+	
 	if( errorPlace === undefined )
 	{
-		errorPlace = TestRuntimeError;
+		errorPlace = this.__proto__.constructor;
 	}
 	
 	var res =
@@ -40,8 +71,6 @@ function( msg, errorVar, errorCode, errorPlace )
 	
 	Error.captureStackTrace( this, errorPlace );
 };
-
-TestRuntimeError.prototype.className =  "TestRuntimeError";
 
 TestRuntimeError.prototype.__proto__ = Error.prototype;
 

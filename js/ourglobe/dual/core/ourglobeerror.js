@@ -7,29 +7,52 @@ function( util )
 
 function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 {
-	if( ourglobe.conf.doVer() === true )
+	if( !( arguments.length >= 1 && arguments.length <= 4 ) )
 	{
-		if( !( arguments.length >= 1 && arguments.length <= 4 ) )
-		{
-			throw new ourglobe.RuntimeError(
-				"Between one and four args must be provided",
-				{ providedArgs: arguments }
-			);
-		}
-		
-		OurGlobeError.verArgs(
-			msg, errorVar, errorCode, errorPlace
+		throw new ourglobe.RuntimeError(
+			"Between one and four args must be provided",
+			{ providedArgs: arguments }
 		);
+	}
+	
+	if(
+		typeof( errorCode ) === "function" &&
+		errorPlace === undefined
+	)
+	{
+		errorPlace = errorCode;
+		errorCode = undefined;
+	}
+	
+	if(
+		typeof( errorVar ) === "function" &&
+		errorCode === undefined &&
+		errorPlace === undefined
+	)
+	{
+		errorPlace = errorVar;
+		errorVar = undefined;
+	}
+	
+	if(
+		typeof( errorVar ) === "string" && errorCode === undefined
+	)
+	{
+		errorCode = errorVar;
+		errorVar = undefined;
 	}
 	
 	if( errorPlace === undefined )
 	{
-		errorPlace = this.constructor;
+		errorPlace = this.__proto__.constructor;
 	}
+	
+	OurGlobeError.verArgs(
+		msg, errorVar, errorCode, errorPlace
+	);
 	
 	OurGlobeError.ourGlobeSuper.call( this, msg );
 	
-	this.className = this.className;
 	this.message = msg;
 	this.ourGlobeVar = errorVar;
 	this.ourGlobeCode = errorCode;
@@ -91,17 +114,11 @@ function( msg, errorVar, errorCode, errorPlace )
 		);
 	}
 	
-	if(
-		errorVar !== undefined &&
-		(
-			typeof( errorVar ) !== "object" ||
-			Object.keys( errorVar ).length === 0
-		)
-	)
+	if( errorVar !== undefined && typeof( errorVar ) !== "object" )
 	{
 		return(
 			{
-				message: "Arg errorVar must be undef or a non-empty obj",
+				message: "Arg errorVar must be undef or an obj",
 				ourGlobeVar:{ providedArg: errorVar },
 				ourGlobeCode: undefined,
 				ourGlobePlace: OurGlobeError.verArgsWithoutErr
@@ -181,6 +198,46 @@ OurGlobeError.prototype.toString =
 function()
 {
 	return OurGlobeError.toString( this );
+};
+
+OurGlobeError.prototype.getErrMsg =
+function()
+{
+	if( arguments.length !== 0 )
+	{
+		throw new Error( "No args may be provided" );
+	}
+	
+	return this.message;
+};
+
+OurGlobeError.prototype.getErrVar =
+function()
+{
+	if( arguments.length !== 0 )
+	{
+		throw new Error( "No args may be provided" );
+	}
+	
+	return this.ourGlobeVar;
+};
+
+OurGlobeError.prototype.hasErrCode =
+function( errCode )
+{
+	if( arguments.length !== 1 )
+	{
+		throw new Error( "Exactly one arg must be provided" );
+	}
+	
+	if( typeof( errCode ) !== "string" || errCode.length === 0 )
+	{
+		throw new Error(
+			"Arg errCode must be a non-empty str"
+		);
+	}
+	
+	return this.ourGlobeCode === errCode;
 };
 
 // Do not use these vars in core modules, instead use
