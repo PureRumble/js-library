@@ -12,12 +12,12 @@ function(
 var RuntimeError = ourglobe.RuntimeError;
 
 var getF = ourglobe.getF;
-var getV = ourglobe.getV;
 var sys = ourglobe.sys;
 var getA = ourglobe.getA;
 var getE = ourglobe.getE;
 var getR = ourglobe.getR;
 
+var FuncVer = core.FuncVer;
 var FuncParamVer = core.FuncParamVer;
 var ArgsVer = core.ArgsVer;
 var ExtraArgsVer = core.ExtraArgsVer;
@@ -27,9 +27,8 @@ var Class = {};
 
 Class.create =
 getF(
-getV()
-	.setE( "any" )
-	.setR( "func" ),
+getA.ANY_ARGS,
+getR( "func" ),
 function( args )
 {
 	if( arguments.length !== 1 )
@@ -60,7 +59,6 @@ function( args )
 		{
 			throw new ClassRuntimeError(
 				"Prop '"+prop+"' isnt valid for class creation",
-				undefined,
 				"InvalidPropForClassCreation"
 			);
 		}
@@ -142,6 +140,8 @@ function( args )
 		}
 	}
 	
+	var ClassVar = undefined;
+	
 	if( constrArr === undefined )
 	{
 		if( SuperClass === undefined )
@@ -157,7 +157,7 @@ function( args )
 			constrArr =
 			function()
 			{
-				SuperClass.apply( this, arguments );
+				ClassVar.ourGlobeSuper.apply( this, arguments );
 			};
 		}
 	}
@@ -167,7 +167,7 @@ function( args )
 		constrArr = [ constrArr ];
 	}
 	
-	var ClassVar = getF.apply( {}, constrArr );
+	ClassVar = getF.apply( {}, constrArr );
 	
 	if( ClassVar.ourGlobe === undefined )
 	{
@@ -181,26 +181,6 @@ function( args )
 	ClassVar.ourGlobe.class.instFuncs = {};
 	ClassVar.ourGlobe.class.staticFuncs = {};
 	
-	if( SuperClass !== undefined )
-	{
-		ClassVar.prototype.__proto__ = SuperClass.prototype;
-		ClassVar.ourGlobeSuper = SuperClass;
-		ClassVar.ourGlobeSuperProto = SuperClass.prototype;
-	}
-	
-	if(
-		SuperClass === undefined ||
-		Class.isNative( SuperClass ) === true
-	)
-	{
-		ClassVar.prototype.ourGlobeCallSuper = Class.callSuper;
-		ClassVar.prototype.ourGlobeApplySuper = Class.applySuper;
-	}
-	else
-	{
-		SuperClass.ourGlobe.class.subClasses.push( ClassVar );
-	}
-	
 	for( var instVar in instVars )
 	{
 		ClassVar.ourGlobe.class.instVars[ instVar ] =
@@ -208,14 +188,87 @@ function( args )
 		;
 	}
 	
-	Class.verifyExtensions( ClassVar );
+	Class.extendClass( ClassVar, SuperClass );
 	
 	return ClassVar;
 });
 
+Class.extend =
+getF(
+getA.ANY_ARGS,
+function( SubClass, SuperClass )
+{
+	if( arguments.length !== 2 )
+	{
+		throw new RuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if( sys.hasType( SubClass, "func" ) === false )
+	{
+		throw new RuntimeError(
+			"Arg SubClass must be a func", { SubClass: SubClass }
+		);
+	}
+	
+	if( sys.hasType( SuperClass, "func" ) === false )
+	{
+		throw new RuntimeError(
+			"Arg SuperClass must be a func", { SuperClass: SuperClass }
+		);
+	}
+	
+	if( Class.isNative( SubClass ) === true )
+	{
+		throw new ClassRuntimeError(
+			"Arg SubClass must be a class created by Class.create()",
+			"InvalidSubClass"
+		);
+	}
+	
+	Class.extendClass( SubClass, SuperClass );
+});
+
+Class.extendClass =
+getF(
+getA( "func", "func/undef" ),
+function( SubClass, SuperClass )
+{
+	if( Class.isNative( SubClass ) === true )
+	{
+		throw new RuntimeError(
+			"Arg SubClass may not be a native class"
+		);
+	}
+	
+	if( SuperClass !== undefined )
+	{
+		SubClass.prototype.__proto__ = SuperClass.prototype;
+		SubClass.ourGlobeSuper = SuperClass;
+		SubClass.ourGlobeSuperProto = SuperClass.prototype;
+	}
+	
+	if(
+		SuperClass === undefined ||
+		Class.isNative( SuperClass ) === true
+	)
+	{
+		SubClass.prototype.ourGlobeCallSuper = Class.callSuper;
+		SubClass.prototype.ourGlobeApplySuper = Class.applySuper;
+	}
+	else
+	{
+		SuperClass.ourGlobe.class.subClasses.push( SubClass );
+	}
+	
+	Class.verifyExtensions( SubClass );
+});
+
 Class.addStatic =
 getF(
-getE( "any" ),
+getA.ANY_ARGS,
 function( ClassVar, staticMembers )
 {
 	if( arguments.length !== 2 )
@@ -283,8 +336,7 @@ function( ClassVar, staticMembers )
 
 Class.add =
 getF(
-getV()
-	.setE( "any" ),
+getA.ANY_ARGS,
 function( ClassVar, funcs )
 {
 	if( arguments.length !== 2 )
@@ -422,12 +474,27 @@ function( ClassVar, funcs )
 		
 		var funcDefStart = currItem;
 		
-		while(
+// Verifying the args before providing them to getF() is a
+// healthy approach since it's made sure that no faulty args
+// that Class doesnt approve of for func creation are sent to
+// getF() and that getF() may approve of
+		
+		if(
 			currItem < funcArr.length &&
-			funcArr[ currItem ] instanceof FuncParamVer === true
+			funcArr[ currItem ] instanceof FuncVer === true
 		)
 		{
 			currItem++;
+		}
+		else
+		{
+			while(
+				currItem < funcArr.length &&
+				funcArr[ currItem ] instanceof FuncParamVer === true
+			)
+			{
+				currItem++;
+			}
 		}
 		
 		if(
@@ -444,8 +511,10 @@ function( ClassVar, funcs )
 				"(2) Optional specification of the funcs extendability "+
 				"(one of the strings 'final' or 'extendable', "+
 				"items (1) and (2) can be interchanged in order)\n"+
-				"(3) Any number of FuncParamVers ( constr by "+
-				"getA(), getE() or getR())\n"+
+				"(3) One of the following options:\n"+
+				"  (i) One FuncVer (constr by getV())\n"+
+				"  (ii) Any number of FuncParamVers "+
+				"(constr by getA(), getE() or getR())\n"+
 				"(4) The function itself",
 				{
 					className: className,
@@ -562,8 +631,7 @@ function( ClassVar, funcs )
 
 Class.verifyExtensions =
 getF(
-getV()
-	.addA( "func" ),
+getA( "func" ),
 function( ClassVar )
 {
 	if( Class.isNative( ClassVar ) === true )
@@ -599,8 +667,7 @@ function( ClassVar )
 
 Class.verifyClassExtension =
 getF(
-getV()
-	.addA( "func", "func" ),
+getA( "func", "func" ),
 function( SuperClass, SubClass )
 {
 	if( SubClass.prototype instanceof SuperClass === false )
@@ -710,9 +777,8 @@ function( SuperClass, SubClass )
 
 Class.applySuper =
 getF(
-getV()
-	.setE( "any" )
-	.setR( "any" ),
+getA.ANY_ARGS,
+getR( "any" ),
 function( funcName, args )
 {
 	if( arguments.length !== 2 )
@@ -744,9 +810,8 @@ function( funcName, args )
 
 Class.callSuper =
 getF(
-getV()
-	.setE( "any" )
-	.setR( "any" ),
+getA.ANY_ARGS,
+getR( "any" ),
 function( funcName )
 {
 	if( sys.hasType( funcName, "str", "undef" ) === false )
@@ -789,21 +854,38 @@ function( funcName )
 
 Class.isNative =
 getF(
-getV()
-	.addA( "func" )
-	.setR( "bool" ),
+getA( "func" ),
+getR( "bool" ),
 function( ClassVar )
 {
-	return ClassVar.ourGlobe === undefined;
+	return(
+		ClassVar.ourGlobe === undefined ||
+		ClassVar.ourGlobe.class === undefined
+	);
 });
 
 Class.getName =
 getF(
-getV()
-	.addA( "func" )
-	.setR( "str/undef" ),
+getA.ANY_ARGS,
+getR( "str/undef" ),
 function( ClassVar )
 {
+	if( arguments.length !== 1 )
+	{
+		throw new RuntimeError(
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if( sys.hasType( ClassVar, "func" ) === false )
+	{
+		throw new RuntimeError(
+			"Arg ClassVar must be a func",
+			{ ClassVar: ClassVar }
+		);
+	}
+	
 	if( Class.isNative( ClassVar ) === false )
 	{
 		return ClassVar.ourGlobe.class.className;
@@ -812,6 +894,56 @@ function( ClassVar )
 	{
 		return ClassVar.name;
 	}
+});
+
+Class.getClass =
+getF(
+getA.ANY_ARGS,
+getR( "func" ),
+function( inst )
+{
+	if( arguments.length !== 1 )
+	{
+		throw new RuntimeError(
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	if(
+		sys.hasType( inst, "inst" ) === false ||
+		sys.hasType( inst.__proto__.constructor, "func" ) ===
+			false
+		||
+		inst.__proto__.constructor.prototype !== inst.__proto__
+	)
+	{
+		throw new RuntimeError(
+			"Arg inst must be a class inst", { inst: inst }
+		);
+	}
+	
+	return inst.__proto__.constructor;
+});
+
+Class.getClassName =
+getF(
+getA.ANY_ARGS,
+getR( "str/undef" ),
+function( inst )
+{
+	if( arguments.length !== 1 )
+	{
+		throw new RuntimeError(
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+// Class.getClass() will further verify the type of arg inst,
+// which is why the same verification isnt done here
+	
+	return Class.getName( Class.getClass( inst ) );
 });
 
 return Class;

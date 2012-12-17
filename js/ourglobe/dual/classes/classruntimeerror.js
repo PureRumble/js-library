@@ -13,14 +13,7 @@ getF(
 RuntimeError.CONSTR_FV,
 function( msg, errorVar, errorCode, errorPlace )
 {
-	if( errorPlace === undefined )
-	{
-		errorPlace = ClassRuntimeError;
-	}
-	
-	ClassRuntimeError.ourGlobeSuper.call(
-		this, msg, errorVar, errorCode, errorPlace
-	);
+	ClassRuntimeError.ourGlobeSuper.apply( this, arguments );
 });
 
 sys.extend( ClassRuntimeError, RuntimeError );

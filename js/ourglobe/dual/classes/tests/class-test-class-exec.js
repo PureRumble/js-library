@@ -96,6 +96,11 @@ function(
 		}
 	};
 	
+// test group
+// Creating super class and sub class first and then adding
+// instance class funcs. The instance funcs of the sub class
+// are added first followed by the instance funcs of the 
+// super class
 	Test.expectErr(
 		testName+
 		" - testing with immediate sub class of super class",
@@ -145,6 +150,12 @@ function(
 		}
 	);
 	
+// test group
+// Creating super class and sub class first and then adding
+// instance class funcs. The instance funcs of the super class
+// are added first followed by the instance funcs of the 
+// sub class. Some dummy sub classes are also added under the
+// super class
 	Test.expectErr(
 		testName+
 		" - testing with immediate sub class of super class "+
@@ -153,6 +164,7 @@ function(
 		errCode,
 		function()
 		{
+			
 			var SuperClass = Class.create( superClassCreate );
 			
 			subClassCreate.extends = SuperClass;
@@ -211,6 +223,16 @@ function(
 		}
 	);
 	
+// test group
+// There are many levels of sub classes in these tests, and all
+// sub classes are dummy classes except the sub class that has
+// been given to this test.
+// Creating the super class and adding its instance
+// class funcs first. Creating the sub classes next but some
+// extension links between super classes and sub classes are
+// omitted to be added later. Finally adding the instance class
+// funcs of the sub class and adding the omitted extension links
+// between super classes and sub classes
 	Test.expectErr(
 		testName+
 		" - testing with many levels of sub classes under "+
@@ -219,13 +241,24 @@ function(
 		errCode,
 		function()
 		{
+			
 			var SuperClass = Class.create( superClassCreate );
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
 			
 			subClassCreate.extends = SuperClass;
 			
 			var SubClassOne = Class.create( subClassCreate );
-			var SubClassTwo = Class.create( subClassCreate );
 			var SubClassThree = Class.create( subClassCreate );
+			
+// the extension from SuperClass to SubClassTwo is added later
+// by Class.extend()
+			subClassCreate.extends = undefined;
+			
+			var SubClassTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassOne;
 			
@@ -242,7 +275,9 @@ function(
 			var SubClassTwoOne = Class.create( subClassCreate );
 			var SubClassTwoTwo = Class.create( subClassCreate );
 			
-			faultySubClassCreate.extends = SubClassTwo;
+// the extension from SubClassTwo to FaultySubClass is added
+// later by Class.extend()
+			faultySubClassCreate.extends = undefined;
 			
 			var FaultySubClass = Class.create( faultySubClassCreate );
 			
@@ -251,20 +286,26 @@ function(
 				Class.add( FaultySubClass, faultySubClassAdd );
 			}
 			
-			if( superClassAdd !== undefined )
-			{
-				Class.add( SuperClass, superClassAdd );
-			}
+			Class.extend( SubClassTwo, SuperClass );
+			Class.extend( FaultySubClass, SubClassTwo );
 		},
 		function()
 		{
 			var SuperClass = Class.create( superClassCreate );
 			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
 			subClassCreate.extends = SuperClass;
 			
 			var SubClassOne = Class.create( subClassCreate );
-			var SubClassTwo = Class.create( subClassCreate );
 			var SubClassThree = Class.create( subClassCreate );
+			
+			subClassCreate.extends = undefined;
+			
+			var SubClassTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassOne;
 			
@@ -281,7 +322,7 @@ function(
 			var SubClassTwoOne = Class.create( subClassCreate );
 			var SubClassTwoTwo = Class.create( subClassCreate );
 			
-			healthySubClassCreate.extends = SubClassTwo;
+			healthySubClassCreate.extends = undefined;
 			
 			var HealthySubClass =
 				Class.create( healthySubClassCreate )
@@ -292,10 +333,8 @@ function(
 				Class.add( HealthySubClass, healthySubClassAdd );
 			}
 			
-			if( superClassAdd !== undefined )
-			{
-				Class.add( SuperClass, superClassAdd );
-			}
+			Class.extend( SubClassTwo, SuperClass );
+			Class.extend( HealthySubClass, SubClassTwo );
 			
 			var healthy = new HealthySubClass();
 			
