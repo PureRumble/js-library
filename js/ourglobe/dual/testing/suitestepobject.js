@@ -44,11 +44,12 @@ function( mods, SuiteStepObject )
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
+var RuntimeError = ourGlobe.RuntimeError;
 
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteResult = mods.get( "suiteresult" );
 
-SuiteStepObject.prototype.getLocalByVar =
+SuiteStepObject.prototype.getVarsObjByVar =
 getF(
 getV()
 	.addA( "str" )
@@ -59,11 +60,11 @@ function( varName )
 	
 	while( true )
 	{
-		var local = suiteRun.local;
+		var vars = suiteRun.vars;
 		
-		if( varName in local === true )
+		if( varName in vars === true )
 		{
-			return local;
+			return vars;
 		}
 		
 		suiteRun = suiteRun.parentRun;
@@ -71,17 +72,16 @@ function( varName )
 		if( suiteRun === undefined )
 		{
 			throw new SuiteRuntimeError(
-				{ suite: this.suiteStep.suiteRun.suiteHolder },
-				"This suite has no local var named '"+varName+"' and "+
-				"neither does any of its parent suites",
+				"This suite has no var named '"+varName+"' in its "+
+				"vars prop and neither does any of its parent suites",
 				undefined,
-				"LocalVarNotDeclared"
+				"VarsVariableNotDeclared"
 			);
 		}
 	}
 });
 
-SuiteStepObject.prototype.get =
+SuiteStepObject.prototype.getV =
 getF(
 getV()
 	.setE( "any" )
@@ -90,28 +90,26 @@ function( varName )
 {
 	if( arguments.length !== 1 )
 	{
-		throw new SuiteRuntimeError(
+		throw new RuntimeError(
 			"Exactly one arg must be provided",
-			{ providedArgs: arguments },
-			"InvalidGetFuncArgs"
+			{ providedArgs: arguments }
 		);
 	}
 	
 	if( sys.hasType( varName, "str" ) === false )
 	{
-		throw new SuiteRuntimeError(
+		throw new RuntimeError(
 			"Arg varName must be a str",
-			{ varName: varName },
-			"InvalidGetFuncArgs"
+			{ varName: varName }
 		);
 	}
 	
-	var local = this.getLocalByVar( varName );
+	var vars = this.getVarsObjByVar( varName );
 	
-	return local[ varName ];
+	return vars[ varName ];
 });
 
-SuiteStepObject.prototype.set =
+SuiteStepObject.prototype.setV =
 getF(
 getV()
 	.setE( "any" ),
@@ -119,25 +117,23 @@ function( varName, variable )
 {
 	if( arguments.length !== 2 )
 	{
-		throw new SuiteRuntimeError(
+		throw new RuntimeError(
 			"Exactly two args must be provided",
-			{ providedArgs: arguments },
-			"InvalidSetFuncArgs"
+			{ providedArgs: arguments }
 		);
 	}
 	
 	if( sys.hasType( varName, "str" ) === false )
 	{
-		throw new SuiteRuntimeError(
+		throw new RuntimeError(
 			"Arg varName must be a str",
-			{ varName: varName },
-			"InvalidSetFuncArgs"
+			{ varName: varName }
 		);
 	}
 	
-	var local = this.getLocalByVar( varName );
+	var vars = this.getVarsObjByVar( varName );
 	
-	local[ varName ] = variable;
+	vars[ varName ] = variable;
 });
 
 SuiteStepObject.prototype.hasParent =

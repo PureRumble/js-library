@@ -70,7 +70,6 @@ function()
 	if( this.stepOk( "topic" ) === undefined )
 	{
 		throw new SuiteRuntimeError(
-			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run "+
 			"(but is allowed to fail) for topicErrThrown() to be "+
 			"called",
@@ -92,7 +91,6 @@ function()
 	if( this.stepOk( "topic" ) === undefined )
 	{
 		throw new SuiteRuntimeError(
-			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run "+
 			"(but is allowed to fail) for topicCbErrGiven() to be "+
 			"called",
@@ -114,7 +112,6 @@ function()
 	if( this.stepOk( "topic" ) === undefined )
 	{
 		throw new SuiteRuntimeError(
-			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run "+
 			"(but is allowed to fail) for topicErrOccurred() to be "+
 			"called",
@@ -137,7 +134,6 @@ function()
 	if( this.stepOk( "topic" ) !== true )
 	{
 		throw new SuiteRuntimeError(
-			{ suite: this.suiteStep.suiteRun.suiteHolder },
 			"The suite's step topic must have been run without "+
 			"failing for getTopicRes() to be consulted",
 			undefined,

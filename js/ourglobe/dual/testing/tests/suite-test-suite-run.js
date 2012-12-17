@@ -2614,16 +2614,16 @@ testSuiteRunWithCb(
 );
 
 // test group
-// testing suites that use get() and set() in many suite steps to
-// handle the suite prop local and that have child suites that in
-// turn handle parent suite's prop local or their own prop local
+// testing suites that use getV() and setV() in many suite steps
+// to handle the suite prop vars and that have child suites that
+// in turn handle parent suite's prop vars or their own prop vars
 // instead
 
 testSuiteRunWithCb(
-	"suite that uses get()/set() to handle local var, and one "+
-	"nested suite that handles outer local var and another "+
-	"nested suite that handles its own local vars with a vow "+
-	"that fails on reading a local var that doesnt exist",
+	"suite that uses getV()/setV() to handle vars var, and one "+
+	"nested suite that handles outer vars var and another "+
+	"nested suite that handles its own vars with a vow "+
+	"that fails on reading a vars var that doesnt exist",
 	function()
 	{
 		var beforeRead = undefined;
@@ -2662,29 +2662,29 @@ testSuiteRunWithCb(
 		{
 			suite:
 			{
-				local:
+				vars:
 				{
 					dingo: "beforeGoesFirst"
 				},
 				before:
 				function()
 				{
-					beforeRead = this.get( "dingo" );
+					beforeRead = this.getV( "dingo" );
 					
-					this.set( "dingo", "beforeWasHere" );
+					this.setV( "dingo", "beforeWasHere" );
 					
-					beforeWritten = this.get( "dingo" );
+					beforeWritten = this.getV( "dingo" );
 				},
 				topic:
 				function()
 				{
-					topicRead = this.get( "dingo" );
+					topicRead = this.getV( "dingo" );
 					
-					this.set( "dingo", "toBeOverWritten" );
-					this.set( "dingo", "toBeOverWrittenAgain" );
-					this.set( "dingo", "topicWasHere" );
+					this.setV( "dingo", "toBeOverWritten" );
+					this.setV( "dingo", "toBeOverWrittenAgain" );
+					this.setV( "dingo", "topicWasHere" );
 					
-					topicWritten = this.get( "dingo" );
+					topicWritten = this.getV( "dingo" );
 				},
 				argsVer:[ "undef" ],
 				vows:
@@ -2692,29 +2692,29 @@ testSuiteRunWithCb(
 					"vow one",
 					function()
 					{
-						vowOneRead = this.get( "dingo" );
-						this.set( "dingo", "vowOneWasHere" );
-						vowOneWritten = this.get( "dingo" );
+						vowOneRead = this.getV( "dingo" );
+						this.setV( "dingo", "vowOneWasHere" );
+						vowOneWritten = this.getV( "dingo" );
 					},
 					"vow two",
 					function()
 					{
-						vowTwoRead = this.get( "dingo" );
-						this.set( "dingo", "vowTwoWasHere" );
-						vowTwoWritten = this.get( "dingo" );
+						vowTwoRead = this.getV( "dingo" );
+						this.setV( "dingo", "vowTwoWasHere" );
+						vowTwoWritten = this.getV( "dingo" );
 					}
 				],
 				next:
 				[
-// this suite reads only local vars of its parent suite
+// this suite reads only vars of its parent suite
 					"suite one",
 					{
 						beforeCb:
 						function()
 						{
-							suiteOneBeforeRead = this.get( "dingo" );
-							this.set( "dingo", "suiteOneBeforeWasHere" );
-							suiteOneBeforeWritten = this.get( "dingo" );
+							suiteOneBeforeRead = this.getV( "dingo" );
+							this.setV( "dingo", "suiteOneBeforeWasHere" );
+							suiteOneBeforeWritten = this.getV( "dingo" );
 							
 							var cb = this.getCb();
 							cb();
@@ -2722,9 +2722,9 @@ testSuiteRunWithCb(
 						topicCb:
 						function()
 						{
-							suiteOneTopicRead = this.get( "dingo" );
-							this.set( "dingo", "suiteOneTopicWasHere" );
-							suiteOneTopicWritten = this.get( "dingo" );
+							suiteOneTopicRead = this.getV( "dingo" );
+							this.setV( "dingo", "suiteOneTopicWasHere" );
+							suiteOneTopicWritten = this.getV( "dingo" );
 							
 							var topicCb = this;
 							
@@ -2732,18 +2732,18 @@ testSuiteRunWithCb(
 								function()
 								{
 									suiteOneTopicDelayedRead =
-										topicCb.get( "dingo" )
+										topicCb.getV( "dingo" )
 									;
 									
-									topicCb.set(
+									topicCb.setV(
 										"dingo", "will be overwritten"
 									);
-									topicCb.set(
+									topicCb.setV(
 										"dingo", "suiteOneTopicDelayedWasHere"
 									);
 									
 									suiteOneTopicDelayedWritten =
-										topicCb.get( "dingo" )
+										topicCb.getV( "dingo" )
 									;
 									
 									var cb = topicCb.getCb();
@@ -2758,27 +2758,27 @@ testSuiteRunWithCb(
 							"suite one vow one",
 							function()
 							{
-								suiteOneVowOneRead = this.get( "dingo" );
-								this.set( "dingo", "suiteOneVowOneWasHere" );
-								suiteOneVowOneWritten = this.get( "dingo" );
+								suiteOneVowOneRead = this.getV( "dingo" );
+								this.setV( "dingo", "suiteOneVowOneWasHere" );
+								suiteOneVowOneWritten = this.getV( "dingo" );
 							}
 						],
 						afterCb:
 						function()
 						{
-							suiteOneAfterRead = this.get( "dingo" );
-							this.set( "dingo", "suiteOneAfterWasHere" );
-							suiteOneAfterWritten = this.get( "dingo" );
+							suiteOneAfterRead = this.getV( "dingo" );
+							this.setV( "dingo", "suiteOneAfterWasHere" );
+							suiteOneAfterWritten = this.getV( "dingo" );
 							
 							var cb = this.getCb();
 							cb();
 						},
 					},
-// this suite over shadows its parent suite's local var and
-// also handles another local var of its own
+// this suite over shadows its parent suite's vars and
+// also handles another vars var of its own
 					"suite two",
 					{
-						local:
+						vars:
 						{
 							dingo: "suiteTwoBeforeGoesFirst",
 							dango: "suiteTwoVowTwoGoesFirst"
@@ -2786,16 +2786,16 @@ testSuiteRunWithCb(
 						before:
 						function()
 						{
-							suiteTwoBeforeRead = this.get( "dingo" );
-							this.set( "dingo", "suiteTwoBeforeWasHere" );
-							suiteTwoBeforeWritten = this.get( "dingo" );
+							suiteTwoBeforeRead = this.getV( "dingo" );
+							this.setV( "dingo", "suiteTwoBeforeWasHere" );
+							suiteTwoBeforeWritten = this.getV( "dingo" );
 						},
 						topic:
 						function()
 						{
-							suiteTwoTopicRead = this.get( "dingo" );
-							this.set( "dingo", "suiteTwoTopicWasHere" );
-							suiteTwoTopicWritten = this.get( "dingo" );
+							suiteTwoTopicRead = this.getV( "dingo" );
+							this.setV( "dingo", "suiteTwoTopicWasHere" );
+							suiteTwoTopicWritten = this.getV( "dingo" );
 						},
 						argsVer:[ "undef" ],
 						vows:
@@ -2803,32 +2803,32 @@ testSuiteRunWithCb(
 							"suite two vow one",
 							function()
 							{
-								suiteTwoVowOneRead = this.get( "dingo" );
-								this.set( "dingo", "suiteTwoVowOneWasHere" );
-								suiteTwoVowOneWritten = this.get( "dingo" );
+								suiteTwoVowOneRead = this.getV( "dingo" );
+								this.setV( "dingo", "suiteTwoVowOneWasHere" );
+								suiteTwoVowOneWritten = this.getV( "dingo" );
 							},
 							"suite two vow two",
 							function()
 							{
-								suiteTwoVowTwoRead = this.get( "dango" );
+								suiteTwoVowTwoRead = this.getV( "dango" );
 								
-								this.set( "dango", "will be overwritten..." );
-								this.set( "dango", "suiteTwoVowTwoWasHere" );
+								this.setV( "dango", "will be overwritten..." );
+								this.setV( "dango", "suiteTwoVowTwoWasHere" );
 								
-								suiteTwoVowTwoWritten = this.get( "dango" );
+								suiteTwoVowTwoWritten = this.getV( "dango" );
 							}
 						],
 						after:
 						function()
 						{
-							suiteTwoAfterRead = this.get( "dango" );
-							this.set( "dango", "suiteTwoAfterWasHere" );
-							suiteTwoAfterWritten = this.get( "dango" );
+							suiteTwoAfterRead = this.getV( "dango" );
+							this.setV( "dango", "suiteTwoAfterWasHere" );
+							suiteTwoAfterWritten = this.getV( "dango" );
 						},
 					},
-// This suite fails in one vow when trying to read a local var
+// This suite fails in one vow when trying to read a vars var
 // that doesnt exist and also in another vow where it tries to
-// write to a local var that doesnt exist
+// write to a vars var that doesnt exist
 					"suite three",
 					{
 						vows:
@@ -2836,12 +2836,12 @@ testSuiteRunWithCb(
 							"suite three vow one",
 							function()
 							{
-								this.set( "dengo", "cant write this.." );
+								this.setV( "dengo", "cant write this.." );
 							},
 							"suite three vow two",
 							function()
 							{
-								this.get( "dengo" );
+								this.getV( "dengo" );
 							}
 						]
 					}
@@ -2891,7 +2891,7 @@ testSuiteRunWithCb(
 						SuiteRuntimeError
 					&&
 					run.next[ 2 ].vows[ 0 ].err.ourGlobeCode ===
-						"LocalVarNotDeclared"
+						"VarsVariableNotDeclared"
 					&&
 					
 					run.next[ 2 ].vows[ 1 ].stepOk === false &&
@@ -2899,7 +2899,7 @@ testSuiteRunWithCb(
 						SuiteRuntimeError
 					&&
 					run.next[ 2 ].vows[ 1 ].err.ourGlobeCode ===
-						"LocalVarNotDeclared"
+						"VarsVariableNotDeclared"
 					,
 					"run result is invalid"
 				);
@@ -6520,14 +6520,14 @@ testSuiteRunWithCb(
 );
 
 testSuiteRunWithCb(
-	"Testing a Suite instance with root local",
+	"Testing a Suite instance with root vars",
 	function()
 	{
 		var suite = new Suite( "test suite" );
 		var suiteOneVowOneGetDingo = undefined;
 		var suiteOneVowTwoGetDingo = undefined;
 		
-		suite.setLocal( { dingo: "dango" } );
+		suite.setVars( { dingo: "dango" } );
 		
 		suite.add(
 			"suite one",
@@ -6539,13 +6539,13 @@ testSuiteRunWithCb(
 					"suite one vow one",
 					function()
 					{
-						suiteOneVowOneGetDingo = this.get( "dingo" );
-						this.set( "dingo", "dongo" );
+						suiteOneVowOneGetDingo = this.getV( "dingo" );
+						this.setV( "dingo", "dongo" );
 					},
 					"suite one vow two",
 					function()
 					{
-						suiteOneVowTwoGetDingo = this.get( "dingo" );
+						suiteOneVowTwoGetDingo = this.getV( "dingo" );
 					}
 				]
 			}
@@ -6720,6 +6720,77 @@ testSuiteRunWithCb(
 						suiteOneSuiteOrder[ 1 ] === "suite one two" &&
 						suiteTwoSuiteOrder[ 0 ] === "suite two two" &&
 						suiteTwoSuiteOrder[ 1 ] === "suite two one",
+						"run result is invalid"
+					);
+				}
+			}
+		);
+	}
+);
+
+// test group
+// testing suites that use callCb() in cb suite steps
+
+testSuiteRunWithCb(
+	"healthy suite with beforeCb, topicCb, healthy vows and "+
+	"afterCb where every cb suite step uses callCb() to signal "+
+	"that it is done",
+	function()
+	{
+		var vowOneArgs = undefined;
+		var suiteOneTopicArgs = undefined;
+		
+		return(
+			{
+				suite:
+				{
+					beforeCb:
+					function()
+					{
+						this.callCb( "dingo", "dango", "dongo" );
+					},
+					topicCb:
+					function()
+					{
+						this.callCb( undefined, "dingo", 42, true );
+					},
+					argsVer:[ "undef", "str", "int", "bool" ],
+					vows:
+					[
+						"vow one",
+						function()
+						{
+							vowOneArgs = arguments;
+						}
+					],
+					next:
+					[
+						"suite one",
+						{
+							topic:
+							function()
+							{
+								suiteOneTopicArgs = arguments;
+							},
+							argsVer:[ "undef" ]
+						}
+					],
+					afterCb:
+					function()
+					{
+						this.callCb( "dongo", "dango", "dingo" );
+					}
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						run.runOk === true &&
+						run.before.stepOk === true &&
+						run.topic.stepOk === true &&
+						run.vows[ 0 ].stepOk === true &&
+						run.next[ 0 ].runOk === true &&
+						run.after.stepOk === true,
 						"run result is invalid"
 					);
 				}

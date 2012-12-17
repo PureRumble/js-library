@@ -132,7 +132,7 @@ function(
 	);
 });
 
-// testing verification of empty suites
+// testing verification of that a suite has necessary props
 
 expectErr(
 	"A Suite may not be empty",
@@ -140,8 +140,64 @@ expectErr(
 	{},
 	{
 		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dingo", emptyFunc ]
+		argsVer:[ "undef" ]
+	}
+);
+
+expectErr(
+	"A Suite may not only have a topic (solved by adding argsVer)",
+	"SuiteHasNoRequiredProp",
+	{
+		conf:{ verifyArgs: false },
+		topic: emptyFunc
+	},
+	{
+		topic: emptyFunc,
+		argsVer:[ "undef" ]
+	}
+);
+
+expectErr(
+	"A Suite may not only have a topic (solved by adding a vow)",
+	"SuiteHasNoRequiredProp",
+	{
+		conf:{ verifyArgs: false },
+		topic: emptyFunc
+	},
+	{
+		conf:{ verifyArgs: false },
+		topic: emptyFunc,
+		vows:[ "vow one", emptyFunc ]
+	}
+);
+
+expectErr(
+	"A Suite may not only have a topic and a child suite with "+
+	"only a topic (solved by adding argsVer to the child suite)",
+	"SuiteHasNoRequiredProp",
+	{
+		conf:{ verifyArgs: false },
+		topic: emptyFunc,
+		next:
+		[
+			"suite one",
+			{
+				conf:{ verifyArgs: false },
+				topic: emptyFunc
+			}
+		]
+	},
+	{
+		conf:{ verifyArgs: false },
+		topic: emptyFunc,
+		next:
+		[
+			"suite one",
+			{
+				topic: emptyFunc,
+				argsVer:[ "undef" ]
+			}
+		]
 	}
 );
 
@@ -314,19 +370,19 @@ expectErr(
 	}
 );
 
-// testing verification of suite prop local
+// testing verification of suite prop vars
 
 expectErr(
-	"local must be undef or an obj",
-	"LocalIsNotValid",
+	"vars must be undef or an obj",
+	"VarsIsNotValid",
 	{
-		local: 43,
+		vars: 43,
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
 	{
-		local:{},
+		vars:{},
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
@@ -722,7 +778,7 @@ expectErr(
 );
 
 // testing verification of suite step topic/topicCb in relation
-// to suite step vows
+// to suite steps vows
 
 expectErr(
 	"Vows must have a topic/topicCb",
@@ -757,50 +813,6 @@ expectErr(
 		[
 			"dingo",
 			{
-				vows:[ "dango", emptyFunc ]
-			}
-		]
-	},
-	false
-);
-
-expectErr(
-	"topic must have vows",
-	"TopicWithoutVows",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-	},
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		vows:[ "dango", emptyFunc ]
-	},
-	false
-);
-
-expectErr(
-	"topic must have child vows",
-	"TopicWithoutVows",
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		next:
-		[
-			"dingo",
-			{
-				argsVer:[ "undef" ],
-			}
-		]
-	},
-	{
-		topic: emptyFunc,
-		argsVer:[ "undef" ],
-		next:
-		[
-			"dingo",
-			{
-				argsVer:[ "undef" ],
 				vows:[ "dango", emptyFunc ]
 			}
 		]

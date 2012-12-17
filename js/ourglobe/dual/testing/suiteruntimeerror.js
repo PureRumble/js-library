@@ -6,11 +6,13 @@ ourglobe.define(
 function( mods )
 {
 
-var sys = ourglobe.sys;
-var getV = ourglobe.getV;
-var Schema = ourglobe.Schema;
-var getF = ourglobe.getF;
-var RuntimeError = ourglobe.RuntimeError;
+var sys = ourGlobe.sys;
+var getS = ourGlobe.getS;
+var hasT = ourGlobe.hasT;
+var getV = ourGlobe.getV;
+var Schema = ourGlobe.Schema;
+var getF = ourGlobe.getF;
+var RuntimeError = ourGlobe.RuntimeError;
 
 var SuiteHolder = undefined;
 var Suite = undefined;
@@ -20,7 +22,7 @@ function()
 {
 	Suite = mods.get( "suite" );
 	SuiteHolder = mods.get( "suiteholder" );
-});
+}); 
 
 var SuiteRuntimeError =
 getF(
@@ -29,13 +31,7 @@ function()
 	return(
 		getV()
 			.addA(
-				{
-					types: "obj/undef",
-					props:
-					{
-						suite:[ Suite.SUITE_NAMES_S, SuiteHolder, "undef" ]
-					}
-				},
+				[ Suite.SUITE_NAMES_S, SuiteHolder, "undef" ],
 				RuntimeError.MSG_S,
 				RuntimeError.VAR_S,
 				RuntimeError.CODE_S,
@@ -49,20 +45,15 @@ function()
 			)
 	);
 },
-function( errorObj, msg, errorVar, errorCode, errorPlace )
+function( suite, msg, errorVar, errorCode, errorPlace )
 {
-	if( sys.hasType( errorObj, "str" ) === true )
+	if( hasT( suite, "str" ) === true )
 	{
 		errorPlace = errorCode;
 		errorCode = errorVar;
 		errorVar = msg;
-		msg = errorObj;
-		errorObj = undefined;
-	}
-	
-	if( errorObj === undefined )
-	{
-		errorObj = {};
+		msg = suite;
+		suite = undefined;
 	}
 	
 	if( errorPlace === undefined )
@@ -70,7 +61,29 @@ function( errorObj, msg, errorVar, errorCode, errorPlace )
 		errorPlace = SuiteRuntimeError;
 	}
 	
-	this.suite = errorObj.suite;
+	this.suite = suite;
+	
+	if( suite !== undefined )
+	{
+		var suiteName = undefined;
+		
+		if( suite instanceof SuiteHolder === true )
+		{
+			suiteName = suite.toString();
+		}
+		else
+		{
+			suiteName = Suite.getSuiteName( suite );
+		}
+		
+		msg =
+			"The suite run cant be started since there is an err "+
+			"with the following suite (the err is presented after "+
+			"the suite name below):\n\n"+
+			suiteName+"\n"+
+			msg
+		;
+	}
 	
 	SuiteRuntimeError.ourGlobeSuper.call(
 		this, msg, errorVar, errorCode, errorPlace
@@ -82,53 +95,5 @@ sys.extend( SuiteRuntimeError, RuntimeError );
 SuiteRuntimeError.prototype.className =  "SuiteRuntimeError";
 
 return SuiteRuntimeError;
-
-},
-function( mods, SuiteRuntimeError )
-{
-
-var sys = ourglobe.sys;
-var getV = ourglobe.getV;
-var Schema = ourglobe.Schema;
-var getF = ourglobe.getF;
-var RuntimeError = ourglobe.RuntimeError;
-var SuiteHolder = mods.get( "suiteholder" );
-var Suite = mods.get( "suite" );
-
-SuiteRuntimeError.prototype.toString =
-getF(
-getV()
-	.setR( "str" ),
-function()
-{
-	var origErrMsg = RuntimeError.prototype.toString.call( this );
-	
-	if( this.suite === undefined )
-	{
-		return origErrMsg;
-	}
-	
-	var suiteName = undefined;
-	var suite = this.suite;
-	
-	if( suite instanceof SuiteHolder === true )
-	{
-		suiteName = suite.toString();
-	}
-	else
-	{
-		suiteName = Suite.getSuiteName( suite );
-	}
-	
-	var errMsg =
-		"The suite run cant be started since there is an err "+
-		"with the following suite (the err is presented after "+
-		"the suite name below):\n\n"+
-		suiteName+"\n"+
-		origErrMsg
-	;
-	
-	return errMsg;
-});
 
 });

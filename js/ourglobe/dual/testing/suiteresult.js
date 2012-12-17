@@ -127,7 +127,7 @@ function()
 	if( this.hasParent() === false )
 	{
 		throw new SuiteRuntimeError(
-			{ suite: this.suiteRun.suiteHolder },
+			this.suiteRun.suiteHolder,
 			"This suite has no parent suite",
 			undefined,
 			"SuiteHasNoParent"

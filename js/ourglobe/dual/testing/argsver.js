@@ -52,7 +52,6 @@ function( suiteRun )
 			if( argsAreValid === false )
 			{
 				throw new SuiteRuntimeError(
-					{ suite: suiteRun.suiteHolder },
 					"The Suite step 'verArgs' doesnt approve of the args "+
 					"that are to be provided to the vows and the next "+
 					"Suites",

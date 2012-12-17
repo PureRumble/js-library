@@ -1,4 +1,4 @@
-ourglobe.define(
+ourGlobe.define(
 [
 	"./suiteruntimeerror",
 	"./suiteholder",
@@ -16,13 +16,14 @@ ourglobe.define(
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
-var sys = ourglobe.sys;
-var assert = ourglobe.assert;
-var Schema = ourglobe.Schema;
+var getF = ourGlobe.getF;
+var getV = ourGlobe.getV;
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var assert = ourGlobe.assert;
+var Schema = ourGlobe.Schema;
 
-var RuntimeError = ourglobe.RuntimeError;
+var RuntimeError = ourGlobe.RuntimeError;
 
 var SuiteRun;
 
@@ -47,6 +48,15 @@ function( suiteName, globalConf, maxNrConcCbs )
 			"Arg suiteName must be a proper str",
 			{ suiteName: suiteName }
 		);
+	}
+	
+	if(
+		hasT( globalConf, "int" ) === true &&
+		maxNrConcCbs === undefined
+	)
+	{
+		maxNrConcCbs = globalConf;
+		globalConf = undefined;
 	}
 	
 // It's better to complain here about globalConf not being of
@@ -145,6 +155,7 @@ var Schema = ourglobe.Schema;
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
+var hasT = ourGlobe.hasT;
 var assert = ourglobe.assert;
 var RuntimeError = ourglobe.RuntimeError;
 
@@ -160,6 +171,16 @@ var ArgsVer = mods.get( "argsver" );
 var Vow = mods.get( "vow" );
 var After = mods.get( "after" );
 var AfterCb = mods.get( "aftercb" );
+
+Suite.getErrMsg =
+getF(
+getV()
+	.addA( Error )
+	.setR( "str" ),
+function( err )
+{
+	return err.stack;
+});
 
 Suite.suiteNameIsValid =
 getF(
@@ -323,7 +344,7 @@ getV().setE( "any" ),
 function( childSuiteName, childSuite )
 {
 	assert.nrArgs( arguments, 2 );
-	assert.argType( "childSuite", childSuite, "obj" );
+	assert.argType( "childSuite", childSuite, "obj", "arr" );
 	
 	if( Suite.suiteNameIsValid( childSuiteName ) === false )
 	{
@@ -331,6 +352,11 @@ function( childSuiteName, childSuite )
 			"Arg childSuiteName must be a proper str",
 			{ childSuiteName: childSuiteName }
 		);
+	}
+	
+	if( hasT( childSuite, "arr" ) === true )
+	{
+		childSuite = { next: childSuite };
 	}
 	
 	var suiteHolder =
@@ -407,15 +433,15 @@ function( afterCb )
 	this.suiteObj.afterCb = afterCb;
 });
 
-Suite.prototype.setLocal =
+Suite.prototype.setVars =
 getF(
 getV().setE( "any" ),
-function( local )
+function( vars )
 {
 	assert.nrArgs( arguments, 1 );
-	assert.argType( "local", local, "obj" );
+	assert.argType( "vars", vars, "obj" );
 	
-	this.suiteObj.local = SuiteHolder.copySet( local );
+	this.suiteObj.vars = SuiteHolder.copySet( vars );
 });
 
 Suite.declareFailedSuiteStep =
@@ -438,7 +464,7 @@ function( suiteStep )
 		"\u001b[1mThe suite's step \u001b[31;1m"+stepName+
 		"\u001b[0;1m has failed by the following err:"+
 		"\u001b[0m\n\n"+
-		suiteStep.err.toString()+
+		Suite.getErrMsg( suiteStep.err )+
 		"\n"
 	);
 });
@@ -542,7 +568,7 @@ function( err, suiteRun )
 					console.log(
 						"\u001b[1m\u00bb "+failedVow.getVowName()+":"+
 						"\u001b[0m\n\n"+
-						failedVow.err.toString()+
+						Suite.getErrMsg( failedVow.err ) +
 						"\n"
 					);
 				}

@@ -133,7 +133,7 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 		this.cbStepQueue = parentRun.cbStepQueue;
 	}
 	
-	this.local = SuiteHolder.copySet( suiteHolder.local );
+	this.vars = SuiteHolder.copySet( suiteHolder.vars );
 	
 	if( suiteHolder.beforeCb !== undefined )
 	{

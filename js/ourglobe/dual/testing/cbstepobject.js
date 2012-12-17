@@ -43,6 +43,7 @@ return CbStepObject;
 function( mods, CbStepObject )
 {
 
+var RuntimeError = ourGlobe.RuntimeError;
 var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 var sys = ourglobe.sys;
@@ -56,24 +57,33 @@ function()
 {
 	if( arguments.length !== 0 )
 	{
-		throw new SuiteRuntimeError(
+		throw new RuntimeError(
 			"No args may be provided",
-			{ providedArgs: arguments },
-			"InvalidGetCbArgs"
+			{ providedArgs: arguments }
 		);
 	}
 	
 	var cbStepObject = this;
 	
-	return(
-		function()
-		{
-			var suiteStep = cbStepObject.suiteStep;
-			
-			suiteStep.handleCbCall.call(
-				suiteStep, undefined, arguments
-			);
-		}
+	var func =
+	function()
+	{
+		cbStepObject.suiteStep.handleCbCall.call(
+			cbStepObject.suiteStep, undefined, arguments
+		);
+	};
+	
+	return func;
+});
+
+CbStepObject.prototype.callCb =
+getF(
+getV()
+	.setE( "any" ),
+function()
+{
+	this.suiteStep.handleCbCall.call(
+		this.suiteStep, undefined, arguments
 	);
 });
 

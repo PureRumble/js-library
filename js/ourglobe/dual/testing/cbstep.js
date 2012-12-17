@@ -137,7 +137,6 @@ function( err )
 		this.landStep(
 			undefined, 
 			new SuiteRuntimeError(
-				{ suite: this.suiteRun.suiteHolder },
 				"The cb of Suite step '"+stepName+"' hasnt "+
 				"been called within the allowed time limit",
 				{ stepName: stepName },
@@ -231,7 +230,7 @@ function( returnVar, thrownErr )
 			
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
-					{ suite: this.suiteRun.suiteHolder },
+					this.suiteRun.suiteHolder,
 					"The cb of suite step '"+stepName+"' has thrown "+
 					"an err after having called its cb. Due to this all "+
 					"running suites must be terminated",
@@ -306,7 +305,7 @@ function( err, cbArgs )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
-					{ suite: this.suiteRun.suiteHolder },
+					this.suiteRun.suiteHolder,
 					"The cb of suite step '"+stepName+"' has been "+
 					"called twice. Due to this all running suites must "+
 					"be terminated",
@@ -323,7 +322,7 @@ function( err, cbArgs )
 		{
 			this.evaluateCbStep(
 				new SuiteRuntimeError(
-					{ suite: this.suiteRun.suiteHolder },
+					this.suiteRun.suiteHolder,
 					"The cb of suite step '"+stepName+"' has been "+
 					"called after that the step has thrown an err. Due "+
 					"to this all running suites must be terminated",

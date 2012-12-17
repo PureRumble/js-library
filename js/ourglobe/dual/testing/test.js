@@ -521,14 +521,20 @@ function(
 };
 
 Test.assert =
-function( boolVar, msg )
+function( boolVar, msg, errVar )
 {
-	if( arguments.length < 1 || arguments.length > 2 )
+	if( arguments.length < 1 || arguments.length > 3 )
 	{
 		throw new TestRuntimeError(
-			"Between one and two args must be provided",
+			"Between one and three args must be provided",
 			{ providedArgs: arguments }
 		);
+	}
+	
+	if( typeof( msg ) === "object" && errVar === undefined )
+	{
+		errVar = msg;
+		msg = undefined;
 	}
 	
 	if( typeof( boolVar ) !== "boolean" )
@@ -547,6 +553,14 @@ function( boolVar, msg )
 		);
 	}
 	
+	if( errVar !== undefined && typeof( errVar ) !== "object" )
+	{
+		throw new TestRuntimeError(
+			"Arg errVar must be an obj or undef",
+			{ errVar: errVar }
+		);
+	}
+	
 	if( msg === undefined )
 	{
 		msg = "An assertion has failed";
@@ -554,7 +568,7 @@ function( boolVar, msg )
 	
 	if( boolVar === false )
 	{
-		throw new TestRuntimeError( msg );
+		throw new TestRuntimeError( msg, errVar );
 	}
 };
 
