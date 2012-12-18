@@ -2891,7 +2891,7 @@ testSuiteRunWithCb(
 						SuiteRuntimeError
 					&&
 					run.next[ 2 ].vows[ 0 ].err.ourGlobeCode ===
-						"VarsVariableNotDeclared"
+						"RequestedVarsVariableNotDeclared"
 					&&
 					
 					run.next[ 2 ].vows[ 1 ].stepOk === false &&
@@ -2899,9 +2899,396 @@ testSuiteRunWithCb(
 						SuiteRuntimeError
 					&&
 					run.next[ 2 ].vows[ 1 ].err.ourGlobeCode ===
-						"VarsVariableNotDeclared"
+						"RequestedVarsVariableNotDeclared"
 					,
 					"run result is invalid"
+				);
+			}
+		});
+	}
+);
+
+// test group
+// testing suites that handle their local suite vars
+
+testSuiteRunWithCb(
+	"Suite that reads and sets a local suite var in every suite "+
+	"step",
+	function()
+	{
+		var beforeBs = undefined;
+		var beforeAs = undefined;
+		var beforeIs = undefined;
+		
+		var fromBToA = undefined;
+		
+		var topicBs = undefined;
+		var topicAs = undefined;
+		var topicIs = undefined;
+		
+		var vowOneBs = undefined;
+		var vowOneAs = undefined;
+		var vowOneIs = undefined;
+		
+		var vowTwoBs = undefined;
+		var vowTwoAs = undefined;
+		var vowTwoIs = undefined;
+		
+		var afterBs = undefined;
+		var afterAs = undefined;
+		var afterIs = undefined;
+		
+		return(
+		{
+			suite:
+			{
+				before:
+				function()
+				{
+					beforeIs = this.isSet( "dingo_1@" );
+					beforeBs = this.getL( "dingo_1@" );
+					
+					this.setL(
+						"dingo_1@", "this str will be overwritten!"
+					);
+					this.setL( "dingo_1@", "before" );
+					
+					beforeAs = this.getL( "dingo_1@" );
+					
+					this.setL( "dongo", "fromBefore" );
+				},
+				topic:
+				function()
+				{
+					topicIs = this.isSet( "dingo_1@" );
+					topicBs = this.getL( "dingo_1@" );
+					
+					this.setL(
+						"dingo_1@", "this str will be overwritten!"
+					);
+					this.setL( "dingo_1@", "topic" );
+					
+					topicAs = this.getL( "dingo_1@" );
+				},
+				argsVer:[ "undef" ],
+				vows:
+				[
+					"vow one",
+					function()
+					{
+						vowOneIs = this.isSet( "dingo_1@" );
+						vowOneBs = this.getL( "dingo_1@" );
+						
+						this.setL(
+							"dingo_1@", "this str will be overwritten!"
+						);
+						this.setL( "dingo_1@", "vowOne" );
+						
+						vowOneAs = this.getL( "dingo_1@" );
+					},
+					"vow two",
+					function()
+					{
+						vowTwoIs = this.isSet( "dingo_1@" );
+						vowTwoBs = this.getL( "dingo_1@" );
+						
+						this.setL(
+							"dingo_1@", "this str will be overwritten!"
+						);
+						this.setL( "dingo_1@", "vowTwo" );
+						
+						vowTwoAs = this.getL( "dingo_1@" );
+					}
+				],
+				after:
+				function()
+				{
+					afterIs = this.isSet( "dingo_1@" );
+					afterBs = this.getL( "dingo_1@" );
+					
+					this.setL(
+						"dingo_1@", "this str will be overwritten!"
+					);
+					this.setL( "dingo_1@", "after" );
+					
+					afterAs = this.getL( "dingo_1@" );
+					
+					fromBToA = this.getL( "dongo" );
+				}
+			},
+			cb:
+			function( run )
+			{
+				assert(
+					beforeIs === false &&
+					beforeBs === undefined &&
+					beforeAs === "before" &&
+					topicIs === true &&
+					topicBs === "before" &&
+					topicAs === "topic" &&
+					vowOneIs === true &&
+					vowOneBs === "topic" &&
+					vowOneAs === "vowOne" &&
+					vowTwoIs === true &&
+					vowTwoBs === "vowOne" &&
+					vowTwoAs === "vowTwo" &&
+					afterIs === true &&
+					afterBs === "vowTwo" &&
+					afterAs === "after" &&
+					fromBToA === "fromBefore" &&
+					run.runOk === true &&
+					run.before.stepOk === true &&
+					run.topic.stepOk === true &&
+					run.vows[ 0 ].stepOk === true &&
+					run.vows[ 1 ].stepOk === true &&
+					run.after.stepOk === true
+				);
+			}
+		});
+	}
+);
+
+testSuiteRunWithCb(
+	"Suite that sets some local suite vars in step before and "+
+	"then reads them in step after. Step after also tries to "+
+	"read an unset local suite var",
+	function()
+	{
+		var varOneIs = undefined;
+		var varOne = undefined;
+		var varOneGs = undefined;
+		var varTwoIs = undefined;
+		var varTwo = undefined;
+		var varTwoGs = undefined;
+		var varThreeIs = undefined;
+		var varThree = undefined;
+		var varThreeGs = undefined;
+		var varFourIs = undefined;
+		var varFour = "dinga";
+		var varFourErr = undefined;
+		
+		return(
+		{
+			suite:
+			{
+				before:
+				function()
+				{
+					this.setL( "varOne", "dingo" );
+					this.setL( "varTwo", "dango" );
+					this.setL( "varThree", "dongo" );
+				},
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "vow one", emptyFunc ],
+				after:
+				function()
+				{
+					varOneIs = this.isSet( "varOne" );
+					varTwoIs = this.isSet( "varTwo" );
+					varThreeIs = this.isSet( "varThree" );
+					
+					varOne = this.getL( "varOne" );
+					varTwo = this.getL( "varTwo" );
+					varThree = this.getL( "varThree" );
+					
+					varOneGs = this.getSetL( "varOne" );
+					varTwoGs = this.getSetL( "varTwo" );
+					varThreeGs = this.getSetL( "varThree" );
+					
+					varFourIs = this.isSet( "varFour" );
+					varFour = this.getL( "varFour" );
+					
+					try
+					{
+						this.getSetL( "varFour" );
+					}
+					catch( e )
+					{
+						varFourErr = e;
+					}
+				}
+			},
+			cb:
+			function( run )
+			{
+				assert(
+					varOneIs === true &&
+					varTwoIs === true &&
+					varThreeIs === true &&
+					varFourIs === false &&
+					varOne === "dingo" &&
+					varTwo === "dango" &&
+					varFour === undefined &&
+					varThree === "dongo" &&
+					varOneGs === "dingo" &&
+					varTwoGs === "dango" &&
+					varThreeGs === "dongo" &&
+					varFourErr instanceof SuiteRuntimeError === true &&
+					true ===
+						varFourErr.hasErrCode(
+							"RequestedLocalSuiteVarNotSet"
+						)
+					&&
+					run.runOk === true &&
+					run.before.stepOk === true &&
+					run.topic.stepOk === true &&
+					run.after.stepOk === true
+				);
+			}
+		});
+	}
+);
+
+testSuiteRunWithCb(
+	"Suite with a nested suite that in turn has another nested "+
+	"suite. The middle suite reads local suite vars named as "+
+	"local suite vars set by the other suites",
+	function()
+	{
+		var beforeIs = undefined;
+		var topicIs = undefined;
+		var vowOneIs = undefined;
+		var afterIs = undefined;
+		
+		return(
+		{
+			suite:
+			{
+				before:
+				function()
+				{
+					this.setL( "dingo", "dingo" );
+				},
+				topic:
+				function()
+				{
+					this.setL( "dingo", "dingo" );
+				},
+				argsVer:[ "undef" ],
+				vows:
+				[
+					"vow one",
+					function()
+					{
+						this.setL( "dingo", "dingo" );
+					}
+				],
+				after:
+				function()
+				{
+					this.setL( "dingo", "dingo" );
+				},
+				
+				next:
+				[
+				
+				"suite one",
+				{
+					before:
+					function()
+					{
+						beforeIs =
+							this.isSet( "dingo" ) ||
+							this.getL( "dingo" ) !== undefined ||
+							this.isSet( "dongo" ) ||
+							this.getL( "dongo" ) !== undefined
+						;
+					},
+					topic:
+					function()
+					{
+						topicIs =
+							this.isSet( "dingo" ) ||
+							this.getL( "dingo" ) !== undefined ||
+							this.isSet( "dongo" ) ||
+							this.getL( "dongo" ) !== undefined
+						;
+					},
+					argsVer:[ "undef" ],
+					vows:
+					[
+						"vow one",
+						function()
+						{
+							vowOneIs =
+								this.isSet( "dingo" ) ||
+								this.getL( "dingo" ) !== undefined ||
+								this.isSet( "dongo" ) ||
+								this.getL( "dongo" ) !== undefined
+							;
+						},
+					],
+					after:
+					function()
+					{
+						afterIs =
+							this.isSet( "dingo" ) ||
+							this.getL( "dingo" ) !== undefined ||
+							this.isSet( "dongo" ) ||
+							this.getL( "dongo" ) !== undefined
+						;
+					},
+					
+					next:
+					[
+					
+					"suite one one",
+					{
+						before:
+						function()
+						{
+							this.setL( "dongo", "dongo" );
+						},
+						topic:
+						function()
+						{
+							this.setL( "dongo", "dongo" );
+						},
+						argsVer:[ "undef" ],
+						vows:
+						[
+							"vow one",
+							function()
+							{
+								this.setL( "dongo", "dongo" );
+							}
+						],
+						after:
+						function()
+						{
+							this.setL( "dongo", "dongo" );
+						}
+					}
+					
+					]
+				}
+				
+				]
+			},
+			cb:
+			function( run )
+			{
+				assert(
+					beforeIs === false &&
+					topicIs === false &&
+					vowOneIs === false &&
+					afterIs === false &&
+					run.runOk === true &&
+					run.before.stepOk === true &&
+					run.topic.stepOk === true &&
+					run.vows[ 0 ].stepOk === true &&
+					run.after.stepOk === true &&
+					run.next[ 0 ].runOk === true &&
+					run.next[ 0 ].before.stepOk === true &&
+					run.next[ 0 ].topic.stepOk === true &&
+					run.next[ 0 ].vows[ 0 ].stepOk === true &&
+					run.next[ 0 ].after.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].runOk === true &&
+					run.next[ 0 ].next[ 0 ].before.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].topic.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].vows[ 0 ].stepOk === true &&
+					run.next[ 0 ].next[ 0 ].after.stepOk === true
 				);
 			}
 		});

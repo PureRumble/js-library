@@ -122,6 +122,9 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 		after: undefined
 	};
 	
+	this.vars = SuiteHolder.copySet( suiteHolder.vars );
+	this.local = {};
+	
 	if( parentRun === undefined )
 	{
 		this.cbStepQueue =
@@ -132,8 +135,6 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 	{
 		this.cbStepQueue = parentRun.cbStepQueue;
 	}
-	
-	this.vars = SuiteHolder.copySet( suiteHolder.vars );
 	
 	if( suiteHolder.beforeCb !== undefined )
 	{
