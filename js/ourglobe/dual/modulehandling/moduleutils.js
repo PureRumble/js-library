@@ -26,14 +26,16 @@ var getV = ourglobe.getV;
 var FuncVer = ourglobe.FuncVer;
 
 var ModuleUtils = {};
-ModuleUtils.delayedCbs = [ [], [], [], [] ];
+ModuleUtils.delayedCbs = [ [], [], [], [], [] ];
 
 ModuleUtils.execDelayedCbs =
 getF(
 getV(),
 function()
 {
-	for( var item = 0; item < ModuleUtils.delayedCbs.length; item++ )
+	for(
+		var item = 0; item < ModuleUtils.delayedCbs.length; item++
+	)
 	{
 		var cbQueue = ModuleUtils.delayedCbs[ item ];
 		
@@ -64,7 +66,7 @@ function( cb )
 	ModuleUtils.delayCb( 0, cb );
 });
 
-ModuleUtils.delayFvConstr =
+ModuleUtils.delayClassExt =
 getF(
 getV()
 	.addA( "func" ),
@@ -73,7 +75,7 @@ function( cb )
 	ModuleUtils.delayCb( 1, cb );
 });
 
-ModuleUtils.delayBodyDef =
+ModuleUtils.delayFvConstr =
 getF(
 getV()
 	.addA( "func" ),
@@ -82,13 +84,22 @@ function( cb )
 	ModuleUtils.delayCb( 2, cb );
 });
 
-ModuleUtils.delayBodyCb =
+ModuleUtils.delayBodyDef =
 getF(
 getV()
 	.addA( "func" ),
 function( cb )
 {
 	ModuleUtils.delayCb( 3, cb );
+});
+
+ModuleUtils.delayBodyCb =
+getF(
+getV()
+	.addA( "func" ),
+function( cb )
+{
+	ModuleUtils.delayCb( 4, cb );
 });
 
 ModuleUtils.verDeps =

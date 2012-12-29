@@ -122,6 +122,46 @@ expectErr(
 );
 
 expectErr(
+	"Prop extends for class creation must be a func",
+	"InvalidPropExtendsForClassCreation",
+	{
+		name: "ClassName",
+		extends:[ function() {} ]
+	},
+	{
+		name: "ClassName",
+		extends: function() {}
+	}
+);
+
+expectErr(
+	"Prop delayedExt for class creation must be a func",
+	"InvalidPropDelayedExtForClassCreation",
+	{
+		name: "ClassName",
+		delayedExt:[ function() {} ]
+	},
+	{
+		name: "ClassName",
+		delayedExt: function() { return function() {}; }
+	}
+);
+
+expectErr(
+	"Class extension may not be specified using both props "+
+	"extends and delayedExt at class creation",
+	"InvalidExtensionPropsForClassCreation",
+	{
+		name: "ClassName",
+		delayedExt: function() { return function() {}; },
+		extends: function() {}
+	},
+	{
+		name: "ClassName"
+	}
+);
+
+expectErr(
 	"ArgsVers must be placed before ReturnVarVer",
 	FuncCreationRuntimeError,
 	"InvalidArgsForFuncCreation",

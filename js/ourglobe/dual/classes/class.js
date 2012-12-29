@@ -1,11 +1,13 @@
 ourglobe.core.define(
 [
 	"./classruntimeerror",
-	"ourglobe/dual/core/core"
+	"ourglobe/dual/core/core",
+	"ourglobe/dual/modulehandling"
 ],
 function(
 	ClassRuntimeError,
-	core
+	core,
+	modulehandling
 )
 {
 
@@ -22,6 +24,7 @@ var FuncParamVer = core.FuncParamVer;
 var ArgsVer = core.ArgsVer;
 var ExtraArgsVer = core.ExtraArgsVer;
 var ReturnVarVer = core.ReturnVarVer;
+var ModuleUtils = modulehandling.ModuleUtils;
 
 var Class = {};
 
@@ -53,6 +56,7 @@ function( args )
 			prop !== undefined &&
 			prop !== "name" &&
 			prop !== "extends" &&
+			prop !== "delayedExt" &&
 			prop !== "constr" &&
 			prop !== "instVars"
 		)
@@ -68,6 +72,7 @@ function( args )
 	var SuperClass = args.extends;
 	var constrArr = args.constr;
 	var instVars = args.instVars;
+	var delayedExt = args.delayedExt;
 	
 	if(
 		sys.hasType( className, "str" ) === false ||
@@ -90,6 +95,27 @@ function( args )
 			"Prop extends must be undef or the desired super class",
 			{ extends: SuperClass },
 			"InvalidPropExtendsForClassCreation"
+		);
+	}
+	
+	if(
+		delayedExt !== undefined &&
+		sys.hasType( delayedExt, "func" ) === false
+	)
+	{
+		throw new ClassRuntimeError(
+			"Prop delayedExt must be undef or a func that returns "+
+			"the desired super class",
+			"InvalidPropDelayedExtForClassCreation"
+		);
+	}
+	
+	if( SuperClass !== undefined && delayedExt !== undefined )
+	{
+		throw new ClassRuntimeError(
+			"Both props extends and delayedExt may not be set",
+			{ instVars: instVars },
+			"InvalidExtensionPropsForClassCreation"
 		);
 	}
 	
@@ -140,26 +166,56 @@ function( args )
 		}
 	}
 	
+	var extendsClass =
+		SuperClass !== undefined || delayedExt !== undefined
+	;
+	
 	var ClassVar = undefined;
 	
 	if( constrArr === undefined )
 	{
-		if( SuperClass === undefined )
+		if( extendsClass === false )
 		{
 			constrArr =
-			function()
-			{
-				
-			};
+			[
+				function()
+				{
+					
+				}
+			];
 		}
 		else
 		{
 			constrArr =
+			[
+				getA.ANY_ARGS,
+				function()
+				{
+					ClassVar.ourGlobeSuper.apply( this, arguments );
+				}
+			];
+		}
+	}
+	
+	if( delayedExt !== undefined )
+	{
+		ModuleUtils.delayClassExt(
 			function()
 			{
-				ClassVar.ourGlobeSuper.apply( this, arguments );
-			};
-		}
+				var ReturnedClass = delayedExt();
+				
+				if( sys.hasType( ReturnedClass, "func" ) === false )
+				{
+					throw new ClassRuntimeError(
+						"Func delayedExt given to Class.create() must "+
+						"return a class that is the desired super class",
+						"InvalidReturnVarForDelayedExt"
+					);
+				}
+				
+				Class.extendClass( ClassVar, ReturnedClass );
+			}
+		);
 	}
 	
 	if( sys.hasType( constrArr, "func" ) === true )
@@ -180,6 +236,7 @@ function( args )
 	ClassVar.ourGlobe.class.instVars = {};
 	ClassVar.ourGlobe.class.instFuncs = {};
 	ClassVar.ourGlobe.class.staticFuncs = {};
+	ClassVar.ourGlobe.class.extendsClass = extendsClass;
 	
 	for( var instVar in instVars )
 	{
@@ -191,44 +248,6 @@ function( args )
 	Class.extendClass( ClassVar, SuperClass );
 	
 	return ClassVar;
-});
-
-Class.extend =
-getF(
-getA.ANY_ARGS,
-function( SubClass, SuperClass )
-{
-	if( arguments.length !== 2 )
-	{
-		throw new RuntimeError(
-			"Exactly two args must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	if( sys.hasType( SubClass, "func" ) === false )
-	{
-		throw new RuntimeError(
-			"Arg SubClass must be a func", { SubClass: SubClass }
-		);
-	}
-	
-	if( sys.hasType( SuperClass, "func" ) === false )
-	{
-		throw new RuntimeError(
-			"Arg SuperClass must be a func", { SuperClass: SuperClass }
-		);
-	}
-	
-	if( Class.isNative( SubClass ) === true )
-	{
-		throw new ClassRuntimeError(
-			"Arg SubClass must be a class created by Class.create()",
-			"InvalidSubClass"
-		);
-	}
-	
-	Class.extendClass( SubClass, SuperClass );
 });
 
 Class.extendClass =
@@ -251,17 +270,34 @@ function( SubClass, SuperClass )
 	}
 	
 	if(
-		SuperClass === undefined ||
-		Class.isNative( SuperClass ) === true
+		(
+			SuperClass === undefined &&
+			SubClass.ourGlobe.class.extendsClass === false
+		)
+		||
+		(
+			SuperClass !== undefined &&
+			Class.isNative( SuperClass ) === true
+		)
 	)
 	{
 		SubClass.prototype.ourGlobeCallSuper = Class.callSuper;
 		SubClass.prototype.ourGlobeApplySuper = Class.applySuper;
 	}
-	else
+	
+	if(
+		SuperClass !== undefined &&
+		Class.isNative( SuperClass ) === false
+	)
 	{
 		SuperClass.ourGlobe.class.subClasses.push( SubClass );
 	}
+	
+// This following is currently not required if SuperClass is
+// undef or a native class, but the call is nevertheless made as
+// a reservation for future changes where verifyExtensions() may
+// need to concern itself with delayed extensions
+// (SuperClass === undefined) or SuperClass is a native class
 	
 	Class.verifyExtensions( SubClass );
 });
@@ -641,26 +677,42 @@ function( ClassVar )
 		);
 	}
 	
+	var upperClasses = [];
+	
 	for(
-		var SuperClass = ClassVar.ourGlobeSuper;
-		SuperClass !== undefined &&
-		Class.isNative( SuperClass ) === false;
-		SuperClass = SuperClass.ourGlobeSuper
+		var UpperClass = ClassVar.ourGlobeSuper;
+		UpperClass !== undefined &&
+		Class.isNative( UpperClass ) === false;
+		UpperClass = UpperClass.ourGlobeSuper
 	)
 	{
-		Class.verifyClassExtension( SuperClass, ClassVar );
+		upperClasses.push( UpperClass );
 	}
 	
-	var subClasses = ClassVar.ourGlobe.class.subClasses.slice();
-	
-	while( subClasses.length > 0 )
+	for( var item in upperClasses )
 	{
-		var SubClass = subClasses.pop();
+		var UpperClass = upperClasses[ item ];
 		
-		Class.verifyClassExtension( ClassVar, SubClass );
+		Class.verifyClassExtension( UpperClass, ClassVar );
+	}
+	
+	upperClasses.push( ClassVar );
+	
+	var lowerClasses = ClassVar.ourGlobe.class.subClasses.slice();
+	
+	while( lowerClasses.length > 0 )
+	{
+		var LowerClass = lowerClasses.pop();
 		
-		subClasses =
-			subClasses.concat( SubClass.ourGlobe.class.subClasses )
+		for( var item in upperClasses )
+		{
+			var UpperClass = upperClasses[ item ];
+			
+			Class.verifyClassExtension( UpperClass, LowerClass );
+		}
+		
+		lowerClasses =
+			lowerClasses.concat( LowerClass.ourGlobe.class.subClasses )
 		;
 	}
 });

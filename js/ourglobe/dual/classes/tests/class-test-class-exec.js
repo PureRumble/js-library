@@ -2,7 +2,8 @@ ourglobe.require(
 [
 	"ourglobe/dual/core",
 	"ourglobe/dual/testing",
-	"ourglobe/dual/classes"
+	"ourglobe/dual/classes",
+	"ourglobe/dual/modulehandling"
 ],
 function( mods )
 {
@@ -18,6 +19,7 @@ var sys = ourglobe.sys;
 var Test = mods.get( "testing" ).Test;
 var ClassRuntimeError = mods.get( "classes" ).ClassRuntimeError;
 var FuncVerError = mods.get( "core" ).FuncVerError;
+var ModuleUtils = mods.get( "modulehandling" ).ModuleUtils;
 
 var assert = Test.assert;
 
@@ -72,7 +74,7 @@ function(
 		getE( "any" ),
 		function()
 		{
-			this.dingoDangoDongo = "dingo";
+			this.expectExtErrDingo = "dingo";
 		}
 	];
 	
@@ -81,7 +83,7 @@ function(
 		healthySubClassCreate.instVars = {};
 	}
 	
-	healthySubClassCreate.instVars[ "dingoDangoDongo" ] =
+	healthySubClassCreate.instVars[ "expectExtErrDingo" ] =
 		"extendable"
 	;
 	
@@ -90,9 +92,9 @@ function(
 		name: "ClassName",
 		instVars:
 		{
-			dingoDingoDingo: "extendable",
-			dangoDangoDango: "extendable",
-			dongoDongoDongo: "extendable"
+			expectExtErrDinga: "extendable",
+			expectExtErrDanga: "extendable",
+			expectExtErrDonga: "extendable"
 		}
 	};
 	
@@ -108,9 +110,17 @@ function(
 		errCode,
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			faultySubClassCreate.extends = undefined;
+			faultySubClassCreate.delayedExt = undefined;
+			
 			var SuperClass = Class.create( superClassCreate );
 			
 			faultySubClassCreate.extends = SuperClass;
+			faultySubClassCreate.delayedExt = undefined;
 			
 			var FaultySubClass = Class.create( faultySubClassCreate );
 			
@@ -126,9 +136,17 @@ function(
 		},
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			healthySubClassCreate.extends = undefined;
+			healthySubClassCreate.delayedExt = undefined;
+			
 			var SuperClass = Class.create( superClassCreate );
 			
 			healthySubClassCreate.extends = SuperClass;
+			healthySubClassCreate.delayedExt = undefined;
 			
 			var HealthySubClass =
 				Class.create( healthySubClassCreate )
@@ -146,7 +164,7 @@ function(
 			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingoDangoDongo === "dingo" );
+			assert( healthy.expectExtErrDingo === "dingo" );
 		}
 	);
 	
@@ -158,16 +176,23 @@ function(
 // super class
 	Test.expectErr(
 		testName+
-		" - testing with immediate sub class of super class "+
+		" - Testing with immediate sub class of super class "+
 		"but with other sub classes at the side too",
 		ClassRuntimeError,
 		errCode,
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			faultySubClassCreate.extends = undefined;
+			faultySubClassCreate.delayedExt = undefined;
 			
 			var SuperClass = Class.create( superClassCreate );
 			
 			subClassCreate.extends = SuperClass;
+			subClassCreate.delayedExt = undefined;
 			
 			var firstSubClassOne = Class.create( subClassCreate );
 			var firstSubClassTwo = Class.create( subClassCreate );
@@ -176,6 +201,7 @@ function(
 			;
 			
 			faultySubClassCreate.extends = SuperClass;
+			faultySubClassCreate.delayedExt = undefined;
 			
 			var FaultySubClass = Class.create( faultySubClassCreate );
 			
@@ -191,9 +217,17 @@ function(
 		},
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			healthySubClassCreate.extends = undefined;
+			healthySubClassCreate.delayedExt = undefined;
+			
 			var SuperClass = Class.create( superClassCreate );
 			
 			subClassCreate.extends = SuperClass;
+			subClassCreate.delayedExt = undefined;
 			
 			var firstSubClassOne = Class.create( subClassCreate );
 			var firstSubClassTwo = Class.create( subClassCreate );
@@ -202,6 +236,7 @@ function(
 			;
 			
 			healthySubClassCreate.extends = SuperClass;
+			healthySubClassCreate.delayedExt = undefined;
 			
 			var HealthySubClass =
 				Class.create( healthySubClassCreate )
@@ -219,28 +254,29 @@ function(
 			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingoDangoDongo === "dingo" );
+			assert( healthy.expectExtErrDingo === "dingo" );
 		}
 	);
 	
 // test group
-// There are many levels of sub classes in these tests, and all
-// sub classes are dummy classes except the sub class that has
-// been given to this test.
-// Creating the super class and adding its instance
-// class funcs first. Creating the sub classes next but some
-// extension links between super classes and sub classes are
-// omitted to be added later. Finally adding the instance class
-// funcs of the sub class and adding the omitted extension links
-// between super classes and sub classes
+// There are three levels of classes in these tests, with the
+// given super and sub class at the top and bottom, respectively.
+// The extensions between them are delayed, and instance funcs
+// are added before extension commences
 	Test.expectErr(
 		testName+
-		" - testing with many levels of sub classes under "+
-		"the super class",
+		" - Testing with one class between the super and sub "+
+		"class. Some extensions are delayed",
 		ClassRuntimeError,
 		errCode,
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			faultySubClassCreate.extends = undefined;
+			faultySubClassCreate.delayedExt = undefined;
 			
 			var SuperClass = Class.create( superClassCreate );
 			
@@ -250,34 +286,44 @@ function(
 			}
 			
 			subClassCreate.extends = SuperClass;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassOne = Class.create( subClassCreate );
 			var SubClassThree = Class.create( subClassCreate );
 			
-// the extension from SuperClass to SubClassTwo is added later
-// by Class.extend()
 			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return SuperClass;
+			};
 			
 			var SubClassTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassOne;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassOneOne = Class.create( subClassCreate );
 			var SubClassOneTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassThree;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassThreeOne = Class.create( subClassCreate );
 			var SubClassThreeTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassTwo;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassTwoOne = Class.create( subClassCreate );
 			var SubClassTwoTwo = Class.create( subClassCreate );
 			
-// the extension from SubClassTwo to FaultySubClass is added
-// later by Class.extend()
 			faultySubClassCreate.extends = undefined;
+			faultySubClassCreate.delayedExt =
+			function()
+			{
+				return SubClassTwo;
+			};
 			
 			var FaultySubClass = Class.create( faultySubClassCreate );
 			
@@ -286,11 +332,17 @@ function(
 				Class.add( FaultySubClass, faultySubClassAdd );
 			}
 			
-			Class.extend( SubClassTwo, SuperClass );
-			Class.extend( FaultySubClass, SubClassTwo );
+			ModuleUtils.execDelayedCbs();
 		},
 		function()
 		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			healthySubClassCreate.extends = undefined;
+			healthySubClassCreate.delayedExt = undefined;
+			
 			var SuperClass = Class.create( superClassCreate );
 			
 			if( superClassAdd !== undefined )
@@ -299,46 +351,211 @@ function(
 			}
 			
 			subClassCreate.extends = SuperClass;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassOne = Class.create( subClassCreate );
 			var SubClassThree = Class.create( subClassCreate );
 			
 			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return SuperClass;
+			};
 			
 			var SubClassTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassOne;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassOneOne = Class.create( subClassCreate );
 			var SubClassOneTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassThree;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassThreeOne = Class.create( subClassCreate );
 			var SubClassThreeTwo = Class.create( subClassCreate );
 			
 			subClassCreate.extends = SubClassTwo;
+			subClassCreate.delayedExt = undefined;
 			
 			var SubClassTwoOne = Class.create( subClassCreate );
 			var SubClassTwoTwo = Class.create( subClassCreate );
 			
 			healthySubClassCreate.extends = undefined;
+			healthySubClassCreate.delayedExt =
+			function()
+			{
+				return SubClassTwo;
+			};
 			
 			var HealthySubClass =
 				Class.create( healthySubClassCreate )
 			;
+			healthySubClassCreate.delayedExt = undefined;
 			
 			if( healthySubClassAdd !== undefined )
 			{
 				Class.add( HealthySubClass, healthySubClassAdd );
 			}
 			
-			Class.extend( SubClassTwo, SuperClass );
-			Class.extend( HealthySubClass, SubClassTwo );
+			ModuleUtils.execDelayedCbs();
 			
 			var healthy = new HealthySubClass();
 			
-			assert( healthy.dingoDangoDongo === "dingo" );
+			assert( healthy.expectExtErrDingo === "dingo" );
+		}
+	);
+	
+// test group
+// Testing with a long chain of extensions between classes. The
+// given super class gets a class above itself, as the given
+// sub class gets a class below itself. The instance funcs of
+// the super class are added before extension commences but the
+// instance funcs of the sub class are added after
+	Test.expectErr(
+		testName+
+		" - Testing with classes above, below and in between the "+
+		"super class and sub class. Some of the extensions are "+
+		"delayed",
+		ClassRuntimeError,
+		errCode,
+		function()
+		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			faultySubClassCreate.extends = undefined;
+			faultySubClassCreate.delayedExt = undefined;
+			
+			var ClassOne = Class.create( subClassCreate );
+			
+			superClassCreate.extends = ClassOne;
+			superClassCreate.delayedExt = undefined;
+			
+			var SuperClass = Class.create( superClassCreate );
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return SuperClass;
+			};
+			
+			var ClassTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = ClassTwo;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassThreeA = Class.create( subClassCreate );
+			
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return ClassTwo;
+			};
+			
+			var ClassThreeB = Class.create( subClassCreate );
+			
+			subClassCreate.extends = ClassThreeB;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassFourA = Class.create( subClassCreate );
+			
+			faultySubClassCreate.extends = ClassThreeB;
+			faultySubClassCreate.delayedExt = undefined;
+			
+			var FaultySubClass = Class.create( faultySubClassCreate );
+			
+			subClassCreate.extends = FaultySubClass;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassFour = Class.create( subClassCreate );
+			
+			ModuleUtils.execDelayedCbs();
+			
+			if( faultySubClassAdd !== undefined )
+			{
+				Class.add( FaultySubClass, faultySubClassAdd );
+			}
+		},
+		function()
+		{
+			superClassCreate.extends = undefined;
+			superClassCreate.delayedExt = undefined;
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt = undefined;
+			healthySubClassCreate.extends = undefined;
+			healthySubClassCreate.delayedExt = undefined;
+			
+			var ClassOne = Class.create( subClassCreate );
+			
+			superClassCreate.extends = ClassOne;
+			superClassCreate.delayedExt = undefined;
+			
+			var SuperClass = Class.create( superClassCreate );
+			
+			if( superClassAdd !== undefined )
+			{
+				Class.add( SuperClass, superClassAdd );
+			}
+			
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return SuperClass;
+			};
+			
+			var ClassTwo = Class.create( subClassCreate );
+			
+			subClassCreate.extends = ClassTwo;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassThreeA = Class.create( subClassCreate );
+			
+			subClassCreate.extends = undefined;
+			subClassCreate.delayedExt =
+			function()
+			{
+				return ClassTwo;
+			};
+			
+			var ClassThreeB = Class.create( subClassCreate );
+			
+			subClassCreate.extends = ClassThreeB;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassFourA = Class.create( subClassCreate );
+			
+			healthySubClassCreate.extends = ClassThreeB;
+			healthySubClassCreate.delayedExt = undefined;
+			
+			var HealthySubClass = Class.create( healthySubClassCreate );
+			
+			subClassCreate.extends = HealthySubClass;
+			subClassCreate.delayedExt = undefined;
+			
+			var ClassFour = Class.create( subClassCreate );
+			
+			ModuleUtils.execDelayedCbs();
+			
+			if( healthySubClassAdd !== undefined )
+			{
+				Class.add( HealthySubClass, healthySubClassAdd );
+			}
+			
+			var healthy = new HealthySubClass();
+			
+			assert( healthy.expectExtErrDingo === "dingo" );
 		}
 	);
 });
