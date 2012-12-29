@@ -127,8 +127,10 @@ new FuncVer()
 		"undef"
 	)
 ;
+OurGlobeError.CONSTR_V = OurGlobeError.CONSTR_FV;
 
 RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
+RuntimeError.CONSTR_V = RuntimeError.CONSTR_FV;
 
 var returnVar = 
 {
