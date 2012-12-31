@@ -18,6 +18,7 @@ new FuncVer()
 		"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
 	])
 ;
+MoreHttp.REQUEST_CB_V = MoreHttp.REQUEST_CB_FV;
 
 return MoreHttp;
 
