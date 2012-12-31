@@ -1,20 +1,20 @@
 ourGlobe.define(
 [
+	"./streamerror",
 	"./riverruntimeerror",
 	"./river",
 	"./stream",
-	"./drop",
-	"./dropconnection"
+	"./drop"
 ],
 function( mods )
 {
 	return(
 		{
+			StreamError: mods.get( "streamerror" ),
 			RiverRuntimeError: mods.get( "riverruntimeerror" ),
 			River: mods.get( "river" ),
 			Stream: mods.get( "stream" ),
-			Drop: mods.get( "drop" ),
-			DropConnection: mods.get( "dropconnection" )
+			Drop: mods.get( "drop" )
 		}
 	);
 });

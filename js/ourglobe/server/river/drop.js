@@ -1,24 +1,62 @@
 ourGlobe.define(
 [
-	"http",
 	"./riverruntimeerror",
-	"./dropconnection",
-	"./basicdropconnection"
+	"./streamerror",
+	"./river",
+	"./riverdrop",
+	"./stream",
+	"./stonebeginriverflow",
+	"./stonebegin",
+	"./stonevalidate",
+	"./stoneprepare",
+	"./stonebranch",
+	"./stoneserve",
+	"./stonefinish",
+	"./stoneservefailure",
+	"./stoneserveerr"
 ],
 function( mods )
 {
 
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
 var getA = ourGlobe.getA;
 var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var BasicDropConnection = undefined;
+var RiverDrop = undefined;
+var Stream = undefined;
+
+var StoneBeginRiverFlow = undefined;
+var StoneBegin = undefined;
+var StoneValidate = undefined;
+var StonePrepare = undefined;
+var StoneBranch = undefined;
+var StoneServe = undefined;
+var StoneFinish = undefined;
+var StoneServeFailure = undefined;
+var StoneServeErr = undefined;
 
 mods.delay(
 function()
 {
-	BasicDropConnection = mods.get( "basicdropconnection" );
+	RiverDrop = mods.get( "riverdrop" );
+	Stream = mods.get( "stream" );
+	
+	StoneBeginRiverFlow = mods.get( "stonebeginriverflow" );
+	StoneBegin = mods.get( "stonebegin" );
+	StoneValidate = mods.get( "stonevalidate" );
+	StonePrepare = mods.get( "stoneprepare" );
+	StoneBranch = mods.get( "stonebranch" );
+	StoneServe = mods.get( "stoneserve" );
+	StoneFinish = mods.get( "stonefinish" );
+	StoneServeFailure = mods.get( "stoneservefailure" );
+	StoneServeErr = mods.get( "stoneserveerr" );
 });
 
 var Drop =
@@ -27,18 +65,43 @@ Class.create(
 name: "Drop",
 constr:
 [
-getA( "inst", "inst" ),
-function( req, res )
+function()
 {
-	this.streamParams = {};
-	this.localObj = undefined;
+	return [ getA( RiverDrop, Stream, [ Drop, "undef" ] ) ];
+},
+function( riverDrop, stream, lastDrop )
+{
+	this.riverDrop = riverDrop;
+	this.stream = stream;
 	
-	this.dropCon = new BasicDropConnection( req, res );
+	this.localStreamVars = {};
 	
-	this.origDropCon = this.dropCon;
-	this.replacedDropCon = undefined;
+	var streamParams = {};
 	
-	this.isInMasterStream = false;
+	if( lastDrop !== undefined )
+	{
+		for( var prop in lastDrop.streamParams )
+		{
+			streamParams[ prop ] = lastDrop.streamParams[ prop ];
+		}
+	}
+	
+	for( var streamParamName in stream.streamParams )
+	{
+		streamParams[ streamParamName ] = undefined;
+	}
+	
+	this.streamParams = streamParams;
+	
+	this.stoneBeginRiverFlow = new StoneBeginRiverFlow( this );
+	this.stoneBegin = new StoneBegin( this );
+	this.stoneValidate = new StoneValidate( this );
+	this.stonePrepare = new StonePrepare( this );
+	this.stoneBranch = new StoneBranch( this );
+	this.stoneServe = new StoneServe( this );
+	this.stoneFinish = new StoneFinish( this );
+	this.stoneServeFailure = new StoneServeFailure( this );
+	this.stoneServeErr = new StoneServeErr( this );
 }]
 
 });
@@ -49,31 +112,84 @@ return Drop;
 function( mods, Drop )
 {
 
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
 var RiverRuntimeError = mods.get( "riverruntimeerror" );
-var DropConnection = mods.get( "dropconnection" );
+var StreamError = mods.get( "streamerror" );
+
+var River = mods.get( "river" );
+var Stream = mods.get( "stream" );
 
 Class.add(
 Drop,
 {
 
-flowToMasterStream:
+setStreamParams:
 [
-function()
+getA( "obj" ),
+function( streamParams )
 {
-	this.isInMasterStream = true;
-	
-	this.replacedDropCon = this.dropCon;
-	this.dropCon = this.origDropCon;
-	
+	for( var paramName in streamParams )
+	{
+		this.streamParams[ paramName ] = streamParams[ paramName ];
+	}
 }],
 
-leaveMasterStream:
+prepareForFailure:
+[
+getA( Stream.FAILURE_CODE_S ),
+function( failureCode )
+{
+	this.failureCode = failureCode;
+}],
+
+restoreFromFailure:
 [
 function()
 {
-	this.isInMasterStream = false;
+	this.failureCode = undefined;
+}],
+
+failedOf:
+[
+getA.ANY_ARGS,
+function( failureCode )
+{
+	if( arguments.length !== 1 )
+	{
+		throw new RuntimeError(
+			"Exactly one arg must be provided",
+			{ providedArgs: arguments }
+		);
+	}
 	
-	this.dropCon = this.replacedDropCon;
+	if( Stream.failureCodeIsValid( failureCode ) === false )
+	{
+		throw new RuntimeError(
+			"Arg failureCode must be a valid failure code",
+			{ failureCode: failureCode }
+		);
+	}
+	
+	if( this.failureCode === undefined )
+	{
+		throw new RiverRuntimeError(
+			"failedOf() may not be called since a Drop validation "+
+			"failure is not being served by the current Stream",
+			"ValidationFailureNotBeingServed"
+		);
+	}
+	
+	return this.failureCode === failureCode;
 }],
 
 isSet:
@@ -90,7 +206,7 @@ function( varName )
 		);
 	}
 	
-	if( sys.hasType( varName, "str" ) === false )
+	if( hasT( varName, "str" ) === false )
 	{
 		throw new RuntimeError(
 			"Arg varName must be a str",
@@ -98,18 +214,7 @@ function( varName )
 		);
 	}
 	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"Stream local vars may not be used while the Drop is in "+
-			"a master Stream",
-			undefined,
-			"StreamLocalVarUsedInMasterStream"
-		);
-	}
-	
-	return varName in this.localObj;
+	return varName in this.localStreamVars;
 }],
 
 get:
@@ -126,7 +231,7 @@ function( varName )
 		);
 	}
 	
-	if( sys.hasType( varName, "str" ) === false )
+	if( hasT( varName, "str" ) === false )
 	{
 		throw new RuntimeError(
 			"Arg varName must be a str",
@@ -134,28 +239,7 @@ function( varName )
 		);
 	}
 	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"Stream local vars may not be used while the Drop is in "+
-			"a master Stream",
-			undefined,
-			"StreamLocalVarUsedInMasterStream"
-		);
-	}
-	
-	if( varName in this.localObj === false )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"This Stream has no local var by the name '"+varName+"'",
-			{ faultyVarName: varName },
-			"UndeclaredStreamVarRequested"
-		);
-	}
-	
-	return this.localObj[ varName ];
+	return this.localStreamVars[ varName ];
 }],
 
 set:
@@ -177,7 +261,7 @@ function( varName, variable )
 	{
 		localVars = varName;
 		
-		if( sys.hasType( localVars, "obj" ) === false )
+		if( hasT( localVars, "obj" ) === false )
 		{
 			throw new RuntimeError(
 				"Arg localVars must be an obj",
@@ -187,7 +271,7 @@ function( varName, variable )
 	}
 	else
 	{
-		if( sys.hasType( varName, "str" ) === false )
+		if( hasT( varName, "str" ) === false )
 		{
 			throw new RuntimeError(
 				"Arg varName must be a str",
@@ -199,20 +283,9 @@ function( varName, variable )
 		localVars[ varName ] = variable;
 	}
 	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"Stream local vars may not be used while the Drop is in "+
-			"a master Stream",
-			undefined,
-			"StreamLocalVarUsedInMasterStream"
-		);
-	}
-	
 	for( var varName in localVars )
 	{
-		this.localObj[ varName ] = localVars[ varName ];
+		this.localStreamVars[ varName ] = localVars[ varName ];
 	}
 }],
 
@@ -230,7 +303,7 @@ function( paramName )
 		);
 	}
 	
-	if( sys.hasType( paramName, "str" ) === false )
+	if( hasT( paramName, "str" ) === false )
 	{
 		throw new RuntimeError(
 			"Arg paramName must be a str",
@@ -238,24 +311,12 @@ function( paramName )
 		);
 	}
 	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"Stream params may not be used while the Drop is in a "+
-			"master Stream",
-			undefined,
-			"StreamParamUsedInMasterStream"
-		);
-	}
-	
 	if( paramName in this.streamParams === false )
 	{
 		throw new RiverRuntimeError(
-			this,
 			"No Stream has yet declared a param "+
 			"by the name '"+paramName+"'",
-			{ faultyParamName: paramName },
+			{ undeclaredParam: paramName },
 			"UndeclaredStreamParamRequested"
 		);
 	}
@@ -263,138 +324,183 @@ function( paramName )
 	return this.streamParams[ paramName ];
 }],
 
-setParam:
+beginRiverFlow:
 [
-getA.ANY_ARGS,
-function( paramName, param )
+getA( "func" ),
+function( cb )
 {
-	if( arguments.length < 1 || arguments.length > 2 )
-	{
-		throw new RuntimeError(
-			"Between one and two args must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	var params = undefined;
-	
-	if( arguments.length === 1 )
-	{
-		params = paramName;
-		
-		if( sys.hasType( params, "obj" ) === false )
+	this.stoneBeginRiverFlow.flowDrop(
+		this.riverDrop.req,
+		this.riverDrop.res,
+		getCb(
+		this,
+		getA( StreamError, "undef" ),
+		getA( "undef", "obj/undef" ),
+		function( err, streamParams )
 		{
-			throw new RuntimeError(
-				"Arg params must be an obj", { params: params }
-			);
-		}
-	}
-	else
-	{
-		if( sys.hasType( paramName, "str" ) === false )
-		{
-			throw new RuntimeError(
-				"Arg paramName must be a str",
-				{ paramName: paramName }
-			);
-		}
-		
-		params = {};
-		params[ paramName ] = param;
-	}
-	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"Stream params may not be used while the Drop is in a "+
-			"master Stream",
-			undefined,
-			"StreamParamUsedInMasterStream"
-		);
-	}
-	
-	for( var paramName in params )
-	{
-		if( paramName in this.streamParams === false )
-		{
-			throw new RiverRuntimeError(
-				this,
-				"No Stream has yet declared a param "+
-				"by the name '"+paramName+"'",
-				{ faultyParamName: paramName },
-				"UndeclaredStreamParamModified"
-			);
-		}
-		
-		this.streamParams[ paramName ] = params[ paramName ];
-	}
+			if( err !== undefined )
+			{
+				cb( err );
+				
+				return;
+			}
+			
+			if( streamParams !== undefined )
+			{
+				this.setStreamParams( streamParams );
+			}
+			
+			cb();
+		})
+	);
 }],
 
-getDropCon:
+begin:
 [
-getA.ANY_ARGS,
-getR( DropConnection ),
-function()
+getA( "func" ),
+function( cb )
 {
-	if( arguments.length !== 0 )
-	{
-		throw new RuntimeError(
-			"No args may be provided", { providedArgs: arguments }
-		);
-	}
-	
-	return this.dropCon;
+	this.stoneBegin.flowDrop(
+		getCb(
+		this,
+		getA( [ StreamError, "undef" ] ),
+		function( err )
+		{
+			cb( err );
+		})
+	);
 }],
 
-setDropCon:
+validate:
 [
-getA.ANY_ARGS,
-function( dropCon )
+getA( "func" ),
+function( cb )
 {
-	if( arguments.length !== 1 )
-	{
-		throw new RuntimeError(
-			"Exactly one arg must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	if( dropCon instanceof DropConnection === false )
-	{
-		throw new RuntimeError(
-			"Arg dropCon must be a DropConnection",
-			{ dropCon: dropCon }
-		);
-	}
-	
-	if( this.isInMasterStream === true )
-	{
-		throw new RiverRuntimeError(
-			this,
-			"DropConnection may not be changed while the Drop is in "+
-			"a master Stream",
-			undefined,
-			"DropConChangedInMasterStream"
-		);
-	}
-	
-	this.dropCon = dropCon;
+	this.stoneValidate.flowDrop(
+		getCb(
+		this,
+		getA( StreamError, "undef" ),
+		getA( "undef", [ Stream.FAILURE_CODE_S, "undef" ] ),
+		function( err, failureCode )
+		{
+			cb( err, failureCode );
+		})
+	);
 }],
 
-flowToStream:
+prepare:
 [
-getA( Stream ),
-function( stream )
-// {
-	this.localObj = {};
+getA( "func" ),
+function( cb )
+{
+	this.stonePrepare.flowDrop(
+		getCb(
+		this,
+		getA( StreamError, "undef" ),
+		getA( "undef", "obj/undef" ),
+		function( err, streamParams )
+		{
+			if( err !== undefined )
+			{
+				cb( err );
+				
+				return;
+			}
+			
+			if( streamParams !== undefined )
+			{
+				this.setStreamParams( streamParams );
+			}
+			
+			cb();
+		})
+	);
+}],
+
+branch:
+[
+getA( "func" ),
+function( cb )
+{
+	this.stoneBranch.flowDrop(
+		getCb(
+		this,
+		getA( StreamError, "undef" ),
+		getA( "undef", [ Stream, "undef" ] ),
+		function( err, nextStream )
+		{
+			cb( err, nextStream );
+		})
+	);
+}],
+
+serve:
+[
+getA( "func" ),
+function( cb )
+{
+	this.stoneServe.flowDrop(
+		getCb(
+		this,
+		getA( [ StreamError, "undef" ] ),
+		function( err )
+		{
+			cb( err );
+		})
+	);
+}],
+
+serveErr:
+[
+getA( StreamError, "func" ),
+function( firstErr, cb )
+{
+	this.stoneServeErr.flowDrop(
+		firstErr,
+		getCb(
+		this,
+		getA( [ StreamError, "undef" ] ),
+		function( secondErr )
+		{
+			cb( secondErr );
+		})
+	);
+}],
+
+serveFailure:
+[
+getA( Stream.FAILURE_CODE_S, "func" ),
+function( failureCode, cb )
+{
+	this.prepareForFailure( failureCode );
 	
-	for( var item in stream.streamParams )
-	{
-		var streamParamName = stream.streamParams[ item ];
-		
-		this.streamParams[ streamParamName ] = undefined;
-	}
+	this.stoneServeFailure.flowDrop(
+		getCb(
+		this,
+		getA( [ StreamError, "undef" ] ),
+		function( err )
+		{
+			this.restoreFromFailure();
+			
+			cb( err );
+		})
+	);
+}],
+
+finish:
+[
+getA( "func" ),
+function( cb )
+{
+	this.stoneFinish.flowDrop(
+		getCb(
+		this,
+		getA( [ StreamError, "undef" ] ),
+		function( err )
+		{
+			cb( err );
+		})
+	);
 }]
 
 });

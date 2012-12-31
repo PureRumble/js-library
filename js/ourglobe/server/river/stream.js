@@ -2,7 +2,7 @@ ourGlobe.define(
 [
 	"./riverruntimeerror",
 	"./drop"
-]
+],
 function( mods )
 {
 
@@ -13,6 +13,7 @@ var getV = ourGlobe.getV;
 var getA = ourGlobe.getA;
 var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
+var Schema = ourGlobe.Schema;
 var Class = ourGlobe.Class;
 
 var RiverRuntimeError = undefined;
@@ -24,19 +25,90 @@ function()
 	RiverRuntimeError = mods.get( "riverruntimeerror" );
 	Drop = mods.get( "drop" );
 	
+	var beginRiverFlowOptsS =
+		{
+			props:{ req: "+inst", res: "+inst" },
+			extraProps: false
+		}
+	;
+	
+	var serveErrOptsS =
+		{ props:{ err:{ req: true, types:[ Error ] } } }
+	;
+	
 	Class.addStatic(
 	Stream,
 	{
+		FAILURE_CODE_S:
+			{ minStrLen: 1, chars: "letters/digits/underscores" }
+		,
 		STREAM_NAME_S:
 			{ minStrLen: 1, chars: "letters/digits/underscores" }
 		,
-		VALIDATE_FV: getV( getA( Drop, "func" ) ),
+		STREAM_PARAM_NAME_S:
+			{ minStrLen: 1, chars: "letters/digits/underscores" }
+		,
+		BEGIN_RIVER_FLOW_V:
+			getV( getA( Drop, beginRiverFlowOptsS, "func" ) )
+		,
+		BEGIN_V: getV( getA( Drop, "func" ) ),
+		VALIDATE_V: getV( getA( Drop, "func" ) ),
+		PREPARE_V: getV( getA( Drop, "func" ) ),
+		BRANCH_V: getV( getA( Drop, "func" ) ),
+		SERVE_V: getV( getA( Drop, "func" ) ),
+		SERVE_FAILURE_V: getV( getA( Drop, "func" ) ),
+		SERVE_ERR_V: getV( getA( Drop, serveErrOptsS, "func" ) ),
+		FINISH_V: getV( getA( Drop, "func" ) ),
 		
-		PREPARE_FV: getV( getA( Drop, "func" ) ),
+		ERR_AT_BEGIN_RIVER_FLOW: "ErrAtBeginRiverFlow",
+		ERR_AT_BEGIN_RIVER_FLOW_CB: "ErrAtBeginRiverFlowCb",
+		INVALID_ARGS_FOR_BEGIN_RIVER_FLOW_CB:
+			"InvalidArgsForBeginRiverFlowCb"
+		,
+		INVALID_STREAM_PARAMS_FOR_BEGIN_RIVER_FLOW_CB:
+			"InvalidStreamParamsForBeginRiverFlowCb"
+		,
 		
-		BRANCH_FV: getV( getA( Drop, "func" ) ),
+		ERR_AT_BEGIN: "ErrAtBegin",
+		ERR_AT_BEGIN_CB: "ErrAtBeginCb",
+		INVALID_ARGS_FOR_BEGIN_CB: "InvalidArgsForBeginCb",
 		
-		SERVE_FV: getV( getA( Drop, "func" ) ),
+		ERR_AT_VALIDATE: "ErrAtValidate",
+		ERR_AT_VALIDATE_CB: "ErrAtValidateCb",
+		INVALID_ARGS_FOR_VALIDATE_CB: "InvalidArgsForValidateCb",
+		
+		ERR_AT_PREPARE: "ErrAtPrepare",
+		ERR_AT_PREPARE_CB: "ErrAtPrepareCb",
+		INVALID_ARGS_FOR_PREPARE_CB: "InvalidArgsForPrepareCb",
+		INVALID_STREAM_PARAMS_FOR_PREPARE_CB:
+			"InvalidStreamParamsForPrepareCb"
+		,
+		
+		ERR_AT_BRANCH: "ErrAtBranch",
+		ERR_AT_BRANCH_CB: "ErrAtBranchCb",
+		INVALID_ARGS_FOR_BRANCH_CB: "InvalidArgsForBranchCb",
+		BRANCHING_TO_NONEXISTENT_STREAM:
+			"BranchingToNonexistentStream"
+		,
+		
+		ERR_AT_SERVE: "ErrAtServe",
+		ERR_AT_SERVE_CB: "ErrAtServeCb",
+		INVALID_ARGS_FOR_SERVE_CB: "InvalidArgsForServeCb",
+		
+		ERR_AT_FINISH: "ErrAtFinish",
+		ERR_AT_FINISH_CB: "ErrAtFinishCb",
+		INVALID_ARGS_FOR_FINISH_CB: "InvalidArgsForFinishCb",
+		
+		ERR_AT_SERVE_FAILURE: "ErrAtServeFailure",
+		ERR_AT_SERVE_FAILURE_CB: "ErrAtServeFailureCb",
+		INVALID_ARGS_FOR_SERVE_FAILURE_CB:
+			"InvalidArgsForServeFailureCb"
+		,
+		
+		ERR_AT_SERVE_ERR: "ErrAtServeErr",
+		ERR_AT_SERVE_ERR_CB: "ErrAtServeErrCb",
+		INVALID_ARGS_FOR_SERVE_ERR_CB:
+			"InvalidArgsForServeErrCb"
 	});
 });
 
@@ -74,7 +146,7 @@ function( streamName, branchingStreams, streamParams )
 		streamParams = undefined;
 	}
 	
-	if( sys.hasType( streamName, "str" ) === false )
+	if( Schema.test( Stream.STREAM_NAME_S, streamName ) === false )
 	{
 		throw new RuntimeError(
 			"Arg streamName must be a proper str",
@@ -120,36 +192,40 @@ function( streamName, branchingStreams, streamParams )
 		branchingStreams = [];
 	}
 	
-	var paramsArr = [];
-	var paramsObj = {};
+	var paramsDic = {};
 	
 	for( var item in streamParams )
 	{
-		var streamParamName = streamParams[ item ] ;
+		var streamParamName = streamParams[ item ];
 		
-		if( sys.hasType( streamParamName, "str" ) === false )
+		if(
+			false ===
+				Schema.test(
+					Stream.STREAM_PARAM_NAME_S, streamParamName
+				)
+		)
 		{
 			throw new RuntimeError(
-				"Every item of arg streamParams must be a str",
+				"Every item of arg streamParams must be a valid "+
+				"Stream param",
 				{ faultyItem: item, faultyItemValue: streamParamName }
 			);
 		}
 		
-		if( paramsObj[ streamParamName ] !== undefined )
+		if( paramsDic[ streamParamName ] !== undefined )
 		{
 			throw new RiverRuntimeError(
 				"All Stream params must have unique names under "+
 				"their Stream",
 				{
-					faultyParentStream: streamName,
+					faultyStream: streamName,
 					duplicateStreamParamName: streamParamName
 				},
 				"DuplicateStreamParamNameInStream"
 			);
 		}
 		
-		paramsObj[ streamParamName ] = true;
-		paramsArr.push( streamParamName );
+		paramsDic[ streamParamName ] = true;
 	}
 	
 	var branchesObj = {};
@@ -185,24 +261,29 @@ function( streamName, branchingStreams, streamParams )
 	}
 	
 	this.streamName = streamName;
-	this.streamParams = paramsArr;
+	this.streamParams = paramsDic;
 	this.branchingStreams = branchesObj;
 	
-	var streamsToCheck = Object.values( branchesObj );
+	var streamsToCheck = [];
 	
-	for( var stream in streamsToCheck )
+	for( var prop in branchesObj )
 	{
-		for( var item in stream.streamParams )
+		streamsToCheck.push( branchesObj[ prop ] );
+	}
+	
+	while( streamsToCheck.length > 0 )
+	{
+		var stream = streamsToCheck.pop();
+		
+		for( var streamParamName in stream.streamParams )
 		{
-			var streamParamName = stream.streamParams[ item ];
-			
-			if( paramsObj[ streamParamName ] !== undefined )
+			if( paramsDic[ streamParamName ] !== undefined )
 			{
 				throw new RiverRuntimeError(
 					"Every Stream param must have a unique name among "+
-					"all other params under (1) its Stream, (2) the "+
-					"Stream's branching Streams and (3) the Stream's "+
-					"parent Streams",
+					"all other params under its Stream and the "+
+					"Stream's branching Streams (either directly or "+
+					"indirectly beneath the former Stream)",
 					{
 						firstFaultyStream: streamName,
 						secondFaultyStream: stream.streamName,
@@ -213,11 +294,10 @@ function( streamName, branchingStreams, streamParams )
 			}
 		}
 		
-		streamsToCheck =
-			streamsToCheck.concat(
-				Object.values( stream.branchingStreams )
-			)
-		;
+		for( var prop in stream.branchingStreams )
+		{
+			streamsToCheck.push( stream.branchingStreams[ prop ] );
+		}
 	}
 }]
 
@@ -232,56 +312,97 @@ function( mods, Stream )
 var RuntimeError = ourGlobe.RuntimeError;
 
 var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
 var getV = ourGlobe.getV;
 var getA = ourGlobe.getA;
 var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var RiverRuntimeError = mods.get( "riverruntimeerror" );
+
 Class.add(
 Stream,
 {
 
-isErrStream:
+failureCodeIsValid:
 [
 "static",
-getA( Stream ),
+getA( "any" ),
 getR( "bool" ),
-function( stream )
+function( failureCode )
 {
-	var StreamClass = Class.getClass( stream );
-	
-	return sys.hasType( StreamClass.prototype.serveErr, "func" );
+	return(
+		hasT( failureCode, "str" ) === true &&
+		failureCode.length > 0 &&
+		failureCode.search( /[^a-zA-Z0-9]/ ) === -1
+	);
 }],
 
-isFailureStream:
+streamNameIsValid:
 [
 "static",
-getA( Stream ),
+getA( "any" ),
 getR( "bool" ),
-function( stream )
+function( streamName )
 {
-	var StreamClass = Class.getClass( stream );
-	
 	return(
-		sys.hasType( StreamClass.prototype.serveFailure, "func" )
+		hasT( streamName, "str" ) === true &&
+		streamName.length > 0 &&
+		streamName.search( /[^a-zA-Z0-9]/ ) === -1
 	);
+}],
+
+hasStreamParams:
+[
+getA( "obj" ),
+getR( "bool" ),
+function( streamParams )
+{
+	for( var param in streamParams )
+	{
+		if( this.streamParams[ param ] === undefined )
+		{
+			return false;
+		}
+	}
+	
+	return true;
+}],
+
+beginRiverFlow:
+[
+getA.ANY_ARGS,
+function( drop, opts, cb )
+{
+	throw new RuntimeError(
+		"The top Stream of a River must implement beginRiverFlow()",
+		{ invalidClass: Class.getClassName( this ) }
+	);
+}],
+
+begin:
+[
+Stream.BEGIN_V,
+function( drop, cb )
+{
+	cb();
 }],
 
 validate:
 [
-getV.ANY_ARGS,
+getA.ANY_ARGS,
 function( drop, cb )
 {
 	throw new RuntimeError(
 		"All sub classes of Stream must implement validate()",
-		{ invalidSubClass: Class.getClassName( this ) }
+		{ invalidClass: Class.getClassName( this ) }
 	);
 }],
 
 prepare:
 [
-Stream.PREPARE_FV,
+Stream.PREPARE_V,
 function( drop, cb )
 {
 	cb();
@@ -289,7 +410,7 @@ function( drop, cb )
 
 branch:
 [
-Stream.BRANCH_FV,
+Stream.BRANCH_V,
 function( drop, cb )
 {
 	cb();
@@ -297,23 +418,52 @@ function( drop, cb )
 
 serve:
 [
-Stream.SERVE_FV,
+Stream.SERVE_V,
 function( drop, cb )
 {
-	// Stream and Drop dont have to be specified here since River
-	// will take care of it when it catches this err
 	throw new RiverRuntimeError(
 		"All Drops must be either branched or served when they "+
-		"pass through a Stream but this Stream has failed to do so "+
-		"for a Drop",
+		"pass through a Stream but this Stream doesnt implement "+
+		"serve() and has thus failed to serve a Drop",
 		"DropNotServedByStream"
 	);
 }],
 
-getName:
+serveFailure:
+[
+getA.ANY_ARGS,
+function( drop, cb )
+{
+	throw new RuntimeError(
+		"All sub classes of Stream must implement serveFailure()",
+		{ invalidClass: Class.getClassName( this ) }
+	);
+}],
+
+serveErr:
+[
+getA.ANY_ARGS,
+function( drop, opts, cb )
+{
+	throw new RuntimeError(
+		"All sub classes of Stream must implement serveErr()",
+		{ invalidClass: Class.getClassName( this ) }
+	);
+}],
+
+finish:
+[
+Stream.FINISH_V,
+function( drop, cb )
+{
+	cb();
+}],
+
+getStreamName:
 [
 "final",
 getA.ANY_ARGS,
+getR( Stream.STREAM_NAME_S ),
 function()
 {
 	if( arguments.length !== 0 )
@@ -326,5 +476,7 @@ function()
 	
 	return this.streamName;
 }]
+
+});
 
 });
