@@ -17,7 +17,11 @@ function Schema( schema )
 	this.schema = schema;
 }
 
-Schema.getSchema =
+Object.defineProperty(
+Schema,
+"getSchema",
+{
+value:
 function()
 {
 	if( arguments.length === 0 )
@@ -36,7 +40,8 @@ function()
 	{
 		return new Schema( Array.prototype.slice.call( arguments ) );
 	}
-};
+}
+});
 
 Schema.prototype.test = function( variable, varExists )
 {
@@ -52,7 +57,12 @@ Schema.prototype.test = function( variable, varExists )
 	return Schema.test( this.schema, variable, varExists );
 }
 
-Schema.isSchema = function( variable )
+Object.defineProperty(
+Schema,
+"isSchema",
+{
+value:
+function( variable )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -61,10 +71,14 @@ Schema.isSchema = function( variable )
 	
 	return Schema.test( Schema.META_SCHEMA, variable );
 }
+});
 
-Schema.getSchemaProp = function(
-	schema, props, types, allowEmptyArr
-)
+Object.defineProperty(
+Schema,
+"getSchemaProp",
+{
+value:
+function( schema, props, types, allowEmptyArr )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -159,8 +173,14 @@ Schema.getSchemaProp = function(
 	
 	return propFound;
 }
+});
 
-Schema.assertSingleSchemaProp = function( schema )
+Object.defineProperty(
+Schema,
+"assertSingleSchemaProp",
+{
+value:
+function( schema )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -190,8 +210,14 @@ Schema.assertSingleSchemaProp = function( schema )
 		}
 	}
 }
+});
 
-Schema.fineResolve = function( schemas )
+Object.defineProperty(
+Schema,
+"fineResolve",
+{
+value:
+function( schemas )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -247,8 +273,14 @@ Schema.fineResolve = function( schemas )
 	
 	return returnVar;
 }
+});
 
-Schema.testChars = function( chars, areGood, str, charsProp )
+Object.defineProperty(
+Schema,
+"testChars",
+{
+value:
+function( chars, areGood, str, charsProp )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -342,8 +374,14 @@ Schema.testChars = function( chars, areGood, str, charsProp )
 	
 	return regExpSearch === -1 || regExpSearch === str.length;
 }
+});
 
-Schema.testMany = function( schemas, variable, varExists )
+Object.defineProperty(
+Schema,
+"testMany",
+{
+value:
+function( schemas, variable, varExists )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -384,10 +422,14 @@ Schema.testMany = function( schemas, variable, varExists )
 	
 	return false;
 }
+});
 
-Schema.schemaClassTest = function(
-	classFunc, variable, varExists
-)
+Object.defineProperty(
+Schema,
+"schemaClassTest",
+{
+value:
+function( classFunc, variable, varExists )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -403,10 +445,14 @@ Schema.schemaClassTest = function(
 			variable instanceof classFunc === true
 	);
 }
+});
 
-Schema.schemaStrTest = function(
-	schemaStr, variable, varExists
-)
+Object.defineProperty(
+Schema,
+"schemaStrTest",
+{
+value:
+function( schemaStr, variable, varExists )
 {
 	if( ourglobe.conf.doVer() === true )
 	{
@@ -427,8 +473,14 @@ Schema.schemaStrTest = function(
 		) === true
 	);
 }
+});
 
-Schema.test = function( schema, variable, varExists )
+Object.defineProperty(
+Schema,
+"test",
+{
+value:
+function( schema, variable, varExists )
 {
 	varExists = varExists === undefined ? true : varExists;
 	
@@ -1172,33 +1224,104 @@ Schema.test = function( schema, variable, varExists )
 	
 	return true;
 }
+});
 
-Schema.NON_EMPTY_STR = { minStrLen:1 };
-Schema.R_NON_EMPTY_STR = { req:true, minStrLen:1 };
-Schema.NON_EMPTY_STR_L = { minStrLen:1, chars:"letters" };
-Schema.R_NON_EMPTY_STR_L = {
-	req:true, minStrLen:1, chars:"letters"
-};
+Object.defineProperty(
+	Schema,
+	"NON_EMPTY_STR",
+	{ value:{ minStrLen:1 } }
+);
+Object.defineProperty(
+	Schema,
+	"R_NON_EMPTY_STR",
+	{ value:{ req:true, minStrLen:1 } }
+);
+Object.defineProperty(
+	Schema,
+	"NON_EMPTY_STR_L",
+	{ value:{ minStrLen:1, chars:"letters" } }
+);
+Object.defineProperty(
+	Schema,
+	"R_NON_EMPTY_STR_L",
+	{ value:{ req:true, minStrLen:1, chars:"letters" } }
+);
 
-Schema.PROPER_STR = Schema.NON_EMPTY_STR;
-Schema.R_PROPER_STR = Schema.R_NON_EMPTY_STR;
-Schema.PROPER_STR_L = Schema.NON_EMPTY_STR_L;
-Schema.R_PROPER_STR_L = Schema.R_NON_EMPTY_STR_L;
+Object.defineProperty(
+	Schema,
+	"PROPER_STR",
+	{ value: Schema.NON_EMPTY_STR }
+);
+Object.defineProperty(
+	Schema,
+	"R_PROPER_STR",
+	{ value: Schema.R_NON_EMPTY_STR }
+);
+Object.defineProperty(
+	Schema,
+	"PROPER_STR_L",
+	{ value: Schema.NON_EMPTY_STR_L }
+);
+Object.defineProperty(
+	Schema,
+	"R_PROPER_STR_L",
+	{ value: Schema.R_NON_EMPTY_STR_L }
+);
 
-Schema.NON_EMPTY_OBJ = { minProps:1 };
-Schema.R_NON_EMPTY_OBJ = { req:true, minProps:1 };
+Object.defineProperty(
+	Schema,
+	"NON_EMPTY_OBJ",
+	{ value: { minProps:1 } }
+);
+Object.defineProperty(
+	Schema,
+	"R_NON_EMPTY_OBJ",
+	{ value: { req:true, minProps:1 } }
+);
 
-Schema.PROPER_OBJ = Schema.NON_EMPTY_OBJ;
-Schema.R_PROPER_OBJ = Schema.R_NON_EMPTY_OBJ;
+Object.defineProperty(
+	Schema,
+	"PROPER_OBJ",
+	{ value: Schema.NON_EMPTY_OBJ }
+);
+Object.defineProperty(
+	Schema,
+	"R_PROPER_OBJ",
+	{ value: Schema.R_NON_EMPTY_OBJ }
+);
 
-Schema.NON_NEG_INT = { gte:0 };
-Schema.R_NON_NEG_INT = { req:true, gte:0 };
-Schema.POS_INT = { gt:0 };
-Schema.R_POS_INT = { req:true, gt:0 };
+Object.defineProperty(
+	Schema,
+	"NON_NEG_INT",
+	{ value:{ gte:0 } }
+);
+Object.defineProperty(
+	Schema,
+	"R_NON_NEG_INT",
+	{ value:{ req:true, gte:0 } }
+);
+Object.defineProperty(
+	Schema,
+	"POS_INT",
+	{ value:{ gt:0 } }
+);
+Object.defineProperty(
+	Schema,
+	"R_POS_INT",
+	{ value:{ req:true, gt:0 } }
+);
 
-Schema.META_SCHEMA_STR = "str/arr/obj/undef";
+Object.defineProperty(
+	Schema,
+	"META_SCHEMA_STR",
+	{ value: "str/arr/obj/undef" }
+);
 
-Schema.META_SCHEMA =
+Object.defineProperty(
+Schema,
+"META_SCHEMA",
+{
+value:
 {
 	goodTypes: [ "arr", "str", "obj" ],
 	
@@ -1269,6 +1392,7 @@ Schema.META_SCHEMA =
 	
 	extraProperties: false
 }
+});
 
 Schema.META_SCHEMA.extraItems.goodTypes = Schema.META_SCHEMA;
 

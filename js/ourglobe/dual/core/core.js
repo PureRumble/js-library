@@ -85,52 +85,91 @@ sys.extend( ArgsVer, FuncParamVer );
 sys.extend( ExtraArgsVer, FuncParamVer );
 sys.extend( ReturnVarVer, FuncParamVer );
 
-RuntimeError.MSG_S = OurGlobeError.MSG_S;
-RuntimeError.VAR_S = OurGlobeError.VAR_S;
-RuntimeError.CODE_S = OurGlobeError.CODE_S;
-RuntimeError.PLACE_S = OurGlobeError.PLACE_S;
+Object.defineProperty(
+	RuntimeError, "MSG_S", { value: OurGlobeError.MSG_S }
+);
+Object.defineProperty(
+	RuntimeError, "VAR_S", { value: OurGlobeError.VAR_S }
+);
+Object.defineProperty(
+	RuntimeError, "CODE_S", { value: OurGlobeError.CODE_S }
+);
+Object.defineProperty(
+	RuntimeError, "PLACE_S", { value: OurGlobeError.PLACE_S }
+);
 
-FuncVer.PROPER_STR = Schema.PROPER_STR;
-FuncVer.R_PROPER_STR = Schema.R_PROPER_STR;
-FuncVer.PROPER_STR_L = Schema.PROPER_STR_L;
-FuncVer.R_PROPER_STR_L = Schema.R_PROPER_STR_L;
-FuncVer.PROPER_OBJ = Schema.PROPER_OBJ;
-FuncVer.R_PROPER_OBJ = Schema.R_PROPER_OBJ;
-FuncVer.NON_NEG_INT = Schema.NON_NEG_INT;
-FuncVer.R_NON_NEG_INT = Schema.R_NON_NEG_INT;
-FuncVer.POS_INT = Schema.POS_INT;
-FuncVer.R_POS_INT = Schema.R_POS_INT;
+Object.defineProperty(
+	FuncVer, "PROPER_STR", { value: Schema.PROPER_STR }
+);
+Object.defineProperty(
+	FuncVer, "R_PROPER_STR", { value: Schema.R_PROPER_STR }
+);
+Object.defineProperty(
+	FuncVer, "PROPER_STR_L", { value: Schema.PROPER_STR_L }
+);
+Object.defineProperty(
+	FuncVer, "R_PROPER_STR_L", { value: Schema.R_PROPER_STR_L }
+);
+Object.defineProperty(
+	FuncVer, "PROPER_OBJ", { value: Schema.PROPER_OBJ }
+);
+Object.defineProperty(
+	FuncVer, "R_PROPER_OBJ", { value: Schema.R_PROPER_OBJ }
+);
+Object.defineProperty(
+	FuncVer, "NON_NEG_INT", { value: Schema.NON_NEG_INT }
+);
+Object.defineProperty(
+	FuncVer, "R_NON_NEG_INT", { value: Schema.R_NON_NEG_INT }
+);
+Object.defineProperty(
+	FuncVer, "POS_INT", { value: Schema.POS_INT }
+);
+Object.defineProperty(
+	FuncVer, "R_POS_INT", { value: Schema.R_POS_INT }
+);
 
 getA.ANY_ARGS = getE( "any" );
 
-OurGlobeError.CONSTR_FV =
-new FuncVer()
-	.addA(
-		OurGlobeError.MSG_S,
-		OurGlobeError.VAR_S,
-		OurGlobeError.CODE_S,
-		OurGlobeError.PLACE_S
-	)
-	.addA(
-		OurGlobeError.MSG_S,
-		OurGlobeError.VAR_S,
-		OurGlobeError.PLACE_S,
-		"undef"
-	)
-	.addA(
-		OurGlobeError.MSG_S, OurGlobeError.PLACE_S, "undef", "undef"
-	)
-	.addA(
-		OurGlobeError.MSG_S,
-		OurGlobeError.CODE_S,
-		OurGlobeError.PLACE_S,
-		"undef"
-	)
-;
-OurGlobeError.CONSTR_V = OurGlobeError.CONSTR_FV;
+Object.defineProperty(
+	OurGlobeError,
+	"CONSTR_FV",
+	{
+		value:
+		new FuncVer()
+			.addA(
+				OurGlobeError.MSG_S,
+				OurGlobeError.VAR_S,
+				OurGlobeError.CODE_S,
+				OurGlobeError.PLACE_S
+			)
+			.addA(
+				OurGlobeError.MSG_S,
+				OurGlobeError.VAR_S,
+				OurGlobeError.PLACE_S,
+				"undef"
+			)
+			.addA(
+				OurGlobeError.MSG_S, OurGlobeError.PLACE_S, "undef", "undef"
+			)
+			.addA(
+				OurGlobeError.MSG_S,
+				OurGlobeError.CODE_S,
+				OurGlobeError.PLACE_S,
+				"undef"
+			)
+	}
+);
+Object.defineProperty(
+	OurGlobeError, "CONSTR_V", { value: OurGlobeError.CONSTR_FV }
+);
 
-RuntimeError.CONSTR_FV = OurGlobeError.CONSTR_FV;
-RuntimeError.CONSTR_V = RuntimeError.CONSTR_FV;
+Object.defineProperty(
+	RuntimeError, "CONSTR_FV", { value: OurGlobeError.CONSTR_FV }
+);
+Object.defineProperty(
+	RuntimeError, "CONSTR_V", { value: OurGlobeError.CONSTR_V }
+);
 
 var returnVar = 
 {

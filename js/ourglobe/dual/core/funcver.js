@@ -38,7 +38,11 @@ function FuncVer( argSchemas, returnSchema, extraArgsSchema )
 	this.returnSchema = returnSchema;
 };
 
-FuncVer.getFuncVer =
+Object.defineProperty(
+FuncVer,
+"getFuncVer",
+{
+value:
 function( argSchemas, returnSchema, extraArgsSchema )
 {
 	var FuncParamVer = ourGlobe.core.FuncParamVer;
@@ -111,7 +115,8 @@ function( argSchemas, returnSchema, extraArgsSchema )
 	}
 	
 	return fV;
-};
+}
+});
 
 FuncVer.prototype.addArgs =
 function( argSchemas )

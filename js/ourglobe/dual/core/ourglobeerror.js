@@ -60,7 +60,11 @@ function OurGlobeError( msg, errorVar, errorCode, errorPlace )
 	Error.captureStackTrace( this, errorPlace );
 };
 
-OurGlobeError.verArgs =
+Object.defineProperty(
+OurGlobeError,
+"verArgs",
+{
+value:
 function( msg, errorVar, errorCode, errorPlace )
 {
 	if( arguments.length < 1 || arguments.length > 4 )
@@ -86,9 +90,14 @@ function( msg, errorVar, errorCode, errorPlace )
 			res.ourGlobePlace
 		);
 	}
-};
+}
+});
 
-OurGlobeError.verArgsWithoutErr =
+Object.defineProperty(
+OurGlobeError,
+"verArgsWithoutErr",
+{
+value:
 function( msg, errorVar, errorCode, errorPlace )
 {
 	if( arguments.length < 1 || arguments.length > 4 )
@@ -159,9 +168,14 @@ function( msg, errorVar, errorCode, errorPlace )
 			}
 		);
 	}
-};
+}
+});
 
-OurGlobeError.toString =
+Object.defineProperty(
+OurGlobeError,
+"toString",
+{
+value:
 function( err )
 {
 	if( ourglobe.conf.doVer() === true )
@@ -192,7 +206,8 @@ function( err )
 		false,
 		null
 	);
-};
+}
+});
 
 OurGlobeError.prototype.toString =
 function()
@@ -242,15 +257,29 @@ function( errCode )
 
 // Do not use these vars in core modules, instead use
 // OurGlobeError.verArgs() where applicable
-OurGlobeError.MSG_S = { minStrLen: 1 };
-OurGlobeError.VAR_S = { types:"obj/undef", minKeys: 1 };
-OurGlobeError.CODE_S =
-{
-	types:"str/undef",
-	minStrLen: 1,
-	chars:"letters/digits/underscore"
-};
-OurGlobeError.PLACE_S = "func/undef";
+Object.defineProperty(
+	OurGlobeError, "MSG_S", { value: { minStrLen: 1 } }
+);
+Object.defineProperty(
+	OurGlobeError,
+	"VAR_S",
+	{ value: { types:"obj/undef", minKeys: 1 } }
+);
+Object.defineProperty(
+	OurGlobeError,
+	"CODE_S",
+	{
+		value:
+		{
+			types:"str/undef",
+			minStrLen: 1,
+			chars:"letters/digits/underscore"
+		}
+	}
+);
+Object.defineProperty(
+	OurGlobeError, "PLACE_S", { value: "func/undef" }
+);
 
 return OurGlobeError;
 

@@ -373,8 +373,23 @@ function()
 			}
 		};
 		
-		newFunc.ourGlobe = {};
-		newFunc.ourGlobe.func = {};
+		Object.defineProperty(
+			newFunc,
+			"ourGlobe",
+			{ 
+				enumerable: true,
+				configurable: false,
+				writable: false,
+				value: {}
+			}
+		);
+		
+		Object.defineProperty(
+			newFunc.ourGlobe,
+			"func",
+			{ value: {} }
+		);
+		
 		newFunc.ourGlobe.func.bodyFunc = func;
 		
 		if( funcVer !== undefined )

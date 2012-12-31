@@ -225,13 +225,28 @@ function( args )
 	
 	ClassVar = getF.apply( {}, constrArr );
 	
-	if( ClassVar.ourGlobe === undefined )
-	{
-		ClassVar.ourGlobe = {};
-	}
+	Object.defineProperty(
+		ClassVar.ourGlobe,
+		"className",
+		{ 
+			enumerable: true,
+			configurable: false,
+			writable: false,
+			value: className
+		}
+	);
 	
-	ClassVar.ourGlobe.class = {};
-	ClassVar.ourGlobe.class.className = className;
+	Object.defineProperty(
+		ClassVar.ourGlobe,
+		"class",
+		{ 
+			enumerable: false,
+			configurable: false,
+			writable: false,
+			value: {}
+		}
+	);
+	
 	ClassVar.ourGlobe.class.subClasses = [];
 	ClassVar.ourGlobe.class.instVars = {};
 	ClassVar.ourGlobe.class.instFuncs = {};
@@ -266,7 +281,11 @@ function( SubClass, SuperClass )
 	{
 		SubClass.prototype.__proto__ = SuperClass.prototype;
 		SubClass.ourGlobeSuper = SuperClass;
-		SubClass.ourGlobeSuperProto = SuperClass.prototype;
+		Object.defineProperty(
+			SubClass,
+			"ourGlobeSuperProto",
+			{ value: SuperClass.prototype }
+		);
 	}
 	
 	if(
@@ -366,7 +385,14 @@ function( ClassVar, staticMembers )
 	
 	for( var staticMember in staticMembers )
 	{
-		ClassVar[ staticMember ] = staticMembers[ staticMember ];
+		Object.defineProperty(
+			ClassVar,
+			staticMember,
+			{
+				enumerable: false,
+				value: staticMembers[ staticMember ]
+			}
+		);
 	}
 });
 
@@ -644,7 +670,16 @@ function( ClassVar, funcs )
 	{
 		var preparedStaticFunc = preparedStaticFuncs[ funcName ];
 		
-		ClassVar[ funcName ] = preparedStaticFunc.func;
+		Object.defineProperty(
+			ClassVar,
+			funcName,
+			{
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: preparedStaticFunc.func
+			}
+		);
 		
 		ClassVar.ourGlobe.class.staticFuncs[ funcName ] =
 			preparedStaticFunc
