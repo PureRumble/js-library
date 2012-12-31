@@ -34,7 +34,7 @@ function()
 		{
 			CONSTR_V: getV( getA( Drop ) ),
 			
-			BEGIN_RIVER_FLOW_V: getV( getA( "inst", "inst", "func" ) ),
+			BEGIN_RIVER_FLOW_V: getV( getA( "func" ) ),
 			BEGIN_V: getV( getA( "func" ) ),
 			VALIDATE_V: getV( getA( "func" ) ),
 			PREPARE_V: getV( getA( "func" ) ),

@@ -330,8 +330,6 @@ getA( "func" ),
 function( cb )
 {
 	this.stoneBeginRiverFlow.flowDrop(
-		this.riverDrop.req,
-		this.riverDrop.res,
 		getCb(
 		this,
 		getA( StreamError, "undef" ),

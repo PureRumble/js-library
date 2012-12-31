@@ -30,8 +30,8 @@ constr:
 getA( "inst", "inst" ),
 function( req, res )
 {
-	this.req = req;
-	this.res = res;
+	this.request = req;
+	this.response = res;
 	
 	this.drops = [];
 }]

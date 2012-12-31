@@ -56,10 +56,15 @@ StoneBeginRiverFlow,
 flowStream:
 [
 Stone.BEGIN_RIVER_FLOW_V,
-function( req, res, cb )
+function( cb )
 {
 	this.drop.stream.beginRiverFlow(
-		this.drop, { req: req, res: res }, cb
+		this.drop,
+		{
+			req: this.drop.riverDrop.request,
+			res: this.drop.riverDrop.response
+		},
+		cb
 	);
 }],
 

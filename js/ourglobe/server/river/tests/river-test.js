@@ -569,8 +569,8 @@ function()
 		}
 		
 		var drop = args[ 0 ];
-		var req = drop.riverDrop.req;
-		var res = drop.riverDrop.res;
+		var req = drop.riverDrop.request;
+		var res = drop.riverDrop.response;
 		var cb = args[ args.length-1 ];
 		
 		req.setEncoding( "utf8" );
