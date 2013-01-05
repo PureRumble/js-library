@@ -41,7 +41,7 @@ function()
 			BRANCH_V: getV( getA( "func" ) ),
 			SERVE_V: getV( getA( "func" ) ),
 			SERVE_FAILURE_V: getV( getA( "func" ) ),
-			SERVE_ERR_V: getV( getA( StreamError, "func" ) ),
+			SERVE_ERR_V: getV( getA( "func" ) ),
 			FINISH_V: getV( getA( "func" ) ),
 			HANDLE_CB_ARGS_V:
 				getV(
@@ -282,14 +282,16 @@ function( stoneArgZero, stoneArgOne, cb )
 	}
 	catch( e )
 	{
-		cb(
+		this.err =
 			new StreamError(
 				this.drop,
 				e,
 				"An err was thrown by the Stream Stone",
 				this.getErrThrownCode()
 			)
-		);
+		;
+		
+		cb( this.err );
 	}
 }],
 

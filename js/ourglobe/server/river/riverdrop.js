@@ -193,11 +193,10 @@ function( cb )
 
 serveErr:
 [
-getA( StreamError, "func" ),
-function( firstErr, cb )
+getA( "func" ),
+function( cb )
 {
 	this.getCurrDrop().serveErr(
-		firstErr,
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),
@@ -210,11 +209,10 @@ function( firstErr, cb )
 
 serveFailure:
 [
-getA( Stream.FAILURE_CODE_S, "func" ),
-function( failureCode, cb )
+getA( "func" ),
+function( cb )
 {
 	this.getCurrDrop().serveFailure(
-		failureCode,
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),

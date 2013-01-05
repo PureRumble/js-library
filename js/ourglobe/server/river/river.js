@@ -39,12 +39,12 @@ name: "River",
 constr:
 [
 getA.ANY_ARGS,
-function( topStream, port )
+function( topStream, opts )
 {
-	if( arguments.length !== 2 )
+	if( arguments.length > 2 )
 	{
 		throw new RuntimeError(
-			"Exactly two args must be provided",
+			"No more than two args may be provided",
 			{ providedArgs: arguments }
 		);
 	}
@@ -57,11 +57,48 @@ function( topStream, port )
 		);
 	}
 	
-	if( hasT( port, "int" ) === false || port < 0 )
+	if( opts !== undefined && hasT( opts, "obj" ) === false )
 	{
 		throw new RuntimeError(
-			"Arg port must be a non-neg int", { port: port }
+			"Arg opts must be undef or an obj", { opts: opts }
 		);
+	}
+	
+	var port = opts.port;
+	var testCb = opts.testCb;
+	
+	if(
+		port !== undefined &&
+		( hasT( port, "int" ) === false || port < 0 )
+	)
+	{
+		throw new RuntimeError(
+			"Prop port of arg opts must be undef or a non-neg int",
+			{ port: port }
+		);
+	}
+	
+	if( testCb !== undefined && hasT( testCb, "func" ) === false )
+	{
+		throw new RuntimeError(
+			"Prop testCb of arg opts must be undef or a func",
+			{ testCb: testCb }
+		);
+	}
+	
+	if( port === undefined )
+	{
+		port = 80;
+	}
+	
+	if( testCb === undefined )
+	{
+		testCb =
+			function()
+			{
+				
+			}
+		;
 	}
 	
 	this.topStream = topStream;
@@ -83,7 +120,16 @@ function( topStream, port )
 					true,
 					function()
 					{
+						try
+						{
 						
+						testCb( req, res );
+						
+						}
+						catch( e )
+						{
+							
+						}
 					}
 				);
 			}
@@ -158,7 +204,6 @@ getA( RiverDrop, StreamError, "func" ),
 function( riverDrop, firstErr, cb )
 {
 	riverDrop.serveErr(
-		firstErr,
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),
@@ -175,7 +220,6 @@ getA( RiverDrop, "str", "func" ),
 function( riverDrop, failureCode, cb )
 {
 	riverDrop.serveFailure(
-		failureCode,
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),

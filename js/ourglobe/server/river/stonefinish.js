@@ -58,7 +58,7 @@ flowStream:
 Stone.FINISH_V,
 function( cb )
 {
-	this.drop.stream.finish( this.drop, cb );
+	this.drop.stream.finish( this.drop, this.drop.dropFlow, cb );
 }],
 
 handleCbArgs:

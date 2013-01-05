@@ -58,7 +58,9 @@ flowStream:
 Stone.SERVE_FAILURE_V,
 function( cb )
 {
-	this.drop.stream.serveFailure( this.drop, cb );
+	this.drop.stream.serveFailure(
+		this.drop, this.drop.dropFlow, cb
+	);
 }],
 
 handleCbArgs:

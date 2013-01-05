@@ -42,7 +42,7 @@ function()
 },
 function( drop )
 {
-	this.failureCode= undefined;
+	this.failureCode = undefined;
 	
 	this.ourGlobeCallSuper( undefined, drop );
 }]

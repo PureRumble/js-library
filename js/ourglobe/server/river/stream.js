@@ -1,7 +1,8 @@
 ourGlobe.define(
 [
 	"./riverruntimeerror",
-	"./drop"
+	"./drop",
+	"./dropflow"
 ],
 function( mods )
 {
@@ -18,22 +19,20 @@ var Class = ourGlobe.Class;
 
 var RiverRuntimeError = undefined;
 var Drop = undefined;
+var DropFlow = undefined;
 
 mods.delay(
 function()
 {
 	RiverRuntimeError = mods.get( "riverruntimeerror" );
 	Drop = mods.get( "drop" );
+	DropFlow = mods.get( "dropflow" );
 	
 	var beginRiverFlowOptsS =
 		{
 			props:{ req: "+inst", res: "+inst" },
 			extraProps: false
 		}
-	;
-	
-	var serveErrOptsS =
-		{ props:{ err:{ req: true, types:[ Error ] } } }
 	;
 	
 	Class.addStatic(
@@ -56,9 +55,9 @@ function()
 		PREPARE_V: getV( getA( Drop, "func" ) ),
 		BRANCH_V: getV( getA( Drop, "func" ) ),
 		SERVE_V: getV( getA( Drop, "func" ) ),
-		SERVE_FAILURE_V: getV( getA( Drop, "func" ) ),
-		SERVE_ERR_V: getV( getA( Drop, serveErrOptsS, "func" ) ),
-		FINISH_V: getV( getA( Drop, "func" ) ),
+		SERVE_FAILURE_V: getV( getA( Drop, DropFlow, "func" ) ),
+		SERVE_ERR_V: getV( getA( Drop, DropFlow, "func" ) ),
+		FINISH_V: getV( getA( Drop, DropFlow, "func" ) ),
 		
 		ERR_AT_BEGIN_RIVER_FLOW: "ErrAtBeginRiverFlow",
 		ERR_AT_BEGIN_RIVER_FLOW_CB: "ErrAtBeginRiverFlowCb",
@@ -432,7 +431,7 @@ function( drop, cb )
 serveFailure:
 [
 getA.ANY_ARGS,
-function( drop, cb )
+function( drop, dropFlow, cb )
 {
 	throw new RuntimeError(
 		"All sub classes of Stream must implement serveFailure()",
@@ -443,7 +442,7 @@ function( drop, cb )
 serveErr:
 [
 getA.ANY_ARGS,
-function( drop, opts, cb )
+function( drop, dropFlow, cb )
 {
 	throw new RuntimeError(
 		"All sub classes of Stream must implement serveErr()",
@@ -454,7 +453,7 @@ function( drop, opts, cb )
 finish:
 [
 Stream.FINISH_V,
-function( drop, cb )
+function( drop, dropFlow, cb )
 {
 	cb();
 }],

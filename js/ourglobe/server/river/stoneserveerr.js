@@ -56,9 +56,9 @@ StoneServeErr,
 flowStream:
 [
 Stone.SERVE_ERR_V,
-function( err, cb )
+function( cb )
 {
-	this.drop.stream.serveErr( this.drop, { err: err }, cb );
+	this.drop.stream.serveErr( this.drop, this.drop.dropFlow, cb );
 }],
 
 handleCbArgs:

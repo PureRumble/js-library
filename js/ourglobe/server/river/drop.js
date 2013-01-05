@@ -5,6 +5,7 @@ ourGlobe.define(
 	"./river",
 	"./riverdrop",
 	"./stream",
+	"./dropflow",
 	"./stonebeginriverflow",
 	"./stonebegin",
 	"./stonevalidate",
@@ -32,6 +33,7 @@ var Class = ourGlobe.Class;
 var RiverDrop = undefined;
 var Stream = undefined;
 
+var DropFlow = undefined;
 var StoneBeginRiverFlow = undefined;
 var StoneBegin = undefined;
 var StoneValidate = undefined;
@@ -48,6 +50,7 @@ function()
 	RiverDrop = mods.get( "riverdrop" );
 	Stream = mods.get( "stream" );
 	
+	DropFlow = mods.get( "dropflow" );
 	StoneBeginRiverFlow = mods.get( "stonebeginriverflow" );
 	StoneBegin = mods.get( "stonebegin" );
 	StoneValidate = mods.get( "stonevalidate" );
@@ -93,6 +96,7 @@ function( riverDrop, stream, lastDrop )
 	
 	this.streamParams = streamParams;
 	
+	this.dropFlow = new DropFlow( this );
 	this.stoneBeginRiverFlow = new StoneBeginRiverFlow( this );
 	this.stoneBegin = new StoneBegin( this );
 	this.stoneValidate = new StoneValidate( this );
@@ -142,54 +146,6 @@ function( streamParams )
 	{
 		this.streamParams[ paramName ] = streamParams[ paramName ];
 	}
-}],
-
-prepareForFailure:
-[
-getA( Stream.FAILURE_CODE_S ),
-function( failureCode )
-{
-	this.failureCode = failureCode;
-}],
-
-restoreFromFailure:
-[
-function()
-{
-	this.failureCode = undefined;
-}],
-
-failedOf:
-[
-getA.ANY_ARGS,
-function( failureCode )
-{
-	if( arguments.length !== 1 )
-	{
-		throw new RuntimeError(
-			"Exactly one arg must be provided",
-			{ providedArgs: arguments }
-		);
-	}
-	
-	if( Stream.failureCodeIsValid( failureCode ) === false )
-	{
-		throw new RuntimeError(
-			"Arg failureCode must be a valid failure code",
-			{ failureCode: failureCode }
-		);
-	}
-	
-	if( this.failureCode === undefined )
-	{
-		throw new RiverRuntimeError(
-			"failedOf() may not be called since a Drop validation "+
-			"failure is not being served by the current Stream",
-			"ValidationFailureNotBeingServed"
-		);
-	}
-	
-	return this.failureCode === failureCode;
 }],
 
 isSet:
@@ -450,11 +406,10 @@ function( cb )
 
 serveErr:
 [
-getA( StreamError, "func" ),
-function( firstErr, cb )
+getA( "func" ),
+function( cb )
 {
 	this.stoneServeErr.flowDrop(
-		firstErr,
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),
@@ -467,19 +422,15 @@ function( firstErr, cb )
 
 serveFailure:
 [
-getA( Stream.FAILURE_CODE_S, "func" ),
-function( failureCode, cb )
+getA( "func" ),
+function( cb )
 {
-	this.prepareForFailure( failureCode );
-	
 	this.stoneServeFailure.flowDrop(
 		getCb(
 		this,
 		getA( [ StreamError, "undef" ] ),
 		function( err )
 		{
-			this.restoreFromFailure();
-			
 			cb( err );
 		})
 	);

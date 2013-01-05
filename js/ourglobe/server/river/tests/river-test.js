@@ -35,6 +35,7 @@ var MoreHttp = mods.get( "morehttp" ).MoreHttp;
 var River = mods.get( "river" ).River;
 var Stream = mods.get( "river" ).Stream;
 var Drop = mods.get( "river" ).Drop;
+var DropFlow = mods.get( "river" ).DropFlow;
 
 var Test = mods.get( "testing" ).Test;
 var Suite = mods.get( "testing" ).Suite;
@@ -208,7 +209,7 @@ function( opts )
 	if( finish === true )
 	{
 		finish =
-		function( drop, cb )
+		function( drop, dropFlow, cb )
 		{
 			cb();
 		};
@@ -324,13 +325,11 @@ function( opts )
 		classAddObj.serveFailure =
 		[
 			Stream.SERVE_FAILURE_V,
-			function( drop, cb )
+			function( drop, dropFlow, cb )
 			{
 				stack.push( this.getStreamName() + ".serveFailure" );
 				stack.push(
-					{
-						failureCode: drop.failureCode
-					}
+					{ failureCode: drop.stoneValidate.failureCode }
 				);
 				
 				serveFailure.apply( this, arguments );
@@ -343,9 +342,9 @@ function( opts )
 		classAddObj.serveErr =
 		[
 			Stream.SERVE_ERR_V,
-			function( drop, opts, cb )
+			function( drop, dropFlow, cb )
 			{
-				var riverErr = opts.err;
+				var riverErr = dropFlow.getErr();
 				
 				var errObj =
 					{
@@ -366,14 +365,14 @@ function( opts )
 				stack.push( errObj );
 				
 // temporary
-				if( err !== undefined )
-				{
-					console.log( err.stack );
-				}
-				else
-				{
-					console.log( riverErr.stack );
-				}
+// 				if( err !== undefined )
+// 				{
+// 					console.log( err.stack );
+// 				}
+// 				else
+// 				{
+// 					console.log( riverErr.stack );
+// 				}
 				
 				serveErr.apply( this, arguments );
 			}
@@ -719,31 +718,43 @@ function( opts, nrBranchings )
 		);
 	}
 	
-	if( expectedCallStack !== undefined )
-	{
-		vows.push(
-			"(getRiverTest vow) The call stack for the "+
-			"Streams given to getRiverTest() is as expected"
-		);
-		vows.push(
-			function()
+	vows.push(
+		"(getRiverTest vow) The call stack for the "+
+		"Streams given to getRiverTest() is as expected"
+	);
+	vows.push(
+		function()
+		{
+			var actualCallStack = this.getV( "getRiverTest.stack" );
+			
+			Test.assert(
+				actualCallStack.length === 0 ||
+				expectedCallStack !== undefined,
+				"getRiverTest.stack has been used to log the River's "+
+				"call stack of the Stream Stones but no expect call "+
+				"stack has been provided to getRiverTest()",
+				{ actualCallStack: actualCallStack }
+			);
+			
+			if(
+				expectedCallStack !== undefined ||
+				actualCallStack.length > 0
+			)
 			{
 				Test.assert(
-					Test.areEqual(
-						expectedCallStack,
-						this.getV( "getRiverTest.stack" )
-					)
-					=== true,
+					true ===
+						Test.areEqual( expectedCallStack, actualCallStack )
+					,
 					"The Streams given to getRiverTest() didnt yield the "+
 					"expected call stack",
 					{
 						expectedCallStack: expectedCallStack,
-						actualCallStack: this.getV( "getRiverTest.stack" )
+						actualCallStack: actualCallStack
 					}
 				);
 			}
-		);
-	}
+		}
+	);
 	
 	var suiteObj =
 	{
@@ -792,7 +803,61 @@ function( opts, nrBranchings )
 				);
 			}
 			
-			river = new River( currStream, RiverTest.RIVER_PORT );
+			var riverDone = false;
+			var reqDone = false;
+			var cbCalled = false;
+			
+			var callCb =
+			getCb(
+				this,
+				getA( [ Error, "undef" ] ),
+				function( err )
+				{
+					if( err !== undefined )
+					{
+						this.callCb( err );
+						
+						return;
+					}
+					
+					if(
+						cbCalled === false &&
+						riverDone === true &&
+						( resStr === undefined || reqDone === true )
+					)
+					{
+						cbCalled = true;
+						
+						this.callCb( topicStream );
+						
+						return;
+					}
+				}
+			);
+			
+			river =
+				new River(
+					currStream,
+					{
+						port: RiverTest.RIVER_PORT,
+						testCb:
+							getCb(
+							this,
+							getA.ANY_ARGS,
+							function( req, res )
+							{
+								riverDone = true;
+								
+								if( resStr === undefined )
+								{
+									res.end();
+								}
+								
+								callCb();
+							})
+					}
+				)
+			;
 			
 			river.flow(
 				getCb(
@@ -818,9 +883,11 @@ function( opts, nrBranchings )
 						MoreHttp.REQUEST_CB_V,
 						function( err, statusCode, res )
 						{
+							reqDone = true;
+							
 							if( err !== undefined )
 							{
-								this.callCb( err );
+								callCb( err );
 								
 								return;
 							}
@@ -835,7 +902,7 @@ function( opts, nrBranchings )
 									response = res.toString();
 								}
 								
-								this.callCb( topicStream );
+								callCb();
 							}
 						})
 					)
@@ -2402,23 +2469,23 @@ vars:
 						func.call( this, drop, cb );
 					},
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						getStoneParams( "serveFailure", drop );
 						
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						getStoneParams( "serveErr", drop );
 						
 						var func = RiverTest.endDrop();
 						
-						func.call( this, drop, cb );
+						func.apply( this, arguments );
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						getStoneParams( "finish", drop );
 						
@@ -3830,7 +3897,7 @@ next:
 					branches:[ middleStream ],
 					branch: RiverTest.branchToStream( "MiddleStream" ),
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						try
 						{
@@ -3974,7 +4041,7 @@ next:
 					branches:[ middleStream ],
 					branch: RiverTest.branchToStream( "MiddleStream" ),
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						try
 						{
@@ -4208,7 +4275,7 @@ suite.add(
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "brfOne" ) === true &&
@@ -4222,7 +4289,7 @@ suite.add(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "brfOne" ) === true &&
@@ -4352,7 +4419,7 @@ suite.add(
 					validate: RiverTest.failValidation(),
 					serve: true,
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "brfOne" ) === true &&
@@ -4508,7 +4575,7 @@ suite.add(
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4522,7 +4589,7 @@ suite.add(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4642,7 +4709,7 @@ suite.add(
 					validate: RiverTest.failValidation(),
 					serve: true,
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4781,7 +4848,7 @@ suite.add(
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4795,7 +4862,7 @@ suite.add(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4905,7 +4972,7 @@ suite.add(
 					},
 					serve: true,
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						if(
 							drop.isSet( "varOne" ) === true &&
@@ -4969,7 +5036,7 @@ RiverTest.getRiverTest(
 				validate: RiverTest.failValidation(),
 				serve: true,
 				serveFailure:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					drop.set( "varOne", "dingo" );
 					drop.set( "varOne", "dango" );
@@ -4987,7 +5054,7 @@ RiverTest.getRiverTest(
 					cb();
 				},
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5111,7 +5178,7 @@ RiverTest.getRiverTest(
 					throw new TestingError();
 				},
 				serveErr:
-				function( drop, opts, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5125,7 +5192,7 @@ RiverTest.getRiverTest(
 					cb();
 				},
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5259,7 +5326,7 @@ RiverTest.getRiverTest(
 					throw new TestingError();
 				},
 				serveErr:
-				function( drop, opts, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5273,7 +5340,7 @@ RiverTest.getRiverTest(
 					cb();
 				},
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5381,7 +5448,7 @@ RiverTest.getRiverTest(
 					throw new TestingError();
 				},
 				serveErr:
-				function( drop, opts, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5395,7 +5462,7 @@ RiverTest.getRiverTest(
 					cb();
 				},
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5474,7 +5541,7 @@ RiverTest.getRiverTest(
 			{
 				serve: RiverTest.throwErr(),
 				serveErr:
-				function( drop, opts, cb )
+				function( drop, dropFlow, cb )
 				{
 					drop.set( "varOne", "dingo" );
 					drop.set( "varOne", "dango" );
@@ -5492,7 +5559,7 @@ RiverTest.getRiverTest(
 					cb();
 				},
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					if(
 						drop.isSet( "varOne" ) === true &&
@@ -5559,7 +5626,7 @@ RiverTest.getRiverTest(
 			{
 				serve: true,
 				finish:
-				function( drop, cb )
+				function( drop, dropFlow, cb )
 				{
 					drop.set( "varOne", "dingo" );
 					drop.set( "varOne", "dango" );
@@ -5698,7 +5765,7 @@ RiverTest.getRiverTest(
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "seSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "seGetsVar", drop.get( "localVar" ) );
@@ -5708,7 +5775,7 @@ RiverTest.getRiverTest(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "fSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "fGetsVar", drop.get( "localVar" ) );
@@ -5845,7 +5912,7 @@ RiverTest.getRiverTest(
 					},
 					serve: true,
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "sfSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "sfGetsVar", drop.get( "localVar" ) );
@@ -5855,7 +5922,7 @@ RiverTest.getRiverTest(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "fSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "fGetsVar", drop.get( "localVar" ) );
@@ -5985,7 +6052,7 @@ RiverTest.getRiverTest(
 						throw new TestingError();
 					},
 					serveErr:
-					function( drop, opts, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "seSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "seGetsVar", drop.get( "localVar" ) );
@@ -5993,7 +6060,7 @@ RiverTest.getRiverTest(
 						cb();
 					},
 					finish:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "fSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "fGetsVar", drop.get( "localVar" ) );
@@ -6111,7 +6178,7 @@ RiverTest.getRiverTest(
 					validate: RiverTest.failValidation(),
 					serve: true,
 					serveFailure:
-					function( drop, cb )
+					function( drop, dropFlow, cb )
 					{
 						suite.setV( "sfSeesVar", drop.isSet( "localVar" ) );
 						suite.setV( "sfGetsVar", drop.get( "localVar" ) );
@@ -6291,14 +6358,14 @@ RiverTest.getRiverTest(
 							);
 						},
 						serveErr:
-						function( drop, opts, cb )
+						function( drop, dropFlow, cb )
 						{
 							handleVars( drop );
 							
 							cb();
 						},
 						finish:
-						function( drop, cb )
+						function( drop, dropFlow, cb )
 						{
 							handleVars( drop );
 							
@@ -6651,6 +6718,804 @@ RiverTest.getRiverTest(
 }
 
 ]);
+
+suite.add(
+"Stream that uses DropFlow in stones "+
+"serveFailure, serveErr and finish",
+{
+
+vars:
+{
+	getDropFlowStream:
+	getF(
+		getA(
+			"str",
+			{
+				types: "obj/undef",
+				props:
+				{
+					stack: "arr/undef",
+					logFlow: "bool/undef",
+					beginRiverFlow:{ values:[ "throwErr", undefined ] },
+					begin:{ values:[ "throwErr", undefined ] },
+					validate:{ values:[ "fail", "throwErr", undefined ] },
+					failureCode: "str/undef",
+					prepare:{ values:[ "throwErr", undefined ] },
+					branch:
+					{
+						types:
+							[ Stream, { values:[ "throwErr", undefined ] } ]
+					},
+					serve:{ values:[ "throwErr", undefined ] },
+					serveFailure:{ values:[ "throwErr", undefined ] },
+					serveErr:{ values:[ "throwErr", undefined ] },
+					errCode: "str/undef",
+					finish:{ values:[ "throwErr", undefined ] },
+					dropFlowObj: "obj"
+				},
+				extraProps: false
+			}
+		),
+		getR( Stream ),
+		function( streamName, opts )
+		{
+			if( opts === undefined )
+			{
+				opts = {};
+			}
+			
+			var stack = opts.stack;
+			var logFlow = opts.logFlow;
+			var beginRiverFlow = opts.beginRiverFlow;
+			var begin = opts.begin;
+			var validate = opts.validate;
+			var prepare = opts.prepare;
+			var branch = opts.branch;
+			var serve = opts.serve;
+			var serveFailure = opts.serveFailure;
+			var serveErr = opts.serveErr;
+			var finish = opts.finish;
+			var dropFlowObj = opts.dropFlowObj;
+			var failureCode = opts.failureCode;
+			var errCode = opts.errCode;
+			
+			if( logFlow === undefined )
+			{
+				logFlow = false;
+			}
+			
+			var branches = undefined;
+			
+			if( branch instanceof Stream === true )
+			{
+				branches = [ branch ];
+			}
+			
+			var setStoneFlow =
+			getF(
+				getA( DropFlow, "str", "obj" ),
+				function( dropFlow, stoneName, flowObj )
+				{
+					if( dropFlow.errAt( stoneName ) === true )
+					{
+						flowObj[ stoneName ] = "errAt";
+					}
+					else if( dropFlow.flowedTo( stoneName ) === true )
+					{
+						flowObj[ stoneName ] = "flowedTo";
+					}
+					else
+					{
+						flowObj[ stoneName ] = "unreached";
+					}
+				}
+			);
+			
+			var getStoneFunc =
+			getF(
+				getA( "str", [ Stream, "str/undef" ] ),
+				getR( "func" ),
+				function( stoneName, stoneType )
+				{
+					var func =
+					function( drop, dropFlow, cb )
+					{
+						if(
+							stoneName === "serveFailure" ||
+							stoneName === "serveErr" ||
+							stoneName === "finish"
+						)
+						{
+							dropFlowObj[ stoneName ] = {};
+							
+							debugger;
+							
+							if( logFlow === true )
+							{
+								var flow = {};
+								
+								setStoneFlow( dropFlow, "beginRiverFlow", flow );
+								setStoneFlow( dropFlow, "begin", flow );
+								setStoneFlow( dropFlow, "validate", flow );
+								setStoneFlow( dropFlow, "prepare", flow );
+								setStoneFlow( dropFlow, "branch", flow );
+								setStoneFlow( dropFlow, "serve", flow );
+								setStoneFlow( dropFlow, "serveFailure", flow );
+								setStoneFlow( dropFlow, "serveErr", flow );
+								setStoneFlow( dropFlow, "finish", flow );
+									
+								dropFlowObj[ stoneName ].flow = flow;
+							}
+							
+							var isValid = dropFlow.isValid();
+							
+							dropFlowObj[ stoneName ].isValid = isValid;
+							
+							if( validate === "fail" )
+							{
+								if(
+									failureCode !== undefined &&
+									dropFlow.invalidBy( failureCode ) === true
+								)
+								{
+									dropFlowObj[ stoneName ][ "invalidBy" ] =
+										failureCode
+									;
+								}
+								else
+								{
+									dropFlowObj[ stoneName ][ "invalidBy" ] = -1;
+								}
+							}
+							
+							var err = dropFlow.getErr();
+							
+							if( err !== undefined )
+							{
+								if(
+									errCode !== undefined &&
+									err.hasErrCode( errCode ) === true
+								)
+								{
+									dropFlowObj[ stoneName ][ "getErr" ] = errCode;
+								}
+								else
+								{
+									dropFlowObj[ stoneName ][ "getErr" ] = -1;
+								}
+							}
+						}
+						
+						var func = undefined;
+						
+						if( stoneType === "throwErr" )
+						{
+							func = RiverTest.throwErr();
+						}
+						else if( stoneType === "fail" )
+						{
+							func = RiverTest.failValidation( failureCode );
+						}
+						else if( stoneType instanceof Stream === true )
+						{
+							func =
+								RiverTest.branchToStream(
+									stoneType.getStreamName()
+								)
+							;
+						}
+						else
+						{
+							if(
+								stoneName === "serve" ||
+								stoneName === "serveErr" ||
+								stoneName === "serveFailure"
+							)
+							{
+								func = RiverTest.endDrop();
+							}
+							else
+							{
+								func = RiverTest.callCb();
+							}
+						}
+						
+						func.apply( this, arguments );
+					};
+					
+					return func;
+				}
+			);
+			
+			var paramStream =
+			RiverTest.getStream(
+				streamName,
+				{
+					stack: stack,
+					branches: branches,
+					beginRiverFlow:
+						getStoneFunc( "beginRiverFlow", beginRiverFlow )
+					,
+					begin: getStoneFunc( "begin", begin ),
+					validate: getStoneFunc( "validate", validate ),
+					prepare: getStoneFunc( "prepare", prepare ),
+					branch: getStoneFunc( "branch", branch ),
+					serve: getStoneFunc( "serve", serve ),
+					serveFailure:
+						getStoneFunc( "serveFailure", serveFailure )
+					,
+					serveErr: getStoneFunc( "serveErr", serveErr ),
+					finish: getStoneFunc( "finish", finish )
+				}
+			);
+			
+			return paramStream;
+		}
+	)
+},
+
+next:
+[
+
+"Stream that doesnt branch and uses DropFlow in the Stones "+
+"serveFailure, serveErr and finish",
+{
+	next:
+	[
+	
+	"The Stream has all Stones and none of them are faulty. "+
+	"DropFlow.flowedTo() and flowedBy() are used",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var dropFlowObj = {};
+			this.setL( "dropFlowObj", dropFlowObj );
+			
+			var topStream =
+				getDropFlowStream(
+					"FirstStream",
+					{ logFlow: true, dropFlowObj: dropFlowObj }
+				)
+			;
+			
+			return topStream;
+		},
+		vows:
+		[
+			"Reading DropFlow gives correct results",
+			function()
+			{
+				var brfFlow = "unreached";
+				
+				if( this.getV( "getRiverTest.nrBranchings" ) === 0 )
+				{
+					brfFlow = "flowedTo";
+				}
+				
+				Test.assertEq(
+					this.getL( "dropFlowObj" ),
+					{
+						finish:
+						{
+							isValid: true,
+							flow:
+							{
+								beginRiverFlow: brfFlow,
+								begin: "flowedTo",
+								validate: "flowedTo",
+								prepare: "flowedTo",
+								branch: "flowedTo",
+								serve: "flowedTo",
+								serveFailure: "unreached",
+								serveErr: "unreached",
+								finish: "flowedTo"
+							}
+						}
+					}
+				);
+			}
+		]
+	}),
+	
+	"The Stream's Stone validate fails validation",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var dropFlowObj = {};
+			this.setL( "dropFlowObj", dropFlowObj );
+			
+			var topStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						validate: "fail",
+						failureCode: "ValidationFailed",
+						dropFlowObj: dropFlowObj
+					}
+				)
+			;
+			
+			return topStream;
+		},
+		vows:
+		[
+			"Reading DropFlow gives correct results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "dropFlowObj" ),
+					{
+						serveFailure:
+							{ isValid: false, invalidBy: "ValidationFailed" },
+						finish:
+							{ isValid: false, invalidBy: "ValidationFailed" }
+					}
+				);
+			}
+		]
+	}),
+	
+	"The Stream's Stone validate fails validation while Stone "+
+	"serveFailure throws an err. "+
+	"DropFlow.flowedTo() and flowedBy() are used",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var dropFlowObj = {};
+			this.setL( "dropFlowObj", dropFlowObj );
+			
+			var topStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						logFlow: true,
+						validate: "fail",
+						failureCode: "ValidationFailed",
+						serveFailure: "throwErr",
+						errCode: "ErrAtServeFailure",
+						dropFlowObj: dropFlowObj
+					}
+				)
+			;
+			
+			return topStream;
+		},
+		vows:
+		[
+			"Reading DropFlow gives correct results",
+			function()
+			{
+				var brfFlow = "unreached";
+				
+				if( this.getV( "getRiverTest.nrBranchings" ) === 0 )
+				{
+					brfFlow = "flowedTo";
+				}
+				
+				Test.assertEq(
+					this.getL( "dropFlowObj" ),
+					{
+						serveFailure:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								flow:
+								{
+									beginRiverFlow: brfFlow,
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "flowedTo",
+									serveErr: "unreached",
+									finish: "unreached"
+								}
+							}
+						,
+						serveErr:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure",
+								flow:
+								{
+									beginRiverFlow: brfFlow,
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "errAt",
+									serveErr: "flowedTo",
+									finish: "unreached"
+								}
+							}
+						,
+						finish:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure",
+								flow:
+								{
+									beginRiverFlow: brfFlow,
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "errAt",
+									serveErr: "flowedTo",
+									finish: "flowedTo"
+								}
+							}
+						
+					}
+				);
+			}
+		]
+	}),
+	
+	"The Stream's Stone validate throws an err",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var dropFlowObj = {};
+			this.setL( "dropFlowObj", dropFlowObj );
+			
+			var topStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						validate: "throwErr",
+						errCode: "ErrAtValidate",
+						dropFlowObj: dropFlowObj
+					}
+				)
+			;
+			
+			return topStream;
+		},
+		vows:
+		[
+			"Reading DropFlow gives correct results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "dropFlowObj" ),
+					{
+						serveErr:{ isValid: false, getErr: "ErrAtValidate" },
+						finish:{ isValid: false, getErr: "ErrAtValidate" }
+					}
+				);
+			}
+		]
+	}),
+	
+	"The Stream's Stones prepare and serveErr throw errs",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var dropFlowObj = {};
+			this.setL( "dropFlowObj", dropFlowObj );
+			
+			var topStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						prepare: "throwErr",
+						serveErr: "throwErr",
+						errCode: "ErrAtPrepare",
+						dropFlowObj: dropFlowObj
+					}
+				)
+			;
+			
+			return topStream;
+		},
+		vows:
+		[
+			"Reading DropFlow gives correct results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "dropFlowObj" ),
+					{
+						serveErr:{ isValid: true, getErr: "ErrAtPrepare" },
+						finish:{ isValid: true, getErr: "ErrAtPrepare" }
+					}
+				);
+			}
+		]
+	})
+	
+	]
+},
+
+"Stream that branches to another Stream which in turn branches "+
+"to the last Stream",
+{
+	next:
+	[
+	
+	"The last Stream's Stone validate fails validation while "+
+	"its Stone serveFailure throws an err",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var firstDropFlowObj = {};
+			var middleDropFlowObj = {};
+			var lastDropFlowObj = {};
+			
+			this.setL( "firstDropFlowObj", firstDropFlowObj );
+			this.setL( "middleDropFlowObj", middleDropFlowObj );
+			this.setL( "lastDropFlowObj", lastDropFlowObj );
+			
+			var lastStream =
+				getDropFlowStream(
+					"LastStream",
+					{
+						dropFlowObj: lastDropFlowObj,
+						validate: "fail",
+						failureCode: "ValidationFailed",
+						serveFailure: "throwErr",
+						errCode: "ErrAtServeFailure"
+					}
+				)
+			;
+			
+			var middleStream =
+				getDropFlowStream(
+					"MiddleStream",
+					{
+						dropFlowObj: middleDropFlowObj,
+						branch: lastStream
+					}
+				)
+			;
+			
+			var firstStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						dropFlowObj: firstDropFlowObj,
+						branch: middleStream
+					}
+				)
+			;
+			
+			return firstStream;
+		},
+		vows:
+		[
+			"Reading DropFlow in the first Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "firstDropFlowObj" ),
+					{ finish:{ isValid: true } }
+				);
+			},
+			
+			"Reading DropFlow in the middle Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "middleDropFlowObj" ),
+					{ finish:{ isValid: true } }
+				);
+			},
+			
+			"Reading DropFlow in the last Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "lastDropFlowObj" ),
+					{
+						serveFailure:
+							{ isValid: false, invalidBy: "ValidationFailed" }
+						,
+						serveErr:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure"
+							}
+						,
+						finish:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure"
+							}
+					}
+				);
+			}
+		]
+	}),
+	
+	"The last Stream's Stone validate fails validation while "+
+	"its Stones serveFailure, serveErr and finish throw errs. "+
+	"The middle Stream's Stone finish also throws an err. "+
+	"DropFlow.flowedTo() and flowedBy() are used",
+	RiverTest.getRiverTest(
+	{
+		topicStream:
+		function()
+		{
+			var getDropFlowStream = this.getV( "getDropFlowStream" );
+			
+			var firstDropFlowObj = {};
+			var middleDropFlowObj = {};
+			var lastDropFlowObj = {};
+			
+			this.setL( "firstDropFlowObj", firstDropFlowObj );
+			this.setL( "middleDropFlowObj", middleDropFlowObj );
+			this.setL( "lastDropFlowObj", lastDropFlowObj );
+			
+			var lastStream =
+				getDropFlowStream(
+					"LastStream",
+					{
+						logFlow: true,
+						dropFlowObj: lastDropFlowObj,
+						validate: "fail",
+						failureCode: "ValidationFailed",
+						serveFailure: "throwErr",
+						serveErr: "throwErr",
+						finish: "throwErr",
+						errCode: "ErrAtServeFailure"
+					}
+				)
+			;
+			
+			var middleStream =
+				getDropFlowStream(
+					"MiddleStream",
+					{
+						dropFlowObj: middleDropFlowObj,
+						finish: "throwErr",
+						branch: lastStream
+					}
+				)
+			;
+			
+			var firstStream =
+				getDropFlowStream(
+					"FirstStream",
+					{
+						dropFlowObj: firstDropFlowObj,
+						branch: middleStream
+					}
+				)
+			;
+			
+			return firstStream;
+		},
+		vows:
+		[
+			"Reading DropFlow in the first Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "firstDropFlowObj" ),
+					{ finish:{ isValid: true } }
+				);
+			},
+			
+			"Reading DropFlow in the middle Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "middleDropFlowObj" ),
+					{ finish:{ isValid: true } }
+				);
+			},
+			
+			"Reading DropFlow in the last Stream gives correct "+
+			"results",
+			function()
+			{
+				Test.assertEq(
+					this.getL( "lastDropFlowObj" ),
+					{
+						serveFailure:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								flow:
+								{
+									beginRiverFlow: "unreached",
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "flowedTo",
+									serveErr: "unreached",
+									finish: "unreached"
+								}
+							}
+						,
+						serveErr:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure",
+								flow:
+								{
+									beginRiverFlow: "unreached",
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "errAt",
+									serveErr: "flowedTo",
+									finish: "unreached"
+								}
+							}
+						,
+						finish:
+							{
+								isValid: false,
+								invalidBy: "ValidationFailed",
+								getErr: "ErrAtServeFailure",
+								flow:
+								{
+									beginRiverFlow: "unreached",
+									begin: "flowedTo",
+									validate: "flowedTo",
+									prepare: "unreached",
+									branch: "unreached",
+									serve: "unreached",
+									serveFailure: "errAt",
+									serveErr: "errAt",
+									finish: "flowedTo"
+								}
+							}
+					}
+				);
+			}
+		]
+	}),
+	
+	]
+},
+
+]
+
+});
 
 return suite;
 
