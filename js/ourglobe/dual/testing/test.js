@@ -572,6 +572,24 @@ function( boolVar, msg, errVar )
 	}
 };
 
+Test.assertEq =
+function( varOne, varTwo )
+{
+	if( arguments.length !== 2 )
+	{
+		throw new TestRuntimeError(
+			"Exactly two args must be provided",
+			{ providedArgs: arguments }
+		);
+	}
+	
+	Test.assert(
+		Test.areEqual( varOne, varTwo ) === true,
+		"The provided vars arent equal",
+		{ varOne: varOne, varTwo: varTwo }
+	);
+};
+
 Test.isFunc =
 function( func )
 {
