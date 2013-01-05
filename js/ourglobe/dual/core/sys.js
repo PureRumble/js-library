@@ -485,7 +485,7 @@ function()
 				}
 				else
 				{
-					throw new ourglobe.FuncCreationRuntimeError(
+					throw new ourGlobe.core.FuncCreationRuntimeError(
 						"The cb given to return the FuncVer or an arr of "+
 						"FuncParamVers didnt yield the expected result",
 						{ returnedVar: funcVer },
