@@ -227,23 +227,23 @@ function( args )
 	
 	Object.defineProperty(
 		ClassVar.ourGlobe,
-		"className",
-		{ 
-			enumerable: true,
-			configurable: false,
-			writable: false,
-			value: className
-		}
-	);
-	
-	Object.defineProperty(
-		ClassVar.ourGlobe,
 		"class",
 		{ 
 			enumerable: false,
 			configurable: false,
 			writable: false,
 			value: {}
+		}
+	);
+	
+	Object.defineProperty(
+		ClassVar.ourGlobe.class,
+		"className",
+		{ 
+			enumerable: true,
+			configurable: false,
+			writable: false,
+			value: className
 		}
 	);
 	
@@ -361,8 +361,8 @@ function( ClassVar, staticMembers )
 	for( var staticMember in staticMembers )
 	{
 		if(
-			sys.hasType( staticMembers[ staticMember ], "func" ) ===
-			true
+			true ===
+				sys.hasType( staticMembers[ staticMember ], "func" )
 		)
 		{
 			throw new ClassRuntimeError(
@@ -372,6 +372,15 @@ function( ClassVar, staticMembers )
 			);
 		}
 		
+// It is not ok if ClassVar inherits a prop from native class
+// Function by the name staticMember. This would mean the prop
+// would be extended by the prop that is now to be added via
+// Class.addStatic(). But the static member is not being added
+// for the purpose of extending the prop of native class
+// Function. The purpose is instead to make the static member
+// available for those that use the class that is now being
+// modified by Class.addStatic(). The user should therefore be
+// warned that an extending is taking place
 		if( ClassVar[ staticMember ] !== undefined )
 		{
 			throw new ClassRuntimeError(
@@ -587,11 +596,20 @@ function( ClassVar, funcs )
 			);
 		}
 		
+// It is not ok if ClassVar inherits a prop from native class
+// Function by the name funcName. This would mean the prop
+// would be extended by the static func that is now to be
+// added via Class.add(). But the static func is not being added
+// for the purpose of extending the prop of native class
+// Function. The purpose is instead to make the static func
+// available for those that use the class that is now being
+// modified by Class.add(). The user should therefore be
+// warned that an extending is taking place
 		if(
 			isStatic === true &&
 			(
-				ClassVar.hasOwnProperty( funcName ) === true ||
-				classStaticFuncs[ funcName ] !== undefined
+				ClassVar[ funcName ] !== undefined ||
+				classStaticFuncs.hasOwnProperty( funcName ) === true
 			)
 		)
 		{
@@ -610,7 +628,7 @@ function( ClassVar, funcs )
 		{
 			if(
 				ClassVar.prototype.hasOwnProperty( funcName ) === true ||
-				classInstFuncs[ funcName ] !== undefined
+				classInstFuncs.hasOwnProperty( funcName ) === true
 			)
 			{
 				throw new ClassRuntimeError(
@@ -626,7 +644,7 @@ function( ClassVar, funcs )
 				);
 			}
 			
-			if( classInstVars[ funcName ] !== undefined )
+			if( classInstVars.hasOwnProperty( funcName ) === true )
 			{
 				throw new ClassRuntimeError(
 					"The class '"+className+"' already has an instance "+
@@ -904,7 +922,7 @@ function( funcName )
 	if( sys.hasType( funcName, "str", "undef" ) === false )
 	{
 		throw new RuntimeError(
-			"Arg funcName must be a str",
+			"Arg funcName must be a str or undef",
 			{ funcName: funcName }
 		);
 	}

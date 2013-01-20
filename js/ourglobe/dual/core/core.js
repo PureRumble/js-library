@@ -129,6 +129,37 @@ Object.defineProperty(
 	FuncVer, "R_POS_INT", { value: Schema.R_POS_INT }
 );
 
+Object.defineProperty(
+	getV, "PROPER_STR", { value: Schema.PROPER_STR }
+);
+Object.defineProperty(
+	getV, "R_PROPER_STR", { value: Schema.R_PROPER_STR }
+);
+Object.defineProperty(
+	getV, "PROPER_STR_L", { value: Schema.PROPER_STR_L }
+);
+Object.defineProperty(
+	getV, "R_PROPER_STR_L", { value: Schema.R_PROPER_STR_L }
+);
+Object.defineProperty(
+	getV, "PROPER_OBJ", { value: Schema.PROPER_OBJ }
+);
+Object.defineProperty(
+	getV, "R_PROPER_OBJ", { value: Schema.R_PROPER_OBJ }
+);
+Object.defineProperty(
+	getV, "NON_NEG_INT", { value: Schema.NON_NEG_INT }
+);
+Object.defineProperty(
+	getV, "R_NON_NEG_INT", { value: Schema.R_NON_NEG_INT }
+);
+Object.defineProperty(
+	getV, "POS_INT", { value: Schema.POS_INT }
+);
+Object.defineProperty(
+	getV, "R_POS_INT", { value: Schema.R_POS_INT }
+);
+
 getA.ANY_ARGS = getE( "any" );
 
 Object.defineProperty(
