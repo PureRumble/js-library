@@ -7,16 +7,32 @@ ourglobe.define(
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ElasticsearchConnection =
-getF(
-new FuncVer( [ FuncVer.PROPER_STR, FuncVer.NON_NEG_INT ] ),
+Class.create(
+{
+
+name: "ElasticsearchConnection",
+constr:
+[
+getA( getV.PROPER_STR, getV.NON_NEG_INT ),
 function( host, port )
 {
 	this.host = host;
 	this.port = port;
+}]
+
 });
 
 return ElasticsearchConnection;
@@ -27,41 +43,52 @@ function( mods, ElasticsearchConnection )
 
 var url = mods.get( "url" );
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var MoreHttp = mods.get( "morehttp" ).MoreHttp;
 var ElasticsearchError = mods.get( "elasticsearcherror" );
 
 var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
 
-ElasticsearchConnection.prototype.request =
-getF(
-new FuncVer()
-	.addArgs( [
-		methodS,
-		FuncVer.PROPER_STR,
+Class.add(
+ElasticsearchConnection,
+{
+
+request:
+[
+getA(
+	methodS,
+	getV.PROPER_STR,
+	{
+		types: "obj/undef",
+		extraProps: false,
+		props:
 		{
-			types: "obj/undef",
-			extraProps: false,
-			props:
+			params: "obj/undef",
+			data:
 			{
-				params: "obj/undef",
-				data:
-				{
-					types: "obj/arr/undef",
-					denseItems: true,
-					extraItems: "+obj"
-				}
+				types: "obj/arr/undef",
+				denseItems: true,
+				extraItems: "+obj"
 			}
-		},
-		"func"
-	])
-	.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] ),
+		}
+	},
+	"func"
+),
+getA( methodS, getV.PROPER_STR, "func" ),
 function( method, path, opts, cb )
 {
-	if( sys.hasType( opts, "func" ) === true )
+	if( hasT( opts, "func" ) === true )
 	{
 		cb = opts;
 		opts = undefined;
@@ -79,7 +106,7 @@ function( method, path, opts, cb )
 	
 	if( data !== undefined )
 	{
-		if( sys.hasType( data, "arr" ) === false )
+		if( hasT( data, "arr" ) === false )
 		{
 			jsonData = JSON.stringify( data );
 		}
@@ -122,14 +149,18 @@ function( method, path, opts, cb )
 	MoreHttp.request(
 		this.host,
 		reqOpts,
-		getF(
-		new FuncVer( [ Error ] )
-			.addArgs( [
-				"undef", FuncVer.NON_NEG_INT, [ Buffer, "undef" ]
-			]),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", getV.NON_NEG_INT, [ Buffer, "undef" ] ),
 		function( err, status, resBuf )
 		{
-			if( sys.errorCheck( err, cb ) === true ) { return; }
+			if( err !== undefined )
+			{
+				cb( err );
+				
+				return;
+			}
 			
 			var res = undefined;
 			var jsonRes = undefined;
@@ -155,10 +186,10 @@ function( method, path, opts, cb )
 			{
 				err =
 				new ElasticsearchError(
-					"The received response data isnt a valid JSON "+
-					"object",
 					{ host:outerThis.host, opts:reqOpts },
-					{ res:jsonRes, status:status }
+					{ res:jsonRes, status:status },
+					"The received response data isnt a valid JSON "+
+					"object"
 				);
 			}
 			else if(
@@ -167,9 +198,9 @@ function( method, path, opts, cb )
 			{
 				err =
 				new ElasticsearchError(
-					"Response status code isnt expected",
 					{ host:outerThis.host, opts:reqOpts },
-					{ res:jsonRes, status:status }
+					{ res:jsonRes, status:status },
+					"Response status code isnt expected"
 				);
 			}
 			else if( res !== undefined )
@@ -180,7 +211,7 @@ function( method, path, opts, cb )
 				{
 					errorOccured = true;
 				}
-				else if( sys.hasType( data, "arr" ) === true )
+				else if( hasT( data, "arr" ) === true )
 				{
 					var items = res.items;
 					
@@ -208,15 +239,17 @@ function( method, path, opts, cb )
 				{
 					err =
 					new ElasticsearchError(
-						"Response data indicates an error occured",
 						{ host:outerThis.host, opts:reqOpts },
-						{ res:jsonRes, status:status }
+						{ res:jsonRes, status:status },
+						"Response data indicates an error occured"
 					);
 				}
 			}
 			
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			else
@@ -225,6 +258,8 @@ function( method, path, opts, cb )
 			}
 		})
 	);
+}]
+
 });
 
 });

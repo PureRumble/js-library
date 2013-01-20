@@ -2,28 +2,35 @@ ourglobe.define(
 function( mods )
 {
 
-var RuntimeError = ourglobe.RuntimeError;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ClusterDataRuntimeError =
-getF(
-RuntimeError.CONSTR_FV,
-function( msg, errorVar, errorCode, errorPlace )
+Class.create(
 {
-	if( errorPlace === undefined )
-	{
-		errorPlace = ClusterDataRuntimeError;
-	}
-	
-	ClusterDataRuntimeError.ourGlobeSuper.call(
-		this, msg, errorVar, errorCode, errorPlace
-	);
-});
 
-sys.extend( ClusterDataRuntimeError, RuntimeError );
+name: "ClusterDataRuntimeError",
+extends: RuntimeError,
+constr:
+[
+RuntimeError.CONSTR_FV,
+function( msg, errVar, errCode, errPlace )
+{
+	this.ourGlobeCallSuper(
+		undefined, msg, errVar, errCode, errPlace
+	);
+}]
+
+});
 
 return ClusterDataRuntimeError;
 

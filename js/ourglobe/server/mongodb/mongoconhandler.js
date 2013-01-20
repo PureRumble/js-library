@@ -7,38 +7,20 @@ ourglobe.define(
 function( mods )
 {
 
-var FuncVer = ourglobe.FuncVer;
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
 var Id = mods.get( "cluster" ).Id;
-
-var MongoConHandler =
-getF(
-ClusterConHandler.CONSTR_FV,
-function( clusterName, conParams )
-{
-	MongoConHandler.ourGlobeSuper.call(
-		this, clusterName, conParams
-	);
-});
-
-sys.extend( MongoConHandler, ClusterConHandler );
-
-MongoConHandler.NATIVE_QUERY_OBJ_S = FuncVer.PROPER_OBJ;
-
-MongoConHandler.QUERY_OBJ_S =
-{
-	types:[ "arr", Id, MongoConHandler.NATIVE_QUERY_OBJ_S ],
-	extraItems: Id
-};
-
-return MongoConHandler
-
-},
-function( mods, MongoConHandler )
-{
 
 var libMongoDb = mods.get( "lib/server/mongodb" );
 
@@ -48,34 +30,54 @@ var Collection = libMongoDb.Collection;
 var Cursor = libMongoDb.Cursor;
 var MongoDbBinary = libMongoDb.Binary;
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var MongoConHandler =
+Class.create(
+{
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+name: "MongoConHandler",
+extends: ClusterConHandler,
+constr:
+[
+function()
+{
+	return ClusterConHandler.CONSTR_V;
+},
+function( clusterName, conParams )
+{
+	this.ourGlobeCallSuper( undefined, clusterName, conParams );
+}]
 
-var Id = mods.get( "cluster" ).Id;
-var Binary = mods.get( "cluster" ).Binary;
+});
 
-var MongoDb = mods.get( "./mongodb");
+var nativeQueryObjS = getV.PROPER_OBJ;
 
-MongoConHandler.PREPARING_HANDLERS =
+Class.addStatic(
+MongoConHandler,
+{
+
+NATIVE_QUERY_OBJ_S: nativeQueryObjS,
+
+QUERY_OBJ_S:
+	{ types:[ "arr", Id, nativeQueryObjS ], extraItems: Id },
+
+PREPARING_HANDLERS:
 {
 	prepareBinary:
 	getF(
-	new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
-		.setReturn( MongoDbBinary ),
+	getA( Buffer, ClusterConHandler.CONTENT_TYPE_S ),
+	getR( MongoDbBinary ),
 	function( buf, contentType )
 	{
 		return new MongoDbBinary( buf );
 	}) 
-};
+},
 
-MongoConHandler.RESTORING_HANDLERS =
+RESTORING_HANDLERS:
 {
 	restoreBinary:
 	getF(
-	new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
+	getA( "any", "any" ),
+	getR( Buffer ),
 	function( mongoDbBinary, contentType )
 	{
 		if( mongoDbBinary instanceof MongoDbBinary === false )
@@ -104,12 +106,60 @@ MongoConHandler.RESTORING_HANDLERS =
 		
 		return returnVar;
 	})
+}
+
+});
+
+return MongoConHandler
+
+},
+function( mods, MongoConHandler )
+{
+
+var libMongoDb = mods.get( "lib/server/mongodb" );
+
+var Db = libMongoDb.Db;
+var Server = libMongoDb.Server;
+var Collection = libMongoDb.Collection;
+var Cursor = libMongoDb.Cursor;
+var MongoDbBinary = libMongoDb.Binary;
+
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+
+var Id = mods.get( "cluster" ).Id;
+var Binary = mods.get( "cluster" ).Binary;
+
+var MongoDb = mods.get( "./mongodb" );
+
+// TODO: Remove this as it is used by insert() which is a public
+// func and thus required to always perform check
+var objS =
+{
+	props:
+		{ id:{ req: true, types: Id }, _id: { badTypes: "any" } }
 };
 
-MongoConHandler.prepareQueryObj =
-getF(
-new FuncVer( [ MongoConHandler.QUERY_OBJ_S ] )
-	.setReturn( MongoConHandler.NATIVE_QUERY_OBJ_S ),
+Class.add(
+MongoConHandler,
+{
+
+prepareQueryObj:
+[
+"static",
+getA( MongoConHandler.QUERY_OBJ_S ),
+getR( MongoConHandler.NATIVE_QUERY_OBJ_S ),
 function( queryObj )
 {
 	if( queryObj instanceof Id === true )
@@ -117,7 +167,7 @@ function( queryObj )
 		queryObj = [ queryObj ];
 	}
 	
-	if( sys.hasType( queryObj, "arr" ) === true )
+	if( hasT( queryObj, "arr" ) === true )
 	{
 		var ids = [];
 		
@@ -130,11 +180,11 @@ function( queryObj )
 	}
 	
 	return queryObj;
-});
+}],
 
-MongoConHandler.prototype.getOpenCon =
-getF(
-ClusterConHandler.GET_OPEN_CON_FV,
+getOpenCon:
+[
+ClusterConHandler.GET_OPEN_CON_V,
 function( conParams, cb )
 {
 	var server = new Server( conParams.host, conParams.port, {} );
@@ -145,40 +195,38 @@ function( conParams, cb )
 	);
 	
 	db.open(
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "null/undef", Db ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "null/undef", Db ),
 		function( err, db )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== null && err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			else
 			{
 				cb( undefined, db );
+				
+				return;
 			}
 		})
 	);
-});
+}],
 
-var objS =
-{
-	props:
-	{
-		id:{ req: true, types: Id }, _id: { badTypes: "any" }
-	}
-};
-
-MongoConHandler.prototype.insert =
-getF(
-new FuncVer( [
+insert:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
 	{ types:[ objS, "arr" ], extraItems: objS },
 	"func"
-]),
+),
 function( collectionName, objs, cb )
 {
-	if( sys.hasType( objs, "arr" ) === false )
+	if( hasT( objs, "arr" ) === false )
 	{
 		objs = [ objs ];
 	}
@@ -191,12 +239,16 @@ function( collectionName, objs, cb )
 	}
 	
 	this.getCurrCon(
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", Db ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", Db ),
 		function( err, db )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -216,9 +268,10 @@ function( collectionName, objs, cb )
 			coll.insert(
 				objs,
 				{ safe:true },
-				getF(
-				new FuncVer( [ Error ] )
-					.addArgs( [ "null/undef", "any" ] ),
+				getCb(
+				this,
+				getA( Error ),
+				getA( "null/undef", "any" ),
 				function( err, insObjs )
 				{
 					for( var item in objs )
@@ -228,31 +281,33 @@ function( collectionName, objs, cb )
 					
 					ClusterConHandler.restoreSet( restoreInfo );
 					
-					if( sys.errorCheck ( err, cb ) === true )
+					if( err !== undefined && err !== null )
 					{
+						cb( err );
+						
 						return;
 					}
 					
-					cb( undefined );
+					cb();
 				})
 			);
 		})
 	);
-});
+}],
 
-MongoConHandler.prototype.query =
-getF(
-new FuncVer( [
+query:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
 	MongoConHandler.QUERY_OBJ_S,
 	"func"
-]),
+),
 function( collectionName, queryObj, cb )
 {
 	queryObj = MongoConHandler.prepareQueryObj( queryObj );
 	
 	if(
-		sys.hasType( queryObj, "arr" ) === true &&
+		hasT( queryObj, "arr" ) === true &&
 		queryObj.length === 0
 	)
 	{
@@ -262,12 +317,16 @@ function( collectionName, queryObj, cb )
 	}
 	
 	this.getCurrCon(
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", Db ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", Db ),
 		function( err, db )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -275,24 +334,30 @@ function( collectionName, queryObj, cb )
 			
 			coll.find(
 				queryObj,
-				getF(
-				new FuncVer( [ Error ] )
-					.addArgs( [ "null/undef", Cursor ] ),
+				getCb(
+				this,
+				getA( Error ),
+				getA( "null/undef", Cursor ),
 				function( err, cursor )
 				{
-					if( sys.errorCheck( err, cb ) === true )
+					if( err !== undefined && err !== null )
 					{
+						cb( err );
+						
 						return;
 					}
 					
 					cursor.toArray(
-						getF(
-						new FuncVer( [ Error ] )
-							.addArgs( [ "null/undef", "arr" ] ),
+						getCb(
+						this,
+						getA( Error ),
+						getA( "null/undef", "arr" ),
 						function( err, items )
 						{
-							if( sys.errorCheck( err, cb ) === true )
+							if( err !== undefined && err !== null )
 							{
+								cb( err );
+								
 								return;
 							}
 							
@@ -315,21 +380,21 @@ function( collectionName, queryObj, cb )
 			);
 		})
 	);
-});
+}],
 
-MongoConHandler.prototype.delete =
-getF(
-new FuncVer( [
+delete:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
 	MongoConHandler.QUERY_OBJ_S,
 	"func"
-]),
+),
 function( collectionName, queryObj, cb )
 {
 	queryObj = MongoConHandler.prepareQueryObj( queryObj );
 	
 	if(
-		sys.hasType( queryObj, "arr" ) === true &&
+		hasT( queryObj, "arr" ) === true &&
 		queryObj.length === 0
 	)
 	{
@@ -339,12 +404,16 @@ function( collectionName, queryObj, cb )
 	}
 	
 	this.getCurrCon(
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", Db ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", Db ),
 		function( err, db )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -352,14 +421,17 @@ function( collectionName, queryObj, cb )
 			
 			coll.remove(
 				queryObj,
-				{ safe:true },
-				getF(
-				new FuncVer( [ Error ] )
-					.addArgs( [ "null/undef", "any" ] ),
+				{ safe: true },
+				getCb(
+				this,
+				getA( Error ),
+				getA( "null/undef", "any" ),
 				function( err, nrObjs )
 				{
-					if( sys.errorCheck( err, cb ) === true )
+					if( err !== undefined && err !== null )
 					{
+						cb( err );
+						
 						return;
 					}
 					
@@ -368,20 +440,24 @@ function( collectionName, queryObj, cb )
 			);
 		})
 	);
-});
+}],
 
-MongoConHandler.prototype.update =
-getF(
-new FuncVer( [ FuncVer.PROPER_OBJ, "any", "func" ]),
+update:
+[
+getA( getV.PROPER_OBJ, "any", "func" ),
 function( queryObj, newObj, cb )
 {
 	this.getCurrCon(
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", Db ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", Db ),
 		function( err, db )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -397,14 +473,18 @@ function( queryObj, newObj, cb )
 				queryObj,
 				newObj,
 				{ safe: true, multi: true },
-				getF(
-				new FuncVer( [ Error ] ).addArgs( [ "null/undef" ] ),
+				getCb(
+				this,
+				getA( Error ),
+				getA( "null/undef" ),
 				function( err )
 				{
 					ClusterConHandler.restoreSet( restoreInfo );
 					
-					if( sys.errorCheck( err, cb ) === true )
+					if( err !== undefined && err !== null )
 					{
+						cb( err );
+						
 						return;
 					}
 					
@@ -413,6 +493,8 @@ function( queryObj, newObj, cb )
 			);
 		})
 	);
+}]
+
 });
 
 });

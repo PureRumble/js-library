@@ -5,24 +5,46 @@ ourglobe.define(
 function( mods )
 {
 
-var RuntimeError = ourglobe.RuntimeError;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var FuncVer = ourglobe.FuncVer;
-var getF = ourglobe.getF;
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+var ClusterConHandler = undefined;
+
+mods.delay(
+function()
+{
+	ClusterConHandler = mods.get( "clusterconhandler" );
+});
 
 var ClusterMapper =
-getF(
+Class.create(
+{
+
+name: "ClusterMapper",
+constr:
+[
 function()
 {
 	return(
-		new FuncVer( [
-			{
-				extraItems: mods.get( "clusterconhandler" ),
-				minItems: 1,
-				denseItems: true
-			},
-			{ extraItems: "+int" }
-		])
+		[
+			getA(
+				{
+					extraItems: ClusterConHandler,
+					minItems: 1,
+					denseItems: true
+				},
+				{ extraItems: "+int" }
+			)
+		]
 	);
 },
 function( clusterConHandlers, mapping )
@@ -47,6 +69,8 @@ function( clusterConHandlers, mapping )
 	
 	this.clusterConHandlers = clusterConHandlers;
 	this.clusterMapping = clusterMapping;
+}]
+
 });
 
 return ClusterMapper;
@@ -55,19 +79,33 @@ return ClusterMapper;
 function( mods, ClusterMapper )
 {
 
-var FuncVer = ourglobe.FuncVer;
-var getF = ourglobe.getF;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ClusterConHandler = mods.get( "clusterconhandler" );
 
-ClusterMapper.prototype.getConHandler =
-getF(
-new FuncVer(
-	[ ClusterConHandler.COLLECTION_NAME_S ], ClusterConHandler
-),
+Class.add(
+ClusterMapper,
+{
+
+getConHandler:
+[
+getA( ClusterConHandler.COLLECTION_NAME_S ),
+getR( ClusterConHandler ),
 function( collection )
 {
 	return this.clusterMapping[ collection ];
+}]
+
 });
 
 });

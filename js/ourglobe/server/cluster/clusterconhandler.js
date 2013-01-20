@@ -10,25 +10,52 @@ ourglobe.define(
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var clusterNameS = FuncVer.PROPER_STR_L;
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+// An exception is made here to the rule of using mods.delay() to
+// request in module classes. This is due to a technical
+// limitation concerned with the use of Class.addStatic()
+
+var Id = mods.get( "id");
+var Binary = mods.get( "binary" );
+var Link = mods.get( "link" );
+var Cache = mods.get( "cache" );
 
 var ClusterConHandler =
-getF(
-new FuncVer( [
-	clusterNameS,
-	{
-		extraItems:
-		{
-			req: true,
-			extraProps: true,
-			props:
-				{ host:FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT }
-		}
-	}
-]),
+Class.create(
+{
+
+name: "ClusterConHandler",
+instVars:{ clusterName: "final", conHolders: "final" },
+constr:
+[
+function()
+{
+	return([
+		getA(
+			ClusterConHandler.CLUSTER_NAME_S,
+			{
+				extraItems:
+				{
+					req: true,
+					extraProps: true,
+					props:
+						{ host: getV.R_PROPER_STR, port: getV.R_NON_NEG_INT }
+				}
+			}
+		)
+	]);
+},
 function ClusterConHandler( clusterName, conParams )
 {
 	this.clusterName = clusterName;
@@ -37,55 +64,61 @@ function ClusterConHandler( clusterName, conParams )
 	for( var pos in conParams )
 	{
 		var currConHolder = {};
-		currConHolder.params = conParams[pos];
+		currConHolder.params = conParams[ pos ];
 		currConHolder.con = undefined;
 		
-		this.conHolders[pos] = currConHolder;
+		this.conHolders[ pos ] = currConHolder;
 	}
 	
 	this.randCurrCon();
+}]
+
 });
 
-ClusterConHandler.CLUSTER_NAME_S = clusterNameS;
-ClusterConHandler.COLLECTION_NAME_S = FuncVer.PROPER_STR_L;
+var clusterNameS = getV.PROPER_STR_L;
 
-// CONSTR_FV is made for subclasses of ClusterConHandler. Note
+Class.addStatic(
+ClusterConHandler,
+{
+// CONSTR_V is made for subclasses of ClusterConHandler. Note
 // that the FuncVer of the constructor of ClusterConHandler
 // does allow for more props in the items of conParams, while
-// CONSTR_FV doesnt
-ClusterConHandler.CONSTR_FV =
-new FuncVer( [
-	ClusterConHandler.CLUSTER_NAME_S,
-	{
-		extraItems:
-		{
-			req: true,
-			extraProps: false,
-			props:
+// CONSTR_V doesnt
+	CONSTR_V:
+	getV(
+		getA(
+			clusterNameS,
 			{
-				host:FuncVer.R_PROPER_STR,
-				port:FuncVer.R_NON_NEG_INT
+				extraItems:
+				{
+					req: true,
+					extraProps: false,
+					props:
+						{ host: getV.R_PROPER_STR, port:getV.R_NON_NEG_INT }
+				}
 			}
-		}
-	}
-]);
-
-ClusterConHandler.GET_OPEN_CON_FV =
-new FuncVer( [
-	{
-		extraProps: false,
-		props:
-		{
-			host: FuncVer.R_PROPER_STR, port:FuncVer.R_NON_NEG_INT
-		}
-	},
-	"func"
-]);
-
-ClusterConHandler.OUR_GLOBE_SYS_KEY = "ourGlobeSysSet";
-ClusterConHandler.OUR_GLOBE_SYS_VALUE =
-	"={F|6yOA&,3J)d,{b+$~7q__=W&>{Z7]*5;J^1'730O3#3l1814_D13{S7hL"
-;
+		)
+	),
+	CLUSTER_NAME_S: clusterNameS,
+	COLLECTION_NAME_S: getV.PROPER_STR_L,
+	GET_OPEN_CON_V:
+	getV(
+		getA(
+			{
+				extraProps: false,
+				props:
+					{ host: getV.R_PROPER_STR, port: getV.R_NON_NEG_INT }
+			},
+			"func"
+		)
+	),
+	OUR_GLOBE_SYS_KEY: "ourGlobeSysSet",
+	OUR_GLOBE_SYS_VALUE:
+		"={F|6yOA&,3J)d,{b+$~7q__=W&>{Z7]"+
+		"*5;J^1'730O3#3l1814_D13{S7hL",
+	ID_STR_S: Id.ID_STR_S,
+	CONTENT_TYPE_S: Binary.CONTENT_TYPE_S
+});
 
 return ClusterConHandler;
 
@@ -93,9 +126,17 @@ return ClusterConHandler;
 function( mods, ClusterConHandler )
 {
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var MoreMath = mods.get( "moremath" ).MoreMath;
 
@@ -107,9 +148,14 @@ var Binary = mods.get( "binary" );
 var Link = mods.get( "link" );
 var Cache = mods.get( "cache" );
 
-ClusterConHandler.prototype.getCurrCon =
-getF(
-new FuncVer( [ "func" ] ),
+Class.add(
+ClusterConHandler,
+{
+
+getCurrCon:
+[
+"final",
+getA( "func" ),
 function( cb )
 {
 	var conHolder = this.conHolders[ this.currCon ];
@@ -123,14 +169,16 @@ function( cb )
 	
 	this.getOpenCon(
 	conHolder.params,
-	getF(
-		new FuncVer()
-			.addArgs( [ Error ] )
-			.addArgs( [ "undef", "inst" ] ),
+	getCb(
+		this,
+		getA( Error ),
+		getA( "undef", "inst" ),
 		function( err, con )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			else
@@ -141,86 +189,90 @@ function( cb )
 			}
 		}
 	));
-});
+}],
 
-ClusterConHandler.prototype.randCurrCon =
-getF(
-new FuncVer(),
+randCurrCon:
+[
+"final",
 function()
 {
 	var nrConHolders = this.conHolders.length;
 	
 	this.currCon = MoreMath.getRandInt( nrConHolders );
-});
+}],
 
-ClusterConHandler.ID_STR_S = Id.ID_STR_S;
-ClusterConHandler.CONTENT_TYPE_S = Binary.CONTENT_TYPE_S;
-
-ClusterConHandler.prepareId =
-getF(
-new FuncVer( [ ClusterConHandler.ID_STR_S ] ).setReturn( "str" ),
+prepareId:
+[
+"static",
+getA( ClusterConHandler.ID_STR_S ),
+getR( "str" ),
 function( idStr )
 {
 	return idStr;
-});
+}],
 
 // This func is to be used as a convenience in
 // restoreSetFromCluster() only if  the caller hasnt provided a
 // restoreId() func. It therefor doesnt have to perform rigorous
 // validation of what has been found in the cluster as this is
 // later done by restoreSetFromCluster()
-ClusterConHandler.restoreId =
-getF(
-new FuncVer( [ "any" ] ).setReturn( "any" ),
+restoreId:
+[
+"static",
+getA( "any" ),
+getR( "any" ),
 function( idStr )
 {
 	return idStr;
-});
+}],
 
-ClusterConHandler.prepareDate =
-getF(
-new FuncVer( [ Date ] ).setReturn( Date ),
+prepareDate:
+[
+"static",
+getA( Date ),
+getR( Date ),
 function( date )
 {
 	return date;
-});
+}],
 
 // This func is to be used as a convenience in
 // restoreSetFromCluster() only if  the caller hasnt provided a
 // restoreDate() func. It therefor doesnt have to perform
 // rigorous validation of what has been found in the cluster as
 // this is later done by restoreSetFromCluster()
-ClusterConHandler.restoreDate =
-getF(
-new FuncVer( [ "any" ] ).setReturn( "any" ),
+restoreDate:
+[
+"static",
+getA( "any" ),
+getR( "any" ),
 function( date )
 {
 	return date;
-});
+}],
 
-ClusterConHandler.prepareSetForCluster =
-getF(
-new FuncVer(
-	[
-		"obj/arr",
+prepareSetForCluster:
+[
+"static",
+getA(
+	"obj/arr",
+	{
+		extraProps: false,
+		props:
 		{
-			extraProps: false,
-			props:
-			{
-				prepareId: "func/undef",
-				prepareBinary: "+func",
-				prepareDate: "func/undef"
-			}
+			prepareId: "func/undef",
+			prepareBinary: "+func",
+			prepareDate: "func/undef"
 		}
-	]
-)
-	.setReturn( {
-		extraItems:
-		{
-			extraProps: false,
-			props: { set: "+obj/arr", key: "+str", value: "any" }
-		}
-	}),
+	}
+),
+getR( {
+	extraItems:
+	{
+		extraProps: false,
+		props:{ set: "+obj/arr", key: "+str", value: "any" }
+	}
+}),
 function( set, handlers )
 {
 	var prepareId = handlers.prepareId;
@@ -249,14 +301,14 @@ function( set, handlers )
 		var currVar = holdingSet[ pointingKey ];
 		
 		if(
-			sys.hasType(
+			hasT(
 				currVar, "null", "bool", "number", "str"
 			) === true
 		)
 		{
 			continue;
 		}
-		else if( sys.hasType( currVar, "obj", "arr" ) === true )
+		else if( hasT( currVar, "obj", "arr" ) === true )
 		{
 // Has the current set already been prepared?
 			if(
@@ -264,7 +316,7 @@ function( set, handlers )
 					ClusterConHandler.OUR_GLOBE_SYS_VALUE
 			)
 			{
-				if( sys.hasType( currVar, "arr" ) === true )
+				if( hasT( currVar, "arr" ) === true )
 				{
 					throw new ClusterDataRuntimeError(
 						"An arr (in the set that is to be prepared) has a "+
@@ -379,11 +431,12 @@ function( set, handlers )
 	}
 	
 	return keysToRestore;
-});
+}],
 
-ClusterConHandler.restoreSet =
-getF(
-new FuncVer( [
+restoreSet:
+[
+"static",
+getA(
 	{
 		extraItems:
 		{
@@ -404,7 +457,7 @@ new FuncVer( [
 			}
 		}
 	}
-]),
+),
 function( keysToRestore )
 {
 	for( var pos = 0; pos < keysToRestore.length; pos++ )
@@ -412,11 +465,12 @@ function( keysToRestore )
 		var currKey = keysToRestore[ pos ];
 		currKey.set[ currKey.key ] = currKey.value;
 	}
-});
+}],
 
-ClusterConHandler.throwRestoreErr =
-getF(
-new FuncVer( [ Error, "obj/arr", "obj" ] ),
+throwRestoreErr:
+[
+"static",
+getA( Error, "obj/arr", "obj" ),
 function( err, restoringSet, systemObj )
 {
 	if( err instanceof ClusterDataRuntimeError === true )
@@ -443,11 +497,12 @@ function( err, restoringSet, systemObj )
 	}
 	
 	throw err;
-});
+}],
 
-ClusterConHandler.restoreSetFromCluster =
-getF(
-new FuncVer( [
+restoreSetFromCluster:
+[
+"static",
+getA(
 	"obj/arr",
 	{
 		extraProps: false,
@@ -458,7 +513,7 @@ new FuncVer( [
 			restoreDate: "func/undef"
 		}
 	}
-]),
+),
 function( set, handlers )
 {
 	var restoreId = handlers.restoreId;
@@ -485,7 +540,7 @@ function( set, handlers )
 		var currVar = holdingSet[ pointingKey ];
 		
 		if(
-			sys.hasType(
+			hasT(
 				currVar, "null", "bool", "number", "str"
 			) === true
 		)
@@ -493,7 +548,7 @@ function( set, handlers )
 			continue;
 		}
 		else if(
-			sys.hasType( currVar, "obj", "arr" ) === true &&
+			hasT( currVar, "obj", "arr" ) === true &&
 			currVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] !==
 				ClusterConHandler.OUR_GLOBE_SYS_VALUE
 		)
@@ -504,7 +559,7 @@ function( set, handlers )
 				stack.push( key );
 			}
 		}
-		else if( sys.hasType( currVar, "obj" ) === true )
+		else if( hasT( currVar, "obj" ) === true )
 		{
 			var typeValue = currVar[ "type" ];
 			
@@ -716,6 +771,8 @@ function( set, handlers )
 			);
 		}
 	}
+}]
+
 });
 
 });

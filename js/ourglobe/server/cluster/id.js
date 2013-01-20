@@ -5,14 +5,19 @@ ourglobe.define(
 function( mods )
 {
 
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
 var crypto = mods.get( "crypto" );
-
-var RuntimeError = ourglobe.RuntimeError;
-
-var conf = ourglobe.conf;
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
 
 var idStrRegExp =
 	"^[0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}"
@@ -21,8 +26,13 @@ var idStrRegExp =
 var idStrS = { strPattern: idStrRegExp };
 
 var Id =
-getF(
-new FuncVer( [ [ idStrS, "undef" ] ]  ),
+Class.create(
+{
+
+name: "Id",
+constr:
+[
+getA( [ idStrS, "undef" ] ),
 function( idStr )
 {
 	if( idStr === undefined )
@@ -36,11 +46,17 @@ function( idStr )
 	}
 	
 	this.idStr = idStr;
+}]
+
 });
 
-Id.ID_STR_REG_EXP = idStrRegExp;
-Id.ID_STR_S = idStrS;
-Id.R_ID_STR_S = { req: true, strPattern: Id.ID_STR_REG_EXP };
+Class.addStatic(
+Id,
+{
+	ID_STR_REG_EXP: idStrRegExp,
+	ID_STR_S: idStrS,
+	R_ID_STR_S: { req: true, strPattern: idStrRegExp }
+});
 
 return Id;
 
@@ -48,37 +64,55 @@ return Id;
 function( mods, Id )
 {
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var FuncVer = ourGlobe.FuncVer;
 
-Id.verIdStr =
-getF(
-new FuncVer( [ "any" ] )
-	.setReturn( "bool" ),
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+Class.add(
+Id,
+{
+
+verIdStr:
+[
+"static",
+getA( "any" ),
+getR( "bool" ),
 function( idStr )
 {
 	return(
-		sys.hasType( idStr, "str" ) === true &&
+		hasT( idStr, "str" ) === true &&
 		idStr.search( Id.ID_STR_REG_EXP ) === 0
 	);
-});
+}],
 
-Id.verClusterVars =
-getF(
-new FuncVer( [ "any" ] ).
-	setReturn( "bool" ),
+verClusterVars:
+[
+"static",
+getA( "any" ),
+getR( "bool" ),
 function( idStr )
 {
 	return Id.verIdStr( idStr );
-})
+}],
 
-Id.prototype.toString =
-getF(
-new FuncVer().setReturn( Id.ID_STR_S ),
+toString:
+[
+getR( Id.ID_STR_S ),
 function()
 {
 	return this.idStr;
+}]
+
 });
 
 });

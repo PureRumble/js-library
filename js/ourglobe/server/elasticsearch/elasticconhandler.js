@@ -6,52 +6,46 @@ ourglobe.define(
 function( mods )
 {
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
 
 var ElasticConHandler =
-getF(
-ClusterConHandler.CONSTR_FV,
+Class.create(
+{
+
+name: "ElasticConHandler",
+extends: ClusterConHandler,
+constr:
+[
+ClusterConHandler.CONSTR_V,
 function( clusterName, conParams )
 {
-	ElasticConHandler.ourGlobeSuper.call(
-		this, clusterName, conParams
-	);
+	this.ourGlobeCallSuper( undefined, clusterName, conParams );
+}]
+
 });
-sys.extend( ElasticConHandler, ClusterConHandler );
 
-return ElasticConHandler;
-
-},
-function( mods, ElasticConHandler )
+Class.addStatic(
+ElasticConHandler,
 {
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
-
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
-
-var ClusterDataRuntimeError =
-	mods.get( "cluster" ).ClusterDataRuntimeError
-;
-
-var Id = mods.get( "cluster" ).Id;
-var Binary = mods.get( "cluster" ).Binary;
-
-var ElasticsearchConnection =
-	mods.get( "elasticsearchconnection" )
-;
-
-ElasticConHandler.PREPARING_HANDLERS =
+PREPARING_HANDLERS:
 {
 	prepareBinary:
 	getF(
-	new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
-		.setReturn( "str" ),
+	getA( Buffer, ClusterConHandler.CONTENT_TYPE_S ),
+	getR( "str" ),
 	function( buf )
 	{
 		return buf.toString( "base64" );
@@ -59,20 +53,22 @@ ElasticConHandler.PREPARING_HANDLERS =
 	
 	prepareDate:
 	getF(
-	new FuncVer( [ Date ] ).setReturn( "str" ),
+	getA( Date ),
+	getR( "str" ),
 	function( date )
 	{
 // Using ISO string representation to preserve millisecond
 // precision in elasticsearch
 		return date.toISOString();
 	})
-};
+},
 
-ElasticConHandler.RESTORING_HANDLERS =
+RESTORING_HANDLERS:
 {
 	restoreBinary:
 	getF(
-	new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
+	getA( "any", "any" ),
+	getR( Buffer ),
 	function( binaryStr, contentType )
 	{
 		var returnVar = undefined;
@@ -95,7 +91,8 @@ ElasticConHandler.RESTORING_HANDLERS =
 	
 	restoreDate:
 	getF(
-	new FuncVer( [ "any" ] ).setReturn( Date ),
+	getA( "any" ),
+	getR( Date ),
 	function( date )
 	{
 		var returnVar = undefined;
@@ -110,7 +107,7 @@ ElasticConHandler.RESTORING_HANDLERS =
 		}
 		
 		if(
-			sys.hasType( date, "str" ) === false ||
+			hasT( date, "str" ) === false ||
 			date.length !== 24 ||
 			returnVar === undefined ||
 			returnVar.toString() === "Invalid Date"
@@ -125,53 +122,96 @@ ElasticConHandler.RESTORING_HANDLERS =
 		
 		return returnVar;
 	})
-};
+}
 
-ElasticConHandler.prototype.getOpenCon =
-getF(
-ClusterConHandler.GET_OPEN_CON_FV,
+});
+
+return ElasticConHandler;
+
+},
+function( mods, ElasticConHandler )
+{
+
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+
+var ClusterDataRuntimeError =
+	mods.get( "cluster" ).ClusterDataRuntimeError
+;
+
+var Id = mods.get( "cluster" ).Id;
+var Binary = mods.get( "cluster" ).Binary;
+
+var ElasticsearchConnection =
+	mods.get( "elasticsearchconnection" )
+;
+
+var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
+
+var objsS = { props:{ id:{ req: true, types: Id } } };
+
+Class.add(
+ElasticConHandler,
+{
+
+getOpenCon:
+[
+ClusterConHandler.GET_OPEN_CON_V,
 function( params, cb )
 {
 	cb(
 		undefined,
 		new ElasticsearchConnection( params.host, params.port )
 	);
-});
+}],
 
-var methodS = { values:[ "GET", "PUT", "POST", "DELETE" ] };
-
-var optsS =
-{
-	types: "obj/undef",
-	props:
+request:
+[
+getA(
+	methodS,
+	getV.PROPER_STR,
 	{
-		params: "obj/undef",
-		data:{ types: "obj/arr/undef", extraItems: "+obj" }
+		types: "obj/undef",
+		props:
+		{
+			params: "obj/undef",
+			data:{ types: "obj/arr/undef", extraItems: "+obj" }
+		},
+		extraProps: false
 	},
-	extraProps: false
-};
-
-ElasticConHandler.prototype.request =
-getF(
-new FuncVer()
-	.addArgs( [ methodS, FuncVer.PROPER_STR, optsS, "func" ] )
-	.addArgs( [ methodS, FuncVer.PROPER_STR, "func" ] ),
+	"func"
+),
+getA( methodS, getV.PROPER_STR, "func" ),
 function( method, path, opts, cb )
 {
-	if( sys.hasType( opts, "func" ) === true )
+	if( hasT( opts, "func" ) === true )
 	{
 		cb = opts;
 		opts = undefined;
 	}
 	
 	this.getCurrCon(
-		getF(
-		new FuncVer( [ Error ] )
-			.addArgs( [ "undef", ElasticsearchConnection ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", ElasticsearchConnection ),
 		function( err, elasticsearchCon )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -179,13 +219,16 @@ function( method, path, opts, cb )
 				method,
 				path,
 				opts,
-				getF(
-				new FuncVer( [ Error ] )
-					.addArgs( [ "undef", "obj/undef" ] ),
+				getCb(
+				this,
+				getA( Error ),
+				getA( "undef", "obj/undef" ),
 				function( err, response )
 				{
-					if( sys.errorCheck( err, cb ) === true )
+					if( err !== undefined )
 					{
+						cb( err );
+						
 						return;
 					}
 					else
@@ -196,20 +239,18 @@ function( method, path, opts, cb )
 			);
 		})
 	);
-});
+}],
 
-var objsS = { props:{ id:{ req: true, types: Id } } };
-
-ElasticConHandler.prototype.insert =
-getF(
-new FuncVer( [
+insert:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
 	{ types:[ objsS, "arr" ], extraItems: objsS },
 	"func"
-]),
+),
 function( indexName, objs, cb )
 {
-	if( sys.hasType( objs, "arr" ) === false )
+	if( hasT( objs, "arr" ) === false )
 	{
 		objs = [ objs ];
 	}
@@ -247,14 +288,18 @@ function( indexName, objs, cb )
 		method,
 		path,
 		reqOpts,
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", "any" ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", "any" ),
 		function( err, res )
 		{
 			ClusterConHandler.restoreSet( restoreInfo );
 			
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			else
@@ -263,15 +308,15 @@ function( indexName, objs, cb )
 			}
 		})
 	);
-});
+}],
 
-ElasticConHandler.prototype.delete =
-getF(
-new FuncVer( [
+delete:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
-	{ types:[ "arr", Id, FuncVer.PROPER_OBJ ], extraItems: Id },
+	{ types:[ "arr", Id, getV.PROPER_OBJ ], extraItems: Id },
 	"func"
-]),
+),
 function( indexName, query, cb )
 {
 	if( query instanceof Id === true )
@@ -283,7 +328,7 @@ function( indexName, query, cb )
 	var pathEnding = undefined;
 	var method = undefined;
 	
-	if( sys.hasType( query, "arr" ) === true )
+	if( hasT( query, "arr" ) === true )
 	{
 		var finalQuery = [];
 		pathEnding = "_bulk";
@@ -315,27 +360,31 @@ function( indexName, query, cb )
 		method,
 		path,
 		{ data: finalQuery },
-		getF(
-		new FuncVer( [ Error ] ).addArgs( [ "undef", "any" ] ),
+		getCb(
+		this,
+		getA( Error ),
+		getA( "undef", "any" ),
 		function( err, res )
 		{
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
 			cb( undefined );
 		})
 	);
-});
+}],
 
-ElasticConHandler.prototype.query =
-getF(
-new FuncVer( [
+query:
+[
+getA(
 	ClusterConHandler.COLLECTION_NAME_S,
-	{ types:[ Id, "arr", FuncVer.PROPER_OBJ ], extraItems: Id },
+	{ types:[ Id, "arr", getV.PROPER_OBJ ], extraItems: Id },
 	"func"
-]),
+),
 function( indexName, query, cb )
 {
 	if( query instanceof Id === true )
@@ -343,7 +392,7 @@ function( indexName, query, cb )
 		query = [ query ];
 	}
 	
-	if( sys.hasType( query, "arr" ) === true )
+	if( hasT( query, "arr" ) === true )
 	{
 		var idStrs = [];
 		
@@ -371,33 +420,35 @@ function( indexName, query, cb )
 		method,
 		path,
 		opts,
-		getF(
-		new FuncVer( [ Error ] )
-			.addArgs( [
-				"undef",
+		getCb(
+		this,
+		getA( Error ),
+		getA(
+			"undef",
+			{
+				props:
 				{
-					props:
+					hits:
 					{
-						hits:
+						req: true,
+						props:
 						{
-							req: true,
-							props:
+							hits:
 							{
-								hits:
-								{
-									req: true,
-									extraItems:{ props:{ _source: "+obj" } }
-								}
+								req: true,
+								extraItems:{ props:{ _source: "+obj" } }
 							}
 						}
 					}
 				}
-			]),
+			}
+		),
 		function( err, res )
 		{
-			
-			if( sys.errorCheck( err, cb ) === true )
+			if( err !== undefined )
 			{
+				cb( err );
+				
 				return;
 			}
 			
@@ -416,6 +467,8 @@ function( indexName, query, cb )
 			cb( undefined, hits );
 		})
 	);
+}]
+
 });
 
 });

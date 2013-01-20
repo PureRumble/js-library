@@ -3,53 +3,48 @@ function( mods )
 {
 
 var OurGlobeError = ourglobe.OurGlobeError;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var ElasticsearchError =
-getF(
-new FuncVer( [
-	OurGlobeError.MSG_S,
-	{
-		extraProps: false,
-		props:
-		{
-			host: FuncVer.R_PROPER_STR, opts: FuncVer.R_PROPER_OBJ
-		}
-	},
-	{
-		extraProps: false,
-		props: { res: "str", status: FuncVer.NON_NEG_INT }
-	},
-	OurGlobeError.VAR_S,
-	OurGlobeError.CODE_S,
-	OurGlobeError.PLACE_S
-]),
-function(
-	message, request, response, errorVar, errorCode, errorPlace
-)
+Class.create(
 {
-	if( errorPlace === undefined )
-	{
-		errorPlace = ElasticsearchError;
-	}
-	
-	if( errorVar === undefined )
-	{
-		errorVar = {};
-	}
-	
-	errorVar.request = request;
-	errorVar.response = response;
-	
-	ElasticsearchError.ourGlobeSuper.call(
-		this, message, errorVar, errorCode, errorPlace
-	);
-});
 
-sys.extend( ElasticsearchError, OurGlobeError );
+name: "ElasticsearchError",
+extends: OurGlobeError,
+constr:
+[
+getA(
+	{
+		extraProps: false,
+		props:{ host: getV.R_PROPER_STR, opts: getV.R_PROPER_OBJ }
+	},
+	{
+		extraProps: false,
+		props:{ res: "str", status: getV.NON_NEG_INT }
+	},
+	"any",
+	"any",
+	"any",
+	"any"
+),
+function( req, res, msg, errVar, errCode, errPlace )
+{
+	this.ourGlobeCallSuper(
+		undefined, msg, errVar, errCode, errPlace
+	);
+}]
+
+});
 
 return ElasticsearchError;
 

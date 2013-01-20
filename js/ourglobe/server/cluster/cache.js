@@ -3,25 +3,40 @@ ourglobe.define(
 	"./id",
 	"./link",
 	"./binary",
-	
 ],
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var Cache =
-getF(
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+var Link = undefined;
+
+mods.delay(
 function()
 {
-	return(
-		new FuncVer( [
-			Cache.CACHE_VAR_S,
-			mods.get( "link" ),
-			[ Date, "undef" ]
-		])
-	);
+	Link = mods.get( "link" );
+});
+
+var Cache =
+Class.create(
+{
+
+name: "Cache",
+constr:
+[
+function()
+{
+	return [ getA( Cache.CACHE_VAR_S, Link, [ Date, "undef" ] ) ];
 },
 function( cacheVar, link, refreshedDate )
 {
@@ -32,9 +47,15 @@ function( cacheVar, link, refreshedDate )
 		refreshedDate :
 		new Date()
 	;
+}]
+
 });
 
-Cache.CACHE_VAR_S = { badTypes: "undef" };
+Class.addStatic(
+Cache,
+{
+	CACHE_VAR_S: { badTypes: "undef" }
+});
 
 return Cache;
 
@@ -42,44 +63,63 @@ return Cache;
 function( mods, Cache )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var FuncVer = ourGlobe.FuncVer;
+
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var Link = mods.get( "./link" );
 
-Cache.verClusterVars =
-getF(
-new FuncVer( [ "any", "any" ] ).setReturn( "bool" ),
+Class.add(
+Cache,
+{
+
+verClusterVars:
+[
+"static",
+getA( "any", "any" ),
+getR( "bool" ),
 function( cacheVar, refreshedDate )
 {
 	return(
 		cacheVar !== undefined &&
 		refreshedDate instanceof Date === true
 	);
-});
+}],
 
-Cache.prototype.getCache =
-getF(
-new FuncVer( undefined, Cache.CACHE_VAR_S ),
+getCache:
+[
+getR( Cache.CACHE_VAR_S ),
 function()
 {
 	return this.cacheVar;
-});
+}],
 
-Cache.prototype.getLink =
-getF(
-new FuncVer( undefined, Link ),
+getLink:
+[
+getR( Link ),
 function()
 {
 	return this.link;
-});
+}],
 
-Cache.prototype.getRefreshedDate =
-getF(
-new FuncVer( undefined, Date ),
+getRefreshedDate:
+[
+getR( Date ),
 function()
 {
 	return this.refreshedDate;
+}]
+
 });
 
 });

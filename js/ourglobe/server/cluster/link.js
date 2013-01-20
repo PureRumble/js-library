@@ -6,24 +6,45 @@ ourglobe.define(
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var Link =
-getF(
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+
+var Id = undefined;
+var ClusterConHandler = undefined;
+
+mods.delay(
 function()
 {
-	return(
-		new FuncVer( [
-			mods.get( "clusterconhandler" ).COLLECTION_NAME_S,
-			mods.get( "./id" )
-		])
-	);
+	Id = mods.get( "id" );
+	ClusterConHandler = mods.get( "clusterconhandler" );
+});
+
+var Link =
+Class.create(
+{
+
+name: "Link",
+constr:
+[
+function()
+{
+	return [ getA( ClusterConHandler.COLLECTION_NAME_S, Id ) ];
 },
 function( collection, id )
 {
 	this.collection = collection;
 	this.id = id;
+}]
+
 });
 
 return Link;
@@ -32,38 +53,54 @@ return Link;
 function( mods, Link )
 {
 
-var getF = ourglobe.getF;
-var FuncVer = ourglobe.FuncVer;
-var sys = ourglobe.sys;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var Id = mods.get( "id" );
 var ClusterConHandler = mods.get( "clusterconhandler" );
 
-Link.verClusterVars =
-getF(
-new FuncVer( [ "any" ] ).setReturn( "bool" ),
+Class.add(
+Link,
+{
+
+verClusterVars:
+[
+"static",
+getA( "any" ),
+getR( "bool" ),
 function( collection )
 {
 	return(
-		sys.hasType( collection, "str" ) === true &&
+		hasT( collection, "str" ) === true &&
 		collection.length > 0
 	);
-});
+}],
 
-Link.prototype.getCollection =
-getF(
-new FuncVer( undefined, ClusterConHandler.COLLECTION_NAME_S ),
+getCollection:
+[
+getR( ClusterConHandler.COLLECTION_NAME_S ),
 function()
 {
 	return this.collection;
-});
+}],
 
-Link.prototype.getId =
-getF(
-new FuncVer( undefined, Id ),
+getId:
+[
+getR( Id ),
 function()
 {
 	return this.id;
+}]
+
 });
 
 });
