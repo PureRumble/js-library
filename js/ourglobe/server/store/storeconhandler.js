@@ -1,7 +1,7 @@
 ourglobe.define(
 [
 	"ourglobe/dual/moremath",
-	"./clusterdataruntimeerror",
+	"./storedataruntimeerror",
 	"./id",
 	"./binary",
 	"./link",
@@ -31,19 +31,19 @@ var Binary = mods.get( "binary" );
 var Link = mods.get( "link" );
 var Cache = mods.get( "cache" );
 
-var ClusterConHandler =
+var StoreConHandler =
 Class.create(
 {
 
-name: "ClusterConHandler",
-instVars:{ clusterName: "final", conHolders: "final" },
+name: "StoreConHandler",
+instVars:{ storeName: "final", conHolders: "final" },
 constr:
 [
 function()
 {
 	return([
 		getA(
-			ClusterConHandler.CLUSTER_NAME_S,
+			StoreConHandler.STORE_NAME_S,
 			{
 				extraItems:
 				{
@@ -56,9 +56,9 @@ function()
 		)
 	]);
 },
-function ClusterConHandler( clusterName, conParams )
+function StoreConHandler( storeName, conParams )
 {
-	this.clusterName = clusterName;
+	this.storeName = storeName;
 	this.conHolders = [];
 	
 	for( var pos in conParams )
@@ -75,19 +75,19 @@ function ClusterConHandler( clusterName, conParams )
 
 });
 
-var clusterNameS = getV.PROPER_STR_L;
+var storeNameS = getV.PROPER_STR_L;
 
 Class.addStatic(
-ClusterConHandler,
+StoreConHandler,
 {
-// CONSTR_V is made for subclasses of ClusterConHandler. Note
-// that the FuncVer of the constructor of ClusterConHandler
+// CONSTR_V is made for subclasses of StoreConHandler. Note
+// that the FuncVer of the constructor of StoreConHandler
 // does allow for more props in the items of conParams, while
 // CONSTR_V doesnt
 	CONSTR_V:
 	getV(
 		getA(
-			clusterNameS,
+			storeNameS,
 			{
 				extraItems:
 				{
@@ -121,7 +121,7 @@ ClusterConHandler,
 		getV( getA( "str/obj/inst" ), getR( "any" ) )
 	,
 	
-	CLUSTER_NAME_S: clusterNameS,
+	STORE_NAME_S: storeNameS,
 	COLLECTION_NAME_S: getV.PROPER_STR_L,
 	GET_OPEN_CON_V:
 	getV(
@@ -141,10 +141,10 @@ ClusterConHandler,
 	ID_STR_S: Id.ID_STR_S
 });
 
-return ClusterConHandler;
+return StoreConHandler;
 
 },
-function( mods, ClusterConHandler )
+function( mods, StoreConHandler )
 {
 
 var RuntimeError = ourGlobe.RuntimeError;
@@ -161,8 +161,8 @@ var Class = ourGlobe.Class;
 
 var MoreMath = mods.get( "moremath" ).MoreMath;
 
-var ClusterDataRuntimeError =
-	mods.get( "clusterdataruntimeerror" )
+var StoreDataRuntimeError =
+	mods.get( "storedataruntimeerror" )
 ;
 var Id = mods.get( "id");
 var Binary = mods.get( "binary" );
@@ -170,7 +170,7 @@ var Link = mods.get( "link" );
 var Cache = mods.get( "cache" );
 
 Class.add(
-ClusterConHandler,
+StoreConHandler,
 {
 
 getCurrCon:
@@ -229,7 +229,7 @@ getA.ANY_ARGS,
 function()
 {
 	throw new RuntimeError(
-		"All subclasses of ClusterConHandler must extend "+
+		"All subclasses of StoreConHandler must extend "+
 		"getBinaryStoreObj()",
 		{ faultyClass: Class.getClassName( this ) }
 	);
@@ -242,7 +242,7 @@ getA.ANY_ARGS,
 function()
 {
 	throw new RuntimeError(
-		"All subclasses of ClusterConHandler must extend "+
+		"All subclasses of StoreConHandler must extend "+
 		"restoreBinary()",
 		{ faultyClass: Class.getClassName( this ) }
 	);
@@ -251,7 +251,7 @@ function()
 getIdStoreObj:
 [
 "extendable",
-ClusterConHandler.GET_ID_STORE_OBJ_V,
+StoreConHandler.GET_ID_STORE_OBJ_V,
 function( id )
 {
 	return id.toString();
@@ -260,7 +260,7 @@ function( id )
 restoreId:
 [
 "extendable",
-ClusterConHandler.RESTORE_ID_V,
+StoreConHandler.RESTORE_ID_V,
 function( idStr )
 {
 	return new Id( idStr );
@@ -269,7 +269,7 @@ function( idStr )
 getDateStoreObj:
 [
 "extendable",
-ClusterConHandler.GET_DATE_STORE_OBJ_V,
+StoreConHandler.GET_DATE_STORE_OBJ_V,
 function( date )
 {
 	return date.toISOString();
@@ -278,7 +278,7 @@ function( date )
 restoreDate:
 [
 "extendable",
-ClusterConHandler.RESTORE_DATE_V,
+StoreConHandler.RESTORE_DATE_V,
 function( date )
 {
 	var returnVar = undefined;
@@ -299,7 +299,7 @@ function( date )
 		returnVar.toString() === "Invalid Date"
 	)
 	{
-		throw new ClusterDataRuntimeError(
+		throw new StoreDataRuntimeError(
 			"A string representing a date in a correct form wasnt "+
 			"provided when restoring a Date",
 			{ providedVar: date }
@@ -327,8 +327,8 @@ function( set )
 		
 		if( hasT( source, "obj", "arr" ) === false )
 		{
-			dest[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
-				ClusterConHandler.OUR_GLOBE_SYS_VALUE
+			dest[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
+				StoreConHandler.OUR_GLOBE_SYS_VALUE
 			;
 			
 			if( source instanceof Id === true )
@@ -403,13 +403,13 @@ function( set )
 				}
 				else
 				{
-					throw new ClusterDataRuntimeError(
-						"The set that is to be prepared for the cluster "+
+					throw new StoreDataRuntimeError(
+						"The set that is to be prepared for the store "+
 						"contains an instance of a class that isnt "+
 						"allowed",
 						{ invalidClass: Class.getClassName( nextSrc ) },
 						undefined,
-						ClusterConHandler.getStoreObj
+						StoreConHandler.getStoreObj
 					);
 				}
 			}
@@ -429,12 +429,12 @@ function( set )
 			}
 			else if( hasT( nextSrc, "func" ) === true )
 			{
-				throw new ClusterDataRuntimeError(
-					"The set that is to be prepared for the cluster "+
+				throw new StoreDataRuntimeError(
+					"The set that is to be prepared for the store "+
 					"has a var of a type that isnt allowed",
 					undefined,
 					undefined,
-					ClusterConHandler.getStoreObj
+					StoreConHandler.getStoreObj
 				);
 			}
 		}
@@ -449,7 +449,7 @@ throwRestoreErr:
 getA( Error, "obj/arr", "obj" ),
 function( err, restoringSet, systemObj )
 {
-	if( err instanceof ClusterDataRuntimeError === true )
+	if( err instanceof StoreDataRuntimeError === true )
 	{
 		var ourGlobeVar = err.ourGlobeVar;
 		
@@ -462,12 +462,12 @@ function( err, restoringSet, systemObj )
 		ourGlobeVar.systemObj = systemObj;
 		
 		err =
-			new ClusterDataRuntimeError(
+			new StoreDataRuntimeError(
 				"An error occurred while restoring a system obj in the "+
-				"set from the cluster: "+err.message,
+				"set from the store: "+err.message,
 				ourGlobeVar,
 				undefined,
-				ClusterConHandler.restoreObj
+				StoreConHandler.restoreObj
 			)
 		;
 	}
@@ -498,8 +498,8 @@ function( set )
 		}
 		else if(
 			hasT( currVar, "obj", "arr" ) === true &&
-			currVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] !==
-				ClusterConHandler.OUR_GLOBE_SYS_VALUE
+			currVar[ StoreConHandler.OUR_GLOBE_SYS_KEY ] !==
+				StoreConHandler.OUR_GLOBE_SYS_VALUE
 		)
 		{
 			for( var key in currVar )
@@ -521,7 +521,7 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				holdingSet[ pointingKey ] = date;
@@ -535,7 +535,7 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				holdingSet[ pointingKey ] = id;
@@ -549,20 +549,20 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				var collection = currVar[ "collection" ];
 				
-				if( Link.verClusterVars( collection ) === false )
+				if( Link.verStoreVars( collection ) === false )
 				{
-					throw new ClusterDataRuntimeError(
+					throw new StoreDataRuntimeError(
 						"A system obj (in the set that is to be restored) "+
 						"represents a Link but its props have invalid "+
 						"values",
 						{ restoringSet: set, systemObj: currVar },
 						undefined,
-						ClusterConHandler.restoreObj
+						StoreConHandler.restoreObj
 					);
 				}
 				
@@ -579,7 +579,7 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				var refreshedDate = undefined;
@@ -593,25 +593,25 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				var cacheVar = currVar[ "cache" ];
 				var collection = currVar[ "link" ][ "collection" ];
 				
 				if(
-					Link.verClusterVars( collection ) === false ||
-					Cache.verClusterVars( cacheVar, refreshedDate ) ===
+					Link.verStoreVars( collection ) === false ||
+					Cache.verStoreVars( cacheVar, refreshedDate ) ===
 						false
 				)
 				{
-					throw new ClusterDataRuntimeError(
+					throw new StoreDataRuntimeError(
 						"A system obj (in the set that is to be restored) "+
 						"represents a Cache but its props have invalid "+
 						"values",
 						{ restoringSet: set, systemObj: currVar },
 						undefined,
-						ClusterConHandler.restoreObj
+						StoreConHandler.restoreObj
 					);
 				}
 				
@@ -634,14 +634,14 @@ function( set )
 				}
 				catch( e )
 				{
-					ClusterConHandler.throwRestoreErr( e, set, currVar );
+					StoreConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
 				holdingSet[ pointingKey ] = binary;
 			}
 			else
 			{
-				throw new ClusterDataRuntimeError(
+				throw new StoreDataRuntimeError(
 					"A system obj (in the set that is to be restored) "+
 					"has the prop 'type' set to an invalid value",
 					{
@@ -650,13 +650,13 @@ function( set )
 						invalidValue: typeValue
 					},
 					undefined,
-					ClusterConHandler.restoreObj
+					StoreConHandler.restoreObj
 				);
 			}
 		}
 		else
 		{
-			throw new ClusterDataRuntimeError(
+			throw new StoreDataRuntimeError(
 				"A set (in the bigger set that is to be restored) "+
 				"contains an invalid value",
 				{
@@ -666,7 +666,7 @@ function( set )
 					keyToValue: pointingKey,
 				},
 				undefined,
-				ClusterConHandler.restoreObj
+				StoreConHandler.restoreObj
 			);
 		}
 	}

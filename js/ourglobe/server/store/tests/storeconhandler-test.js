@@ -3,7 +3,7 @@ ourglobe.require(
 	"crypto",
 	"ourglobe/lib/server/vows",
 	"ourglobe/dual/testing",
-	"ourglobe/server/cluster"
+	"ourglobe/server/store"
 ],
 function( mods )
 {
@@ -30,17 +30,17 @@ var crypto = mods.get( "crypto" );
 
 var Test = mods.get( "testing" ).Test;
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
-var ClusterDataRuntimeError =
-	mods.get( "cluster" ).ClusterDataRuntimeError
+var StoreConHandler = mods.get( "store" ).StoreConHandler;
+var StoreDataRuntimeError =
+	mods.get( "store" ).StoreDataRuntimeError
 ;
 
-var Id = mods.get( "cluster" ).Id;
-var Binary = mods.get( "cluster" ).Binary;
-var Link = mods.get( "cluster" ).Link;
-var Cache = mods.get( "cluster" ).Cache;
+var Id = mods.get( "store" ).Id;
+var Binary = mods.get( "store" ).Binary;
+var Link = mods.get( "store" ).Link;
+var Cache = mods.get( "store" ).Cache;
 
-var sysValue = ClusterConHandler.OUR_GLOBE_SYS_VALUE;
+var sysValue = StoreConHandler.OUR_GLOBE_SYS_VALUE;
 
 var IdCont =
 getF(
@@ -116,23 +116,23 @@ function(
 		}
 	};
 	
-	returnVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
-		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	returnVar[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
+		StoreConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
 	var link = returnVar[ "link" ];
 	var refreshedDate = returnVar[ "refreshedDate" ];
 	
-	link[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
-		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	link[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
+		StoreConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
-	link[ "id" ][ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
-		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	link[ "id" ][ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
+		StoreConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
-	refreshedDate[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
-		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	refreshedDate[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
+		StoreConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
 	return returnVar;
@@ -171,18 +171,18 @@ function(
 	var cloneTwo = Test.clone( setAfterPrep );
 	var firstTopic = undefined;
 	
-	var TestClusterConHandler =
+	var TestStoreConHandler =
 	Class.create(
 	{
-		name: "TestClusterConHandler",
-		extends: ClusterConHandler
+		name: "TestStoreConHandler",
+		extends: StoreConHandler
 	});
 	
 	var addObj = {};
 	
 	addObj.getBinaryStoreObj =
 	[
-		ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+		StoreConHandler.GET_BINARY_STORE_OBJ_V,
 		function( binary )
 		{
 			return new BinaryCont( binary.getBuffer() );
@@ -191,12 +191,12 @@ function(
 	
 	addObj.restoreBinary =
 	[
-		ClusterConHandler.RESTORE_BINARY_V,
+		StoreConHandler.RESTORE_BINARY_V,
 		function( binaryCont )
 		{
 			if( binaryCont instanceof BinaryCont === false )
 			{
-				throw new ClusterDataRuntimeError(
+				throw new StoreDataRuntimeError(
 					"A BinaryCont must be provided when restoring "+
 					"a Binary",
 					{ providedVar: binaryCont }
@@ -211,7 +211,7 @@ function(
 	{
 		addObj.getIdStoreObj =
 		[
-			ClusterConHandler.GET_ID_STORE_OBJ_V,
+			StoreConHandler.GET_ID_STORE_OBJ_V,
 			function( id )
 			{
 				return new IdCont( id.toString() );
@@ -220,12 +220,12 @@ function(
 		
 		addObj.restoreId =
 		[
-			ClusterConHandler.RESTORE_ID_V,
+			StoreConHandler.RESTORE_ID_V,
 			function( idCont )
 			{
 				if( idCont instanceof IdCont === false )
 				{
-					throw new ClusterDataRuntimeError(
+					throw new StoreDataRuntimeError(
 						"An IdCont must be provided when restoring an Id",
 						{ providedVar: idCont }
 					);
@@ -240,7 +240,7 @@ function(
 	{
 		addObj.getDateStoreObj =
 		[
-			ClusterConHandler.GET_DATE_STORE_OBJ_V,
+			StoreConHandler.GET_DATE_STORE_OBJ_V,
 			function( date )
 			{
 				return new DateCont( date );
@@ -249,12 +249,12 @@ function(
 		
 		addObj.restoreDate =
 		[
-			ClusterConHandler.RESTORE_DATE_V,
+			StoreConHandler.RESTORE_DATE_V,
 			function( dateCont )
 			{
 				if( dateCont instanceof DateCont === false )
 				{
-					throw new ClusterDataRuntimeError(
+					throw new StoreDataRuntimeError(
 						"A DateCont must be provided when restoring a Date",
 						{ providedVar: dateCont }
 					);
@@ -265,11 +265,11 @@ function(
 		];
 	}
 	
-	Class.add( TestClusterConHandler, addObj );
+	Class.add( TestStoreConHandler, addObj );
 	
 	var testConHandler =
-		new TestClusterConHandler(
-			"testCluster", [ { host: "testHost", port: 0 } ]
+		new TestStoreConHandler(
+			"testStore", [ { host: "testHost", port: 0 } ]
 		)
 	;
 	
@@ -294,7 +294,7 @@ function(
 				if( diff !== undefined )
 				{
 					throw new RuntimeError(
-						"Preparing the objs for cluster doesnt yield "+
+						"Preparing the objs for store doesnt yield "+
 						"expected objs",
 						{
 							result: topic,
@@ -319,7 +319,7 @@ function(
 				if( diff !== undefined )
 				{
 					throw new RuntimeError(
-						"Restoring objs after preparing them for cluster "+
+						"Restoring objs after preparing them for store "+
 						"doesnt yield original objs",
 						{
 							result: cloneOne,
@@ -359,7 +359,7 @@ function(
 					if( diff !== undefined )
 					{
 						throw new RuntimeError(
-							"Restoring objs from cluster doesnt yield "+
+							"Restoring objs from store doesnt yield "+
 							"expected objs",
 							{
 								restoredObj: cloneTwo,
@@ -374,7 +374,7 @@ function(
 	});
 });
 
-var suite = vows.describe( "clusterconhandler" );
+var suite = vows.describe( "storeconhandler" );
 suite.options.error = false;
 
 // Preparing and restoring simple objs and ars

@@ -1,11 +1,11 @@
-ourglobe.require(
+ourGlobe.require(
 [
 	"timers",
 	"crypto",
 	"ourglobe/lib/server/vows",
 	"ourglobe/dual/testing",
 	"ourglobe/server/morehttp",
-	"ourglobe/server/cluster",
+	"ourglobe/server/store",
 	"ourglobe/server/elasticsearch",
 	"ourglobe/server/elasticsearch/elasticsearchconnection",
 ],
@@ -35,12 +35,12 @@ var ElasticsearchConnection =
 	mods.get( "elasticsearchconnection" )
 ;
 
-var ClusterMapper = mods.get( "cluster" ).ClusterMapper;
+var StoreMapper = mods.get( "store" ).StoreMapper;
 
-var Id = mods.get( "cluster" ).Id;
-var Link = mods.get( "cluster" ).Link;
-var Binary = mods.get( "cluster" ).Binary;
-var Cache = mods.get( "cluster" ).Cache;
+var Id = mods.get( "store" ).Id;
+var Link = mods.get( "store" ).Link;
+var Binary = mods.get( "store" ).Binary;
+var Cache = mods.get( "store" ).Cache;
 
 var ELASTICSEARCH_CON_HANDLER =
 new ElasticConHandler(
@@ -49,12 +49,12 @@ new ElasticConHandler(
 
 var INDEX_NAME = "test";
 
-var CLUSTER_MAPPING = [];
-CLUSTER_MAPPING[ INDEX_NAME ] = 0;
+var STORE_MAPPING = [];
+STORE_MAPPING[ INDEX_NAME ] = 0;
 
-var CLUSTER_MAPPER =
-new ClusterMapper(
-	[ ELASTICSEARCH_CON_HANDLER ], CLUSTER_MAPPING
+var STORE_MAPPER =
+new StoreMapper(
+	[ ELASTICSEARCH_CON_HANDLER ], STORE_MAPPING
 );
 
 var objS = { props:{ id:{ req: true, types: Id } } };
@@ -93,7 +93,7 @@ function( objs, timeout )
 		"topic",
 		function()
 		{
-			CLUSTER_MAPPER
+			STORE_MAPPER
 				.getConHandler( INDEX_NAME )
 				.insert( INDEX_NAME, objsToInsert, this.callback )
 			;
@@ -126,7 +126,7 @@ function( objs, timeout )
 				timers.setTimeout(
 					function()
 					{
-						CLUSTER_MAPPER
+						STORE_MAPPER
 							.getConHandler( INDEX_NAME )
 							.query( INDEX_NAME, ids, outerThis.callback )
 						;
@@ -199,7 +199,7 @@ function( objs, timeout )
 				"topic",
 				function()
 				{
-					CLUSTER_MAPPER
+					STORE_MAPPER
 						.getConHandler( INDEX_NAME )
 						.delete( INDEX_NAME, ids, this.callback )
 					;
@@ -224,7 +224,7 @@ function( objs, timeout )
 						timers.setTimeout(
 							function()
 							{
-								CLUSTER_MAPPER
+								STORE_MAPPER
 									.getConHandler( INDEX_NAME )
 									.query( INDEX_NAME, ids, outerThis.callback )
 								;

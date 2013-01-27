@@ -1,7 +1,7 @@
 ourglobe.define(
 [
 	"./id",
-	"./clusterconhandler"
+	"./storeconhandler"
 ],
 function( mods )
 {
@@ -19,13 +19,13 @@ var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
 var Id = undefined;
-var ClusterConHandler = undefined;
+var StoreConHandler = undefined;
 
 mods.delay(
 function()
 {
 	Id = mods.get( "id" );
-	ClusterConHandler = mods.get( "clusterconhandler" );
+	StoreConHandler = mods.get( "storeconhandler" );
 });
 
 var Link =
@@ -37,7 +37,7 @@ constr:
 [
 function()
 {
-	return [ getA( ClusterConHandler.COLLECTION_NAME_S, Id ) ];
+	return [ getA( StoreConHandler.COLLECTION_NAME_S, Id ) ];
 },
 function( collection, id )
 {
@@ -66,13 +66,13 @@ var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
 var Id = mods.get( "id" );
-var ClusterConHandler = mods.get( "clusterconhandler" );
+var StoreConHandler = mods.get( "storeconhandler" );
 
 Class.add(
 Link,
 {
 
-verClusterVars:
+verStoreVars:
 [
 "static",
 getA( "any" ),
@@ -87,7 +87,7 @@ function( collection )
 
 getCollection:
 [
-getR( ClusterConHandler.COLLECTION_NAME_S ),
+getR( StoreConHandler.COLLECTION_NAME_S ),
 function()
 {
 	return this.collection;

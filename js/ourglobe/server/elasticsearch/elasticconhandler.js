@@ -1,6 +1,6 @@
 ourglobe.define(
 [
-	"ourglobe/server/cluster",
+	"ourglobe/server/store",
 	"./elasticsearchconnection"
 ],
 function( mods )
@@ -18,20 +18,20 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+var StoreConHandler = mods.get( "store" ).StoreConHandler;
 
 var ElasticConHandler =
 Class.create(
 {
 
 name: "ElasticConHandler",
-extends: ClusterConHandler,
+extends: StoreConHandler,
 constr:
 [
-ClusterConHandler.CONSTR_V,
-function( clusterName, conParams )
+StoreConHandler.CONSTR_V,
+function( storeName, conParams )
 {
-	this.ourGlobeCallSuper( undefined, clusterName, conParams );
+	this.ourGlobeCallSuper( undefined, storeName, conParams );
 }]
 
 });
@@ -54,14 +54,14 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+var StoreConHandler = mods.get( "store" ).StoreConHandler;
 
-var ClusterDataRuntimeError =
-	mods.get( "cluster" ).ClusterDataRuntimeError
+var StoreDataRuntimeError =
+	mods.get( "store" ).StoreDataRuntimeError
 ;
 
-var Id = mods.get( "cluster" ).Id;
-var Binary = mods.get( "cluster" ).Binary;
+var Id = mods.get( "store" ).Id;
+var Binary = mods.get( "store" ).Binary;
 
 var ElasticsearchConnection =
 	mods.get( "elasticsearchconnection" )
@@ -77,7 +77,7 @@ ElasticConHandler,
 
 getBinaryStoreObj:
 [
-ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+StoreConHandler.GET_BINARY_STORE_OBJ_V,
 function( binary )
 {
 	return binary.getBuffer().toString( "base64" );
@@ -85,7 +85,7 @@ function( binary )
 
 restoreBinary:
 [
-ClusterConHandler.RESTORE_BINARY_V,
+StoreConHandler.RESTORE_BINARY_V,
 function( binaryStr )
 {
 	var buf = undefined;
@@ -96,7 +96,7 @@ function( binaryStr )
 	}
 	catch( e )
 	{
-		throw new ClusterDataRuntimeError(
+		throw new StoreDataRuntimeError(
 			"A valid binary string in base-64 representation wasnt"+
 			"provided when restoring a Binary",
 			{ providedVar: binaryStr }
@@ -108,7 +108,7 @@ function( binaryStr )
 
 getOpenCon:
 [
-ClusterConHandler.GET_OPEN_CON_V,
+StoreConHandler.GET_OPEN_CON_V,
 function( params, cb )
 {
 	cb(
@@ -185,7 +185,7 @@ function( method, path, opts, cb )
 insert:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	{ types:[ objsS, "arr" ], extraItems: objsS },
 	"func"
 ),
@@ -248,7 +248,7 @@ function( indexName, objs, cb )
 delete:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	{ types:[ "arr", Id, getV.PROPER_OBJ ], extraItems: Id },
 	"func"
 ),
@@ -316,7 +316,7 @@ function( indexName, query, cb )
 query:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	{ types:[ Id, "arr", getV.PROPER_OBJ ], extraItems: Id },
 	"func"
 ),

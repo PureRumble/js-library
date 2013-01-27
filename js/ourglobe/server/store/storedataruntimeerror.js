@@ -14,11 +14,11 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterDataRuntimeError =
+var StoreDataRuntimeError =
 Class.create(
 {
 
-name: "ClusterDataRuntimeError",
+name: "StoreDataRuntimeError",
 extends: RuntimeError,
 constr:
 [
@@ -32,6 +32,6 @@ function( msg, errVar, errCode, errPlace )
 
 });
 
-return ClusterDataRuntimeError;
+return StoreDataRuntimeError;
 
 });

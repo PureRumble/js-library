@@ -1,7 +1,7 @@
 ourglobe.define(
 [
 	"ourglobe/lib/server/mongodb",
-	"ourglobe/server/cluster",
+	"ourglobe/server/store",
 	"./mongodb"
 ],
 function( mods )
@@ -19,8 +19,8 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
-var Id = mods.get( "cluster" ).Id;
+var StoreConHandler = mods.get( "store" ).StoreConHandler;
+var Id = mods.get( "store" ).Id;
 
 var libMongoDb = mods.get( "lib/server/mongodb" );
 
@@ -35,16 +35,16 @@ Class.create(
 {
 
 name: "MongoConHandler",
-extends: ClusterConHandler,
+extends: StoreConHandler,
 constr:
 [
 function()
 {
-	return ClusterConHandler.CONSTR_V;
+	return StoreConHandler.CONSTR_V;
 },
-function( clusterName, conParams )
+function( storeName, conParams )
 {
-	this.ourGlobeCallSuper( undefined, clusterName, conParams );
+	this.ourGlobeCallSuper( undefined, storeName, conParams );
 }]
 
 });
@@ -88,10 +88,10 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = mods.get( "cluster" ).ClusterConHandler;
+var StoreConHandler = mods.get( "store" ).StoreConHandler;
 
-var Id = mods.get( "cluster" ).Id;
-var Binary = mods.get( "cluster" ).Binary;
+var Id = mods.get( "store" ).Id;
+var Binary = mods.get( "store" ).Binary;
 
 var MongoDb = mods.get( "./mongodb" );
 
@@ -109,7 +109,7 @@ MongoConHandler,
 
 getDateStoreObj:
 [
-ClusterConHandler.GET_DATE_STORE_OBJ_V,
+StoreConHandler.GET_DATE_STORE_OBJ_V,
 function( date )
 {
 	return date;
@@ -117,7 +117,7 @@ function( date )
 
 restoreDate:
 [
-ClusterConHandler.RESTORE_DATE_V,
+StoreConHandler.RESTORE_DATE_V,
 function( date )
 {
 	return date;
@@ -125,7 +125,7 @@ function( date )
 
 getBinaryStoreObj:
 [
-ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+StoreConHandler.GET_BINARY_STORE_OBJ_V,
 function( binary )
 {
 	return new MongoDbBinary( binary.getBuffer() );
@@ -133,13 +133,13 @@ function( binary )
 
 restoreBinary:
 [
-ClusterConHandler.RESTORE_BINARY_V,
+StoreConHandler.RESTORE_BINARY_V,
 function( mongoDbBinary )
 {
 	if( mongoDbBinary instanceof MongoDbBinary === false )
 	{
-		throw new ClusterDataRuntimeError(
-			"A MongoDbBinary from the cluster hasnt been provided "+
+		throw new StoreDataRuntimeError(
+			"A MongoDbBinary from the store hasnt been provided "+
 			"as expected for restoring the Binary",
 			{ providedVar:mongoDbBinary }
 		);
@@ -153,7 +153,7 @@ function( mongoDbBinary )
 	}
 	catch( e )
 	{
-		throw new ClusterDataRuntimeError(
+		throw new StoreDataRuntimeError(
 			"An error occurred while converting the MongoDbBinary "+
 			"to a Buffer",
 			{ mongoDbBinary: mongoDbBinary, err: e }
@@ -192,7 +192,7 @@ function( queryObj )
 
 getOpenCon:
 [
-ClusterConHandler.GET_OPEN_CON_V,
+StoreConHandler.GET_OPEN_CON_V,
 function( conParams, cb )
 {
 	var server = new Server( conParams.host, conParams.port, {} );
@@ -228,7 +228,7 @@ function( conParams, cb )
 insert:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	{ types:[ objS, "arr" ], extraItems: objS },
 	"func"
 ),
@@ -295,7 +295,7 @@ function( collectionName, objs, cb )
 query:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	MongoConHandler.QUERY_OBJ_S,
 	"func"
 ),
@@ -380,7 +380,7 @@ function( collectionName, queryObj, cb )
 delete:
 [
 getA(
-	ClusterConHandler.COLLECTION_NAME_S,
+	StoreConHandler.COLLECTION_NAME_S,
 	MongoConHandler.QUERY_OBJ_S,
 	"func"
 ),

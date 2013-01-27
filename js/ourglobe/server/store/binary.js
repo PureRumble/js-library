@@ -55,14 +55,14 @@ Class.add(
 Binary,
 {
 
-verClusterVars:
+verStoreVars:
 [
 "static",
 getA( "any", "any" ),
 getR( "bool" ),
 function( buf, contentType )
 {
-// verClusterVars() can be used to verify contentType alone,
+// verStoreVars() can be used to verify contentType alone,
 // in which case contentType is the first arg
 	return(
 		(

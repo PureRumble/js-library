@@ -16,7 +16,7 @@ requirejs.config({
 		"ourglobe/dual/classes",
 		"ourglobe/server/initserver",
 		"ourglobe/server/morehttp",
-		"ourglobe/server/cluster",
+		"ourglobe/server/store",
 		"ourglobe/server/mongodb",
 		"ourglobe/server/elasticsearch",
 		"ourglobe/server/river"

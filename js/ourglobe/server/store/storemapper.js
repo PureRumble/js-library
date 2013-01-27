@@ -1,6 +1,6 @@
 ourglobe.define(
 [
-	"./clusterconhandler"
+	"./storeconhandler"
 ],
 function( mods )
 {
@@ -17,19 +17,19 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = undefined;
+var StoreConHandler = undefined;
 
 mods.delay(
 function()
 {
-	ClusterConHandler = mods.get( "clusterconhandler" );
+	StoreConHandler = mods.get( "storeconhandler" );
 });
 
-var ClusterMapper =
+var StoreMapper =
 Class.create(
 {
 
-name: "ClusterMapper",
+name: "StoreMapper",
 constr:
 [
 function()
@@ -38,7 +38,7 @@ function()
 		[
 			getA(
 				{
-					extraItems: ClusterConHandler,
+					extraItems: StoreConHandler,
 					minItems: 1,
 					denseItems: true
 				},
@@ -47,36 +47,36 @@ function()
 		]
 	);
 },
-function( clusterConHandlers, mapping )
+function( storeConHandlers, mapping )
 {
-	var clusterMapping = [];
+	var storeMapping = [];
 	
 	for( var coll in mapping )
 	{
-		var cch = clusterConHandlers[ mapping[ coll ] ];
+		var cch = storeConHandlers[ mapping[ coll ] ];
 		
-		clusterMapping[ coll ] = cch;
+		storeMapping[ coll ] = cch;
 		
 		if( cch === undefined )
 		{
 			throw new RuntimeError(
 				"Collection "+coll+" is to be mapped to the "+
-				"ClusterConHandler on pos "+mapping[ coll ]+" but arg "+
-				"clusterConHandlers is empty on that pos"
+				"StoreConHandler on pos "+mapping[ coll ]+" but arg "+
+				"storeConHandlers is empty on that pos"
 			);
 		}
 	}
 	
-	this.clusterConHandlers = clusterConHandlers;
-	this.clusterMapping = clusterMapping;
+	this.storeConHandlers = storeConHandlers;
+	this.storeMapping = storeMapping;
 }]
 
 });
 
-return ClusterMapper;
+return StoreMapper;
 
 },
-function( mods, ClusterMapper )
+function( mods, StoreMapper )
 {
 
 var RuntimeError = ourGlobe.RuntimeError;
@@ -91,19 +91,19 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var ClusterConHandler = mods.get( "clusterconhandler" );
+var StoreConHandler = mods.get( "storeconhandler" );
 
 Class.add(
-ClusterMapper,
+StoreMapper,
 {
 
 getConHandler:
 [
-getA( ClusterConHandler.COLLECTION_NAME_S ),
-getR( ClusterConHandler ),
+getA( StoreConHandler.COLLECTION_NAME_S ),
+getR( StoreConHandler ),
 function( collection )
 {
-	return this.clusterMapping[ collection ];
+	return this.storeMapping[ collection ];
 }]
 
 });

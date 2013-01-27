@@ -83,7 +83,7 @@ Class.add(
 Cache,
 {
 
-verClusterVars:
+verStoreVars:
 [
 "static",
 getA( "any", "any" ),

@@ -2,7 +2,7 @@ ourglobe.require(
 [
 	"ourglobe/lib/server/vows",
 	"ourglobe/dual/testing",
-	"ourglobe/server/cluster"
+	"ourglobe/server/store"
 ],
 function( mods )
 {
@@ -17,7 +17,7 @@ var FuncVer = ourglobe.FuncVer;
 var vows = mods.get( "vows" );
 
 var Test = mods.get( "testing" ).Test;
-var Id = mods.get( "cluster" ).Id;
+var Id = mods.get( "store" ).Id;
 
 var suite = vows.describe( "id" );
 

@@ -95,7 +95,7 @@ function( idStr )
 	);
 }],
 
-verClusterVars:
+verStoreVars:
 [
 "static",
 getA( "any" ),

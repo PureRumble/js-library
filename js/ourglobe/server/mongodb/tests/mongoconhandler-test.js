@@ -5,7 +5,7 @@ ourglobe.require(
 	"ourglobe/lib/server/vows",
 	"ourglobe/lib/server/mongodb",
 	"ourglobe/dual/testing",
-	"ourglobe/server/cluster",
+	"ourglobe/server/store",
 	"ourglobe/server/mongodb",
 	"ourglobe/server/morehttp"
 ],
@@ -38,11 +38,11 @@ var mongoDbServer = mods.get( "ourglobe/server/mongodb" );
 var MongoDb = mongoDbServer.MongoDb;
 var MongoConHandler = mongoDbServer.MongoConHandler;
 
-var ClusterMapper = mods.get( "cluster" ).ClusterMapper;
-var Id = mods.get( "cluster" ).Id;
-var Link = mods.get( "cluster" ).Link;
-var Binary = mods.get( "cluster" ).Binary;
-var Cache = mods.get( "cluster" ).Cache;
+var StoreMapper = mods.get( "store" ).StoreMapper;
+var Id = mods.get( "store" ).Id;
+var Link = mods.get( "store" ).Link;
+var Binary = mods.get( "store" ).Binary;
+var Cache = mods.get( "store" ).Cache;
 
 var MONGO_CON_HANDLER =
 new MongoConHandler(
@@ -51,10 +51,10 @@ new MongoConHandler(
 
 var COLLECTION_NAME = "test";
 
-var CLUSTER_MAPPING = [];
-CLUSTER_MAPPING[ COLLECTION_NAME ] = 0;
-var CLUSTER_MAPPER =
-	new ClusterMapper( [ MONGO_CON_HANDLER ], CLUSTER_MAPPING )
+var STORE_MAPPING = [];
+STORE_MAPPING[ COLLECTION_NAME ] = 0;
+var STORE_MAPPER =
+	new StoreMapper( [ MONGO_CON_HANDLER ], STORE_MAPPING )
 ;
 
 var objS = { props:{ id:{ req: true, types: Id } } };
@@ -93,7 +93,7 @@ function( objs, timeout )
 		"topic",
 		function()
 		{
-			CLUSTER_MAPPER
+			STORE_MAPPER
 				.getConHandler( COLLECTION_NAME )
 				.insert( COLLECTION_NAME, objsToInsert, this.callback )
 			;
@@ -128,7 +128,7 @@ function( objs, timeout )
 				timers.setTimeout(
 					function()
 					{
-						CLUSTER_MAPPER
+						STORE_MAPPER
 							.getConHandler( COLLECTION_NAME )
 							.query( COLLECTION_NAME, ids, outerThis.callback )
 						;
@@ -205,7 +205,7 @@ function( objs, timeout )
 				"topic",
 				function()
 				{
-					CLUSTER_MAPPER
+					STORE_MAPPER
 						.getConHandler( COLLECTION_NAME )
 						.delete( COLLECTION_NAME, ids, this.callback )
 					;
@@ -230,7 +230,7 @@ function( objs, timeout )
 						timers.setTimeout(
 							function()
 							{
-								CLUSTER_MAPPER
+								STORE_MAPPER
 								.getConHandler( COLLECTION_NAME )
 								.query(
 									COLLECTION_NAME, ids, outerThis.callback
@@ -465,7 +465,7 @@ Test.getTests(
 			var outerThis = this;
 			
 			var conHandler = 
-				CLUSTER_MAPPER.getConHandler( COLLECTION_NAME )
+				STORE_MAPPER.getConHandler( COLLECTION_NAME )
 			;
 			
 			conHandler.getCurrCon(
@@ -534,7 +534,7 @@ Test.getTests(
 				var outerThis = this;
 				
 				var conHandler = 
-					CLUSTER_MAPPER.getConHandler( COLLECTION_NAME )
+					STORE_MAPPER.getConHandler( COLLECTION_NAME )
 				;
 			
 				conHandler.getCurrCon(
