@@ -300,8 +300,27 @@ function( SubClass, SuperClass )
 		)
 	)
 	{
-		SubClass.prototype.ourGlobeCallSuper = Class.callSuper;
-		SubClass.prototype.ourGlobeApplySuper = Class.applySuper;
+		Object.defineProperty(
+			SubClass.prototype,
+			"ourGlobeCallSuper",
+			{
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: Class.callSuper
+			}
+		);
+		
+		Object.defineProperty(
+			SubClass.prototype,
+			"ourGlobeApplySuper",
+			{
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: Class.applySuper
+			}
+		);
 	}
 	
 	if(
@@ -708,7 +727,16 @@ function( ClassVar, funcs )
 	{
 		var preparedInstFunc = preparedInstFuncs[ funcName ];
 		
-		ClassVar.prototype[ funcName ] = preparedInstFunc.func;
+		Object.defineProperty(
+			ClassVar.prototype,
+			funcName,
+			{
+				enumerable: false,
+				configurable: false,
+				writable: false,
+				value: preparedInstFunc.func
+			}
+		);
 		
 		ClassVar.ourGlobe.class.instFuncs[ funcName ] =
 			preparedInstFunc
