@@ -402,11 +402,11 @@ Test.getTests(
 		insertQueryTest(
 			{
 				id: new Id(),
-				binaryOne: new Binary( bufOne, "jpg" ),
+				binaryOne: new Binary( bufOne ),
 				binaries:
 				{
-					binaryTwo: new Binary( bufTwo, "jpg" ),
-					binaryThree: new Binary( bufThree, "jpg" ),
+					binaryTwo: new Binary( bufTwo ),
+					binaryThree: new Binary( bufThree ),
 					strs:[ "dingo", "dango", "dongo" ]
 				}
 			}
@@ -451,7 +451,7 @@ Test.getTests(
 							{
 								dingo: "dingo",
 								dango: "dango",
-								dongo: new Binary( bufOne, "jpg" ),
+								dongo: new Binary( bufOne ),
 								dingi: new Date(),
 								dangi: new Date()
 							}
@@ -488,7 +488,7 @@ Test.getTests(
 									new Cache(
 										{
 											dinga: "dinga",
-											binaryOne: new Binary( bufOne, "jpg" ),
+											binaryOne: new Binary( bufOne ),
 											dateFour: new Date(),
 											dingo: true
 										},
@@ -497,7 +497,7 @@ Test.getTests(
 							},
 							new Link( "DinkoWork", new Id() )
 						),
-					binary: new Binary( bufTwo, "jpg" )
+					binary: new Binary( bufTwo )
 				}
 			}
 		));

@@ -60,54 +60,6 @@ NATIVE_QUERY_OBJ_S: nativeQueryObjS,
 QUERY_OBJ_S:
 	{ types:[ "arr", Id, nativeQueryObjS ], extraItems: Id },
 
-PREPARING_HANDLERS:
-{
-	prepareBinary:
-	getF(
-	getA( Buffer, ClusterConHandler.CONTENT_TYPE_S ),
-	getR( MongoDbBinary ),
-	function( buf, contentType )
-	{
-		return new MongoDbBinary( buf );
-	}) 
-},
-
-RESTORING_HANDLERS:
-{
-	restoreBinary:
-	getF(
-	getA( "any", "any" ),
-	getR( Buffer ),
-	function( mongoDbBinary, contentType )
-	{
-		if( mongoDbBinary instanceof MongoDbBinary === false )
-		{
-			throw new ClusterDataRuntimeError(
-				"A MongoDbBinary from the cluster hasnt been provided "+
-				"as expected for restoring the Binary",
-				{ providedVar:mongoDbBinary }
-			);
-		}
-		
-		var returnVar = undefined
-		
-		try
-		{
-			returnVar = mongoDbBinary.read( 0 );
-		}
-		catch( e )
-		{
-			throw new ClusterDataRuntimeError(
-				"An error occurred while converting the MongoDbBinary "+
-				"to a Buffer",
-				{ mongoDbBinary: mongoDbBinary, err: e }
-			);
-		}
-		
-		return returnVar;
-	})
-}
-
 });
 
 return MongoConHandler
@@ -154,6 +106,62 @@ var objS =
 Class.add(
 MongoConHandler,
 {
+
+getDateStoreObj:
+[
+ClusterConHandler.GET_DATE_STORE_OBJ_V,
+function( date )
+{
+	return date;
+}],
+
+restoreDate:
+[
+ClusterConHandler.RESTORE_DATE_V,
+function( date )
+{
+	return date;
+}],
+
+getBinaryStoreObj:
+[
+ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+function( binary )
+{
+	return new MongoDbBinary( binary.getBuffer() );
+}], 
+
+restoreBinary:
+[
+ClusterConHandler.RESTORE_BINARY_V,
+function( mongoDbBinary )
+{
+	if( mongoDbBinary instanceof MongoDbBinary === false )
+	{
+		throw new ClusterDataRuntimeError(
+			"A MongoDbBinary from the cluster hasnt been provided "+
+			"as expected for restoring the Binary",
+			{ providedVar:mongoDbBinary }
+		);
+	}
+	
+	var buf = undefined
+	
+	try
+	{
+		buf = mongoDbBinary.read( 0 );
+	}
+	catch( e )
+	{
+		throw new ClusterDataRuntimeError(
+			"An error occurred while converting the MongoDbBinary "+
+			"to a Buffer",
+			{ mongoDbBinary: mongoDbBinary, err: e }
+		);
+	}
+	
+	return new Binary( buf );
+}],
 
 prepareQueryObj:
 [
@@ -252,21 +260,17 @@ function( collectionName, objs, cb )
 				return;
 			}
 			
-			var restoreInfo =
-				ClusterConHandler.prepareSetForCluster(
-					objs, MongoConHandler.PREPARING_HANDLERS
-				)
-			;
+			objsToIns = this.getStoreObj( objs );
 			
-			for( var item in objs )
+			for( var item in objsToIns )
 			{
-				objs[ item ]._id = objs[ item ].id.id;
+				objsToIns[ item ]._id = objsToIns[ item ].id.id;
 			}
 			
 			var coll = new Collection( db, collectionName );
 			
 			coll.insert(
-				objs,
+				objsToIns,
 				{ safe:true },
 				getCb(
 				this,
@@ -274,13 +278,6 @@ function( collectionName, objs, cb )
 				getA( "null/undef", "any" ),
 				function( err, insObjs )
 				{
-					for( var item in objs )
-					{
-						delete objs[ item ]._id;
-					}
-					
-					ClusterConHandler.restoreSet( restoreInfo );
-					
 					if( err !== undefined && err !== null )
 					{
 						cb( err );
@@ -369,9 +366,7 @@ function( collectionName, queryObj, cb )
 								}
 							}
 							
-							ClusterConHandler.restoreSetFromCluster(
-								items, MongoConHandler.RESTORING_HANDLERS
-							);
+							this.restoreObj( items );
 							
 							cb( undefined, items );
 						})
@@ -461,17 +456,13 @@ function( queryObj, newObj, cb )
 				return;
 			}
 			
-			var restoreInfo =
-				ClusterConHandler.prepareSetForCluster(
-					newObj, MongoConHandler.PREPARING_HANDLERS
-				)
-			;
+			var objsToIns = this.getStoreObj( newObj );
 			
 			var coll = new Collection( db, collectionName );
 			
 			coll.update(
 				queryObj,
-				newObj,
+				objsToIns,
 				{ safe: true, multi: true },
 				getCb(
 				this,
@@ -479,8 +470,6 @@ function( queryObj, newObj, cb )
 				getA( "null/undef" ),
 				function( err )
 				{
-					ClusterConHandler.restoreSet( restoreInfo );
-					
 					if( err !== undefined && err !== null )
 					{
 						cb( err );

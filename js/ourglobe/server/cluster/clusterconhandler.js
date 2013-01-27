@@ -26,7 +26,7 @@ var Class = ourGlobe.Class;
 // request in module classes. This is due to a technical
 // limitation concerned with the use of Class.addStatic()
 
-var Id = mods.get( "id");
+var Id = mods.get( "id" );
 var Binary = mods.get( "binary" );
 var Link = mods.get( "link" );
 var Cache = mods.get( "cache" );
@@ -99,6 +99,28 @@ ClusterConHandler,
 			}
 		)
 	),
+	
+// The return vars of the funcs
+// * getDateStoreObj()
+// * restoreDate()
+// * getIdStoreObj()
+// * restoreId()
+// * getBinaryStoreObj()
+// * restoreBinary()
+// are verified later and yield an err if invalid. That is why
+// their FuncVers allow the funcs to return anything
+	
+	GET_DATE_STORE_OBJ_V: getV( getA( Date ), getR( "any" ) ),
+	RESTORE_DATE_V: getV( getA( "str/obj/inst" ), getR( "any" ) ),
+	
+	GET_ID_STORE_OBJ_V: getV( getA( Id ), getR( "any" ) ),
+	RESTORE_ID_V: getV( getA( "str/obj/inst" ), getR( "any" ) ),
+	
+	GET_BINARY_STORE_OBJ_V: getV( getA( Binary ), getR( "any" ) ),
+	RESTORE_BINARY_V:
+		getV( getA( "str/obj/inst" ), getR( "any" ) )
+	,
+	
 	CLUSTER_NAME_S: clusterNameS,
 	COLLECTION_NAME_S: getV.PROPER_STR_L,
 	GET_OPEN_CON_V:
@@ -116,8 +138,7 @@ ClusterConHandler,
 	OUR_GLOBE_SYS_VALUE:
 		"={F|6yOA&,3J)d,{b+$~7q__=W&>{Z7]"+
 		"*5;J^1'730O3#3l1814_D13{S7hL",
-	ID_STR_S: Id.ID_STR_S,
-	CONTENT_TYPE_S: Binary.CONTENT_TYPE_S
+	ID_STR_S: Id.ID_STR_S
 });
 
 return ClusterConHandler;
@@ -201,270 +222,225 @@ function()
 	this.currCon = MoreMath.getRandInt( nrConHolders );
 }],
 
-prepareId:
+getBinaryStoreObj:
 [
-"static",
-getA( ClusterConHandler.ID_STR_S ),
-getR( "str" ),
-function( idStr )
+"extendable",
+getA.ANY_ARGS,
+function()
 {
-	return idStr;
+	throw new RuntimeError(
+		"All subclasses of ClusterConHandler must extend "+
+		"getBinaryStoreObj()",
+		{ faultyClass: Class.getClassName( this ) }
+	);
 }],
 
-// This func is to be used as a convenience in
-// restoreSetFromCluster() only if  the caller hasnt provided a
-// restoreId() func. It therefor doesnt have to perform rigorous
-// validation of what has been found in the cluster as this is
-// later done by restoreSetFromCluster()
+restoreBinary:
+[
+"extendable",
+getA.ANY_ARGS,
+function()
+{
+	throw new RuntimeError(
+		"All subclasses of ClusterConHandler must extend "+
+		"restoreBinary()",
+		{ faultyClass: Class.getClassName( this ) }
+	);
+}],
+
+getIdStoreObj:
+[
+"extendable",
+ClusterConHandler.GET_ID_STORE_OBJ_V,
+function( id )
+{
+	return id.toString();
+}],
+
 restoreId:
 [
-"static",
-getA( "any" ),
-getR( "any" ),
+"extendable",
+ClusterConHandler.RESTORE_ID_V,
 function( idStr )
 {
-	return idStr;
+	return new Id( idStr );
 }],
 
-prepareDate:
+getDateStoreObj:
 [
-"static",
-getA( Date ),
-getR( Date ),
+"extendable",
+ClusterConHandler.GET_DATE_STORE_OBJ_V,
 function( date )
 {
-	return date;
+	return date.toISOString();
 }],
 
-// This func is to be used as a convenience in
-// restoreSetFromCluster() only if  the caller hasnt provided a
-// restoreDate() func. It therefor doesnt have to perform
-// rigorous validation of what has been found in the cluster as
-// this is later done by restoreSetFromCluster()
 restoreDate:
 [
-"static",
-getA( "any" ),
-getR( "any" ),
+"extendable",
+ClusterConHandler.RESTORE_DATE_V,
 function( date )
 {
-	return date;
+	var returnVar = undefined;
+	
+	try
+	{
+		returnVar = new Date( date );
+	}
+	catch( e )
+	{
+		returnVar = undefined;
+	}
+	
+	if(
+		hasT( date, "str" ) === false ||
+		date.length !== 24 ||
+		returnVar === undefined ||
+		returnVar.toString() === "Invalid Date"
+	)
+	{
+		throw new ClusterDataRuntimeError(
+			"A string representing a date in a correct form wasnt "+
+			"provided when restoring a Date",
+			{ providedVar: date }
+		);
+	}
+	
+	return returnVar;
 }],
 
-prepareSetForCluster:
+getStoreObj:
 [
-"static",
-getA(
-	"obj/arr",
-	{
-		extraProps: false,
-		props:
-		{
-			prepareId: "func/undef",
-			prepareBinary: "+func",
-			prepareDate: "func/undef"
-		}
-	}
-),
-getR( {
-	extraItems:
-	{
-		extraProps: false,
-		props:{ set: "+obj/arr", key: "+str", value: "any" }
-	}
-}),
-function( set, handlers )
+"final",
+getA( "obj/arr" ),
+getR( "obj/arr" ),
+function( set )
 {
-	var prepareId = handlers.prepareId;
-	var prepareDate = handlers.prepareDate;
-	var prepareBinary = handlers.prepareBinary;
+	var copy = {};
 	
-	if( prepareId === undefined )
-	{
-		prepareId = ClusterConHandler.prepareId;
-	}
-	
-	if( prepareDate === undefined )
-	{
-		prepareDate = ClusterConHandler.prepareDate;
-	}
-	
-	var keysToRestore = [];
-	
-	var stack = [ { init: set }, "init" ];
+	var stack = [ { set: set }, copy ];
 	
 	while( stack.length > 0 )
 	{
-		var pointingKey = stack.pop();
-		var holdingSet = stack.pop();
+		var dest = stack.pop();
+		var source = stack.pop();
 		
-		var currVar = holdingSet[ pointingKey ];
-		
-		if(
-			hasT(
-				currVar, "null", "bool", "number", "str"
-			) === true
-		)
+		if( hasT( source, "obj", "arr" ) === false )
 		{
-			continue;
-		}
-		else if( hasT( currVar, "obj", "arr" ) === true )
-		{
-// Has the current set already been prepared?
-			if(
-				currVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] ===
-					ClusterConHandler.OUR_GLOBE_SYS_VALUE
-			)
-			{
-				if( hasT( currVar, "arr" ) === true )
-				{
-					throw new ClusterDataRuntimeError(
-						"An arr (in the set that is to be prepared) has a "+
-						"system key value but this is not valid for an arr",
-						{ preparingSet: set, arr: currVar },
-						undefined,
-						ClusterConHandler.prepareSetFromCluster
-					);
-				}
-				
-				continue;
-			}
-			
-			for( var key in currVar )
-			{
-				stack.push( currVar );
-				stack.push( key );
-			}
-		}
-		else if(
-			currVar instanceof Id === true ||
-			currVar instanceof Binary === true ||
-			currVar instanceof Link === true ||
-			currVar instanceof Cache === true ||
-			currVar instanceof Date === true ||
-			currVar === undefined
-		)
-		{
-			keysToRestore.push(
-				{ set: holdingSet, key: pointingKey, value: currVar }
-			);
-			
-			if( currVar === undefined )
-			{
-				delete holdingSet[ pointingKey ];
-				
-				continue;
-			}
-			
-			if( currVar instanceof Id === true )
-			{
-				holdingSet[ pointingKey ] =
-				{
-					type: "Id",
-					id: prepareId( currVar.toString() )
-				};
-			}
-			else if( currVar instanceof Binary === true )
-			{
-				var contentType = currVar.getContentType();
-				var buf = currVar.getBuffer();
-				
-				holdingSet[ pointingKey ] =
-				{
-					type: "Binary",
-					contentType: contentType,
-					binary: prepareBinary( buf, contentType )
-				};
-			}
-			else if( currVar instanceof Date === true )
-			{
-				holdingSet[ pointingKey ] =
-					{
-						type: "Date", date: prepareDate( currVar )
-					}
-				;
-			}
-			else if( currVar instanceof Link === true )
-			{
-				holdingSet[ pointingKey ] =
-				{
-					type: "Link",
-					collection: currVar.getCollection(),
-					id: prepareId( currVar.getId().toString() )
-				};
-			}
-			else if( currVar instanceof Cache === true )
-			{
-				var link = currVar.getLink();
-				var cache = currVar.getCache();
-				var refreshedDate = currVar.getRefreshedDate();
-				
-				holdingSet[ pointingKey ] =
-				{
-					type: "Cache",
-					cache: currVar.getCache(),
-					refreshedDate: prepareDate( refreshedDate ),
-					collection: link.getCollection(),
-					id: prepareId( link.getId().toString() )
-				};
-				
-				stack.push( holdingSet[ pointingKey ] );
-				stack.push( "cache" );
-			}
-			
-			var currObj = holdingSet[ pointingKey ];
-			
-			currObj[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
+			dest[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
 				ClusterConHandler.OUR_GLOBE_SYS_VALUE
 			;
+			
+			if( source instanceof Id === true )
+			{
+				dest.type = "Id";
+				dest.id = this.getIdStoreObj( source );
+				
+				continue;
+			}
+			else if( source instanceof Binary === true )
+			{
+				dest.type = "Binary";
+				dest.binary = this.getBinaryStoreObj( source );
+				
+				continue;
+			}
+			else if( source instanceof Date === true )
+			{
+				dest.type = "Date";
+				dest.date = this.getDateStoreObj( source );
+				
+				continue;
+			}
+			else if( source instanceof Link === true )
+			{
+				dest.type = "Link";
+				dest.collection = source.getCollection();
+				
+				stack.push( { id: source.getId() } );
+				stack.push( dest );
+				
+				continue;
+			}
+			else if( source instanceof Cache === true )
+			{
+				dest.type = "Cache";
+			}
 		}
-		else
+		
+		for( var key in source )
 		{
-			throw new ClusterDataRuntimeError(
-				"The set that is to be prepared for the cluster "+
-				"contains an instance of a class that isnt allowed",
-				{ invalidClass: currVarClass.name },
-				undefined,
-				ClusterConHandler.prepareSetForCluster
-			);
+			if( key === "__proto__" )
+			{
+				continue;
+			}
+			
+			var nextSrc = source[ key ];
+			
+			if(
+				hasT( nextSrc, "null", "bool", "number", "str" ) === true
+			)
+			{
+				dest[ key ] = nextSrc;
+			}
+			else if(
+				hasT( nextSrc, "inst" ) === true &&
+				hasT( nextSrc, "obj", "arr", "func" ) === false
+			)
+			{
+				if(
+					nextSrc instanceof Id === true ||
+					nextSrc instanceof Binary === true ||
+					nextSrc instanceof Date === true ||
+					nextSrc instanceof Link === true ||
+					nextSrc instanceof Cache === true
+				)
+				{
+					dest[ key ] = {};
+					
+					stack.push( nextSrc );
+					stack.push( dest[ key ] );
+				}
+				else
+				{
+					throw new ClusterDataRuntimeError(
+						"The set that is to be prepared for the cluster "+
+						"contains an instance of a class that isnt "+
+						"allowed",
+						{ invalidClass: Class.getClassName( nextSrc ) },
+						undefined,
+						ClusterConHandler.getStoreObj
+					);
+				}
+			}
+			else if( hasT( nextSrc, "obj", "arr" ) === true )
+			{
+				if( hasT( nextSrc, "obj" ) === true )
+				{
+					dest[ key ] = {};
+				}
+				else
+				{
+					dest[ key ] = [];
+				}
+				
+				stack.push( nextSrc );
+				stack.push( dest[ key ] );
+			}
+			else if( hasT( nextSrc, "func" ) === true )
+			{
+				throw new ClusterDataRuntimeError(
+					"The set that is to be prepared for the cluster "+
+					"has a var of a type that isnt allowed",
+					undefined,
+					undefined,
+					ClusterConHandler.getStoreObj
+				);
+			}
 		}
 	}
 	
-	return keysToRestore;
-}],
-
-restoreSet:
-[
-"static",
-getA(
-	{
-		extraItems:
-		{
-			extraProps: false,
-			props:
-			{
-				set: "+obj/arr",
-// It is possible for a set's key to be the empty string
-				key: "+str",
-// Undefined variables are cleared as part of preparations for
-// the cluster. They must therefor be restored and so "value"
-// can be undef
-				value:
-				{
-					req: true,
-					types:[ Date, Id, Link, Binary, Cache, "undef" ]
-				}
-			}
-		}
-	}
-),
-function( keysToRestore )
-{
-	for( var pos = 0; pos < keysToRestore.length; pos++ )
-	{
-		var currKey = keysToRestore[ pos ];
-		currKey.set[ currKey.key ] = currKey.value;
-	}
+	return copy.set;
 }],
 
 throwRestoreErr:
@@ -491,7 +467,7 @@ function( err, restoringSet, systemObj )
 				"set from the cluster: "+err.message,
 				ourGlobeVar,
 				undefined,
-				ClusterConHandler.restoreSetFromCluster
+				ClusterConHandler.restoreObj
 			)
 		;
 	}
@@ -499,37 +475,12 @@ function( err, restoringSet, systemObj )
 	throw err;
 }],
 
-restoreSetFromCluster:
+restoreObj:
 [
-"static",
-getA(
-	"obj/arr",
-	{
-		extraProps: false,
-		props:
-		{
-			restoreId: "func/undef",
-			restoreBinary: "+func",
-			restoreDate: "func/undef"
-		}
-	}
-),
-function( set, handlers )
+"extendable",
+getA( "obj/arr" ),
+function( set )
 {
-	var restoreId = handlers.restoreId;
-	var restoreBinary = handlers.restoreBinary;
-	var restoreDate = handlers.restoreDate;
-	
-	if( restoreId === undefined )
-	{
-		restoreId = ClusterConHandler.restoreId;
-	}
-	
-	if( restoreDate === undefined )
-	{
-		restoreDate = ClusterConHandler.restoreDate;
-	}
-	
 	var stack = [ { init: set }, "init" ];
 	
 	while( stack.length > 0 )
@@ -540,9 +491,7 @@ function( set, handlers )
 		var currVar = holdingSet[ pointingKey ];
 		
 		if(
-			hasT(
-				currVar, "null", "bool", "number", "str"
-			) === true
+			hasT( currVar, "null", "bool", "number", "str" ) === true
 		)
 		{
 			continue;
@@ -568,7 +517,7 @@ function( set, handlers )
 				var date = undefined;
 				try
 				{
-					date = restoreDate( currVar[ "date" ] );
+					date = this.restoreDate( currVar[ "date" ] );
 				}
 				catch( e )
 				{
@@ -579,35 +528,24 @@ function( set, handlers )
 			}
 			else if( typeValue === "Id" )
 			{
-				var idStr = undefined;
+				var id = undefined;
 				try
 				{
-					idStr = restoreId( currVar[ "id" ] );
+					id = this.restoreId( currVar[ "id" ] );
 				}
 				catch( e )
 				{
 					ClusterConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
-				if( Id.verClusterVars( idStr ) === false )
-				{
-					throw new ClusterDataRuntimeError(
-						"A system obj (in the set that is to be restored) "+
-						"represents an Id but the id str is invalid",
-						{ restoringSet: set, systemObj: currVar },
-						undefined,
-						ClusterConHandler.restoreSetFromCluster
-					);
-				}
-				
-				holdingSet[ pointingKey ] = new Id( idStr );
+				holdingSet[ pointingKey ] = id;
 			}
 			else if( typeValue === "Link" )
 			{
-				var idStr = undefined;
+				var id = undefined;
 				try
 				{
-					idStr = restoreId( currVar[ "id" ] );
+					id = this.restoreId( currVar[ "id" ][ "id" ] );
 				}
 				catch( e )
 				{
@@ -616,10 +554,7 @@ function( set, handlers )
 				
 				var collection = currVar[ "collection" ];
 				
-				if(
-					Id.verClusterVars( idStr ) === false ||
-					Link.verClusterVars( collection ) === false
-				)
+				if( Link.verClusterVars( collection ) === false )
 				{
 					throw new ClusterDataRuntimeError(
 						"A system obj (in the set that is to be restored) "+
@@ -627,20 +562,20 @@ function( set, handlers )
 						"values",
 						{ restoringSet: set, systemObj: currVar },
 						undefined,
-						ClusterConHandler.restoreSetFromCluster
+						ClusterConHandler.restoreObj
 					);
 				}
 				
-				holdingSet[ pointingKey ] =
-					new Link( collection, new Id( idStr ) )
-				;
+				holdingSet[ pointingKey ] = new Link( collection, id );
 			}
 			else if( typeValue === "Cache" )
 			{
-				var idStr = undefined;
+				var id = undefined;
 				try
 				{
-					idStr = restoreId( currVar[ "id" ] );
+					id =
+						this.restoreId( currVar[ "link" ][ "id" ][ "id" ] )
+					;
 				}
 				catch( e )
 				{
@@ -651,7 +586,9 @@ function( set, handlers )
 				try
 				{
 					refreshedDate =
-						restoreDate( currVar[ "refreshedDate" ] )
+						this.restoreDate(
+							currVar[ "refreshedDate" ][ "date" ]
+						)
 					;
 				}
 				catch( e )
@@ -660,10 +597,9 @@ function( set, handlers )
 				}
 				
 				var cacheVar = currVar[ "cache" ];
-				var collection = currVar[ "collection" ];
+				var collection = currVar[ "link" ][ "collection" ];
 				
 				if(
-					Id.verClusterVars( idStr ) === false ||
 					Link.verClusterVars( collection ) === false ||
 					Cache.verClusterVars( cacheVar, refreshedDate ) ===
 						false
@@ -675,70 +611,33 @@ function( set, handlers )
 						"values",
 						{ restoringSet: set, systemObj: currVar },
 						undefined,
-						ClusterConHandler.restoreSetFromCluster
+						ClusterConHandler.restoreObj
 					);
 				}
 				
 				holdingSet[ pointingKey ] =
 					new Cache(
-						cacheVar,
-						new Link( collection, new Id( idStr ) ),
-						refreshedDate
+						cacheVar, new Link( collection, id ), refreshedDate
 					)
 				;
 				
 				stack.push( holdingSet[ pointingKey ] );
-				stack.push( "cacheVar" );
+				stack.push( "cache" );
 			}
 			else if( typeValue === "Binary" )
 			{
-				var contentType = currVar[ "contentType" ];
-				var buf = undefined;
+				var binary = undefined;
 				
-				var err = false;
-				
-				if( Binary.verClusterVars( contentType ) === false )
+				try
 				{
-					err = true;
+					binary = this.restoreBinary( currVar[ "binary" ] );
 				}
-				else
+				catch( e )
 				{
-					try
-					{
-						buf =
-							restoreBinary(
-								currVar[ "binary" ], contentType
-							)
-						;
-					}
-					catch( e )
-					{
-						ClusterConHandler.throwRestoreErr( e, set, currVar );
-					}
-					
-					if(
-						Binary.verClusterVars( buf, contentType ) === false
-					)
-					{
-						err = true;
-					}
+					ClusterConHandler.throwRestoreErr( e, set, currVar );
 				}
 				
-				if( err === true )
-				{
-					throw new ClusterDataRuntimeError(
-						"A system obj (in the set that is to be restored) "+
-						"represents a Binary but its props have invalid "+
-						"values",
-						{ restoringSet: set, systemObj: currVar },
-						undefined,
-						ClusterConHandler.restoreSetFromCluster
-					);
-				}
-				
-				holdingSet[ pointingKey ] =
-					new Binary( buf, contentType )
-				;
+				holdingSet[ pointingKey ] = binary;
 			}
 			else
 			{
@@ -751,7 +650,7 @@ function( set, handlers )
 						invalidValue: typeValue
 					},
 					undefined,
-					ClusterConHandler.restoreSetFromCluster
+					ClusterConHandler.restoreObj
 				);
 			}
 		}
@@ -767,7 +666,7 @@ function( set, handlers )
 					keyToValue: pointingKey,
 				},
 				undefined,
-				ClusterConHandler.restoreSetFromCluster
+				ClusterConHandler.restoreObj
 			);
 		}
 	}

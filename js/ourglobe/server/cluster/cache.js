@@ -40,7 +40,7 @@ function()
 },
 function( cacheVar, link, refreshedDate )
 {
-	this.cacheVar = cacheVar;
+	this.cache = cacheVar;
 	this.link = link;
 	this.refreshedDate =
 		refreshedDate !== undefined ?
@@ -101,7 +101,7 @@ getCache:
 getR( Cache.CACHE_VAR_S ),
 function()
 {
-	return this.cacheVar;
+	return this.cache;
 }],
 
 getLink:

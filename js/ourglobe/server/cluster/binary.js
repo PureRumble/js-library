@@ -14,28 +14,23 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var contentTypeS = { values:[ "jpg" ] };
-
 var Binary =
 Class.create(
 {
 
 name: "Binary",
+instVars:
+{
+	buf: "final"
+},
 constr:
 [
-getA( Buffer, contentTypeS ),
-function ( buf, contentType )
+getA( Buffer ),
+function ( buf )
 {
 	this.buf = buf;
-	this.contentType = contentType;
 }]
 
-});
-
-Class.addStatic(
-Binary,
-{
-	CONTENT_TYPE_S: contentTypeS
 });
 
 return Binary;
@@ -88,14 +83,6 @@ function()
 {
 	return this.buf;
 }],
-
-getContentType:
-[
-getR( Binary.CONTENT_TYPE_S ),
-function()
-{
-	return this.contentType;
-}]
 
 });
 

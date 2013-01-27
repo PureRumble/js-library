@@ -36,96 +36,6 @@ function( clusterName, conParams )
 
 });
 
-Class.addStatic(
-ElasticConHandler,
-{
-
-PREPARING_HANDLERS:
-{
-	prepareBinary:
-	getF(
-	getA( Buffer, ClusterConHandler.CONTENT_TYPE_S ),
-	getR( "str" ),
-	function( buf )
-	{
-		return buf.toString( "base64" );
-	}),
-	
-	prepareDate:
-	getF(
-	getA( Date ),
-	getR( "str" ),
-	function( date )
-	{
-// Using ISO string representation to preserve millisecond
-// precision in elasticsearch
-		return date.toISOString();
-	})
-},
-
-RESTORING_HANDLERS:
-{
-	restoreBinary:
-	getF(
-	getA( "any", "any" ),
-	getR( Buffer ),
-	function( binaryStr, contentType )
-	{
-		var returnVar = undefined;
-		
-		try
-		{
-			returnVar = new Buffer( binaryStr, "base64" );
-		}
-		catch( e )
-		{
-			throw new ClusterDataRuntimeError(
-				"A valid binary string in base-64 representation wasnt"+
-				"provided when restoring a Binary",
-				{ providedVar: binaryStr }
-			);
-		}
-		
-		return returnVar;
-	}),
-	
-	restoreDate:
-	getF(
-	getA( "any" ),
-	getR( Date ),
-	function( date )
-	{
-		var returnVar = undefined;
-		
-		try
-		{
-			returnVar = new Date( date );
-		}
-		catch( e )
-		{
-			returnVar = undefined;
-		}
-		
-		if(
-			hasT( date, "str" ) === false ||
-			date.length !== 24 ||
-			returnVar === undefined ||
-			returnVar.toString() === "Invalid Date"
-		)
-		{
-			throw new ClusterDataRuntimeError(
-				"A string representing a date in a correct form wasnt "+
-				"provided when restoring a Date",
-				{ providedVar: date }
-			);
-		}
-		
-		return returnVar;
-	})
-}
-
-});
-
 return ElasticConHandler;
 
 },
@@ -164,6 +74,37 @@ var objsS = { props:{ id:{ req: true, types: Id } } };
 Class.add(
 ElasticConHandler,
 {
+
+getBinaryStoreObj:
+[
+ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+function( binary )
+{
+	return binary.getBuffer().toString( "base64" );
+}],
+
+restoreBinary:
+[
+ClusterConHandler.RESTORE_BINARY_V,
+function( binaryStr )
+{
+	var buf = undefined;
+	
+	try
+	{
+		buf = new Buffer( binaryStr, "base64" );
+	}
+	catch( e )
+	{
+		throw new ClusterDataRuntimeError(
+			"A valid binary string in base-64 representation wasnt"+
+			"provided when restoring a Binary",
+			{ providedVar: binaryStr }
+		);
+	}
+	
+	return new Binary( buf );
+}],
 
 getOpenCon:
 [
@@ -255,15 +196,17 @@ function( indexName, objs, cb )
 		objs = [ objs ];
 	}
 	
+	var objsToIns = this.getStoreObj( objs );
+	
 	var finalObjs = [];
 	
-	for( var prop in objs )
+	for( var prop in objsToIns )
 	{
 		finalObjs.push(
-			{ index:{ _id: objs[ prop ].id.toString() } }
+			{ index:{ _id: objsToIns[ prop ].id.id } }
 		);
 		
-		finalObjs.push( objs[ prop ] );
+		finalObjs.push( objsToIns[ prop ] );
 	}
 	
 	if( finalObjs.length === 0 )
@@ -271,12 +214,6 @@ function( indexName, objs, cb )
 		cb( undefined );
 		return;
 	}
-	
-	var restoreInfo =
-		ClusterConHandler.prepareSetForCluster(
-			objs, ElasticConHandler.PREPARING_HANDLERS
-		)
-	;
 	
 	var method = "POST";
 	
@@ -294,8 +231,6 @@ function( indexName, objs, cb )
 		getA( "undef", "any" ),
 		function( err, res )
 		{
-			ClusterConHandler.restoreSet( restoreInfo );
-			
 			if( err !== undefined )
 			{
 				cb( err );
@@ -460,9 +395,7 @@ function( indexName, query, cb )
 				hits[ pos ] = resHits[ pos ]._source;
 			}
 			
-			ClusterConHandler.restoreSetFromCluster(
-				hits, ElasticConHandler.RESTORING_HANDLERS
-			);
+			this.restoreObj( hits );
 			
 			cb( undefined, hits );
 		})

@@ -8,13 +8,21 @@ ourglobe.require(
 function( mods )
 {
 
-var RuntimeError = ourglobe.RuntimeError;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
 
 var conf = ourglobe.conf;
 var assert = ourglobe.assert;
 var FuncVer = ourglobe.FuncVer;
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
 
 vows = mods.get( "vows" );
 
@@ -58,80 +66,6 @@ function( date )
 	this.date = date;
 });
 
-var prepareId =
-getF(
-new FuncVer( [ ClusterConHandler.ID_STR_S ] )
-	.setReturn( IdCont ),
-function( id )
-{
-	return new IdCont( id.toString() );
-});
-
-var prepareBinary =
-getF(
-new FuncVer( [ Buffer, ClusterConHandler.CONTENT_TYPE_S ] )
-	.setReturn( BinaryCont ),
-function( buf, contentType )
-{
-	return new BinaryCont( buf );
-});
-
-var prepareDate =
-getF(
-new FuncVer( [ Date ] ).setReturn( DateCont ),
-function( date )
-{
-	return new DateCont( date );
-});
-
-var restoreId =
-getF(
-new FuncVer( [ "any" ] ).setReturn( "str" ),
-function( idCont )
-{
-	if( idCont instanceof IdCont === false )
-	{
-		throw new ClusterDataRuntimeError(
-			"An IdCont must be provided when restoring an Id",
-			{ providedVar: idCont }
-		);
-	}
-	
-	return idCont.idStr;
-});
-
-var restoreBinary =
-getF(
-new FuncVer( [ "any", "any" ] ).setReturn( Buffer ),
-function( binaryCont, contentType )
-{
-	if( binaryCont instanceof BinaryCont === false )
-	{
-		throw new ClusterDataRuntimeError(
-			"A BinaryCont must be provided when restoring a Binary",
-			{ providedVar: binaryCont }
-		);
-	}
-	
-	return binaryCont.buffer;
-});
-
-var restoreDate =
-getF(
-new FuncVer( [ "any" ] ).setReturn( Date ),
-function( dateCont )
-{
-	if( dateCont instanceof DateCont === false )
-	{
-		throw new ClusterDataRuntimeError(
-			"A DateCont must be provided when restoring a Date",
-			{ providedVar: dateCont }
-		);
-	}
-	
-	return dateCont.date;
-});
-
 var getPreparedCache =
 getF(
 new FuncVer( [
@@ -157,20 +91,47 @@ function(
 	
 	var returnVar =
 	{
-		"type": "Cache",
-		"cache": preparedCacheObj,
-		"collection": cache.getLink().getCollection(),
-		"id":
-			preparingIdUsed === false ?
-				cache.getLink().getId().toString() :
-				new IdCont( cache.getLink().getId().toString() ),
-		"refreshedDate":
-			preparingDateUsed === false ?
-				cache.getRefreshedDate() :
-				new DateCont( cache.getRefreshedDate() )
+		type: "Cache",
+		cache: preparedCacheObj,
+		link:
+		{
+			type: "Link",
+			collection: cache.getLink().getCollection(),
+			id:
+			{
+				type: "Id",
+				id:
+					preparingIdUsed === false ?
+						cache.getLink().getId().toString() :
+						new IdCont( cache.getLink().getId().toString() )
+			}
+		},
+		refreshedDate:
+		{
+			type: "Date",
+			date: 
+				preparingDateUsed === false ?
+					cache.getRefreshedDate().toISOString() :
+					new DateCont( cache.getRefreshedDate() )
+		}
 	};
 	
 	returnVar[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
+		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	;
+	
+	var link = returnVar[ "link" ];
+	var refreshedDate = returnVar[ "refreshedDate" ];
+	
+	link[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
+		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	;
+	
+	link[ "id" ][ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
+		ClusterConHandler.OUR_GLOBE_SYS_VALUE
+	;
+	
+	refreshedDate[ ClusterConHandler.OUR_GLOBE_SYS_KEY ] =
 		ClusterConHandler.OUR_GLOBE_SYS_VALUE
 	;
 	
@@ -210,50 +171,125 @@ function(
 	var cloneTwo = Test.clone( setAfterPrep );
 	var firstTopic = undefined;
 	
+	var TestClusterConHandler =
+	Class.create(
+	{
+		name: "TestClusterConHandler",
+		extends: ClusterConHandler
+	});
+	
+	var addObj = {};
+	
+	addObj.getBinaryStoreObj =
+	[
+		ClusterConHandler.GET_BINARY_STORE_OBJ_V,
+		function( binary )
+		{
+			return new BinaryCont( binary.getBuffer() );
+		}
+	];
+	
+	addObj.restoreBinary =
+	[
+		ClusterConHandler.RESTORE_BINARY_V,
+		function( binaryCont )
+		{
+			if( binaryCont instanceof BinaryCont === false )
+			{
+				throw new ClusterDataRuntimeError(
+					"A BinaryCont must be provided when restoring "+
+					"a Binary",
+					{ providedVar: binaryCont }
+				);
+			}
+			
+			return new Binary( binaryCont.buffer );
+		}
+	];
+	
+	if( useIdFuncs === true )
+	{
+		addObj.getIdStoreObj =
+		[
+			ClusterConHandler.GET_ID_STORE_OBJ_V,
+			function( id )
+			{
+				return new IdCont( id.toString() );
+			}
+		];
+		
+		addObj.restoreId =
+		[
+			ClusterConHandler.RESTORE_ID_V,
+			function( idCont )
+			{
+				if( idCont instanceof IdCont === false )
+				{
+					throw new ClusterDataRuntimeError(
+						"An IdCont must be provided when restoring an Id",
+						{ providedVar: idCont }
+					);
+				}
+				
+				return new Id( idCont.idStr );
+			}
+		];
+	}
+	
+	if( useDateFuncs === true )
+	{
+		addObj.getDateStoreObj =
+		[
+			ClusterConHandler.GET_DATE_STORE_OBJ_V,
+			function( date )
+			{
+				return new DateCont( date );
+			}
+		];
+		
+		addObj.restoreDate =
+		[
+			ClusterConHandler.RESTORE_DATE_V,
+			function( dateCont )
+			{
+				if( dateCont instanceof DateCont === false )
+				{
+					throw new ClusterDataRuntimeError(
+						"A DateCont must be provided when restoring a Date",
+						{ providedVar: dateCont }
+					);
+				}
+				
+				return dateCont.date;
+			}
+		];
+	}
+	
+	Class.add( TestClusterConHandler, addObj );
+	
+	var testConHandler =
+		new TestClusterConHandler(
+			"testCluster", [ { host: "testHost", port: 0 } ]
+		)
+	;
+	
 	return(
 	{
 		topic:
 		function()
 		{
-			firstTopic =
-				ClusterConHandler
-					.prepareSetForCluster(
-						cloneOne,
-						{
-							prepareBinary: prepareBinary,
-							prepareId:
-								useIdFuncs === true ?
-									prepareId :
-									undefined,
-							prepareDate:
-								useDateFuncs === true ?
-									prepareDate :
-									undefined
-						}
-					)
-			;
+			firstTopic = testConHandler.getStoreObj( cloneOne );
 			
 			return firstTopic;
 		},
 		"get properly prepared":
 		getF(
-			new FuncVer( [
-				{
-					types:[ Error, "arr" ],
-					extraItems:
-					{
-						extraProps: false,
-						props:{ set: "+obj/arr", key: "+str", value: "any" }
-					}
-				}
-			]),
+			new FuncVer( [ "any" ] ),
 			function( topic )
 			{
 				Test.errorCheckArgs( arguments );
 				
-				var diff =
-					Test.compare( cloneOne, setAfterPrep )
-				;
+				var diff = Test.compare( topic, setAfterPrep );
 				
 				if( diff !== undefined )
 				{
@@ -261,7 +297,7 @@ function(
 						"Preparing the objs for cluster doesnt yield "+
 						"expected objs",
 						{
-							result: cloneOne,
+							result: topic,
 							expected: setAfterPrep,
 							diff: diff
 						}
@@ -269,12 +305,37 @@ function(
 				}
 			}
 		),
-		"and restoring them":
+		"while the set itself is intact":
+		getF(
+			new FuncVer( [ "any" ] ),
+			function( topic )
+			{
+				Test.errorCheckArgs( arguments );
+				
+				var diff =
+					Test.compare( cloneOne, setBeforePrep )
+				;
+				
+				if( diff !== undefined )
+				{
+					throw new RuntimeError(
+						"Restoring objs after preparing them for cluster "+
+						"doesnt yield original objs",
+						{
+							result: cloneOne,
+							original: setBeforePrep,
+							diff: diff
+						}
+					);
+				}
+			}
+		),
+		"and finally restoring the objs":
 		{
 			topic:
 			function()
 			{
-				ClusterConHandler.restoreSet( firstTopic );
+				testConHandler.restoreObj( cloneTwo );
 				
 				return true;
 			},
@@ -285,80 +346,30 @@ function(
 				{
 					Test.errorCheckArgs( arguments );
 					
+					var objsToCompare =
+						setAfterRest !== undefined ?
+							setAfterRest :
+							setBeforePrep
+					;
+					
 					var diff =
-						Test.compare( cloneOne, setBeforePrep )
+						Test.compare( objsToCompare, cloneTwo )
 					;
 					
 					if( diff !== undefined )
 					{
 						throw new RuntimeError(
-							"Restoring objs after preparing them for cluster "+
-							"doesnt yield original objs",
+							"Restoring objs from cluster doesnt yield "+
+							"expected objs",
 							{
-								result: cloneOne,
-								original: setBeforePrep,
+								restoredObj: cloneTwo,
+								expectedObj: objsToCompare,
 								diff: diff
 							}
 						);
 					}
 				}
-			),
-			"and finally restoring the objs":
-			{
-				topic:
-				function()
-				{
-					var result =
-						ClusterConHandler.restoreSetFromCluster(
-							cloneTwo,
-							{
-								restoreBinary: restoreBinary,
-								restoreId:
-									useIdFuncs === true ?
-										restoreId :
-										undefined,
-								restoreDate:
-									useDateFuncs === true ?
-										restoreDate :
-										undefined
-							}
-						)
-					;
-					
-					return true;
-				},
-				"makes them properly restored":
-				getF(
-					new FuncVer( [ [ Error, "bool" ] ] ),
-					function( topic )
-					{
-						Test.errorCheckArgs( arguments );
-						
-						var objsToCompare =
-							setAfterRest !== undefined ?
-								setAfterRest :
-								setBeforePrep
-						;
-						
-						var diff =
-							Test.compare( objsToCompare, cloneTwo )
-						;
-						
-						if( diff !== undefined )
-						{
-							throw new RuntimeError(
-								"Restoring objs from cluster doesnt yield "+
-								"expected objs",
-								{
-									restoredObj: cloneTwo,
-									expectedObj: objsToCompare,
-									diff: diff
-								}
-							);
-						}
-					}
-				)
-			}
+			)
 		}
 	});
 });
@@ -468,7 +479,7 @@ suite.addBatch( Test.getTests(
 				{
 					ourGlobeSysSet: sysValue,
 					type: "Date",
-					date: date
+					date: date.toISOString()
 				}
 			},
 			undefined,
@@ -522,7 +533,7 @@ suite.addBatch( Test.getTests(
 	function()
 	{
 		var binary = new Binary(
-			new Buffer( crypto.randomBytes( 64 ) ), "jpg"
+			new Buffer( crypto.randomBytes( 64 ) )
 		);
 		
 		return prepareObjsTest(
@@ -532,8 +543,7 @@ suite.addBatch( Test.getTests(
 				{
 					ourGlobeSysSet: sysValue,
 					type: "Binary",
-					binary: new BinaryCont( binary.getBuffer() ),
-					contentType: binary.getContentType()
+					binary: new BinaryCont( binary.getBuffer() )
 				}
 			}
 		);
@@ -554,7 +564,12 @@ suite.addBatch( Test.getTests(
 					ourGlobeSysSet: sysValue,
 					type: "Link",
 					collection: collection,
-					id: new IdCont( id.toString() )
+					id:
+					{
+						ourGlobeSysSet: sysValue,
+						type: "Id",
+						id: new IdCont( id.toString() )
+					}
 				}
 			}]
 		);
@@ -575,7 +590,12 @@ suite.addBatch( Test.getTests(
 					ourGlobeSysSet: sysValue,
 					type: "Link",
 					collection: collection,
-					id: id.toString()
+					id:
+					{
+						ourGlobeSysSet: sysValue,
+						type: "Id",
+						id: id.toString()
+					}
 				}
 			}],
 			undefined,
@@ -766,7 +786,12 @@ suite.addBatch( Test.getTests(
 								ourGlobeSysSet: sysValue,
 								type: "Link",
 								collection: "DingaWork",
-								id: new IdCont( idTwo.toString() )
+								id:
+								{
+									ourGlobeSysSet: sysValue,
+									type: "Id",
+									id: new IdCont( idTwo.toString() )
+								}
 							},
 							dangi: "Dangi",
 							dongi:
@@ -807,17 +832,19 @@ suite.addBatch( Test.getTests(
 	Test.getVar(
 	function()
 	{
+		debugger;
+		
 		var dateOne = new Date();
 		var dateTwo = new Date();
 		var idOne = new Id();
 		var idTwo = new Id();
 		
 		var binaryOne =
-			new Binary( new Buffer( crypto.randomBytes( 64 ) ), "jpg" )
+			new Binary( new Buffer( crypto.randomBytes( 64 ) ) )
 		;
 		
 		var binaryTwo =
-			new Binary( new Buffer( crypto.randomBytes( 32 ) ), "jpg" )
+			new Binary( new Buffer( crypto.randomBytes( 32 ) ) )
 		;
 		
 		var idLinkOne = new Id();
@@ -904,14 +931,24 @@ suite.addBatch( Test.getTests(
 								ourGlobeSysSet: sysValue,
 								type: "Link",
 								collection: collectionOne,
-								id: new IdCont( idLinkOne.toString() )
+								id:
+								{
+									ourGlobeSysSet: sysValue,
+									type: "Id",
+									id: new IdCont( idLinkOne.toString() )
+								}
 							},
 							dongo:
 							{
 								ourGlobeSysSet: sysValue,
 								type: "Link",
 								collection: collectionTwo,
-								id: new IdCont( idLinkTwo.toString() )
+								id:
+								{
+									ourGlobeSysSet: sysValue,
+									type: "Id",
+									id: new IdCont( idLinkTwo.toString() )
+								}
 							}
 						}
 					]
@@ -923,7 +960,6 @@ suite.addBatch( Test.getTests(
 						{
 							ourGlobeSysSet: sysValue,
 							type: "Binary",
-							contentType: binaryOne.getContentType(),
 							binary: new BinaryCont( binaryOne.getBuffer() )
 						},
 						date:
@@ -936,7 +972,6 @@ suite.addBatch( Test.getTests(
 					{
 						ourGlobeSysSet: sysValue,
 						type: "Binary",
-						contentType: binaryTwo.getContentType(),
 						binary: new BinaryCont( binaryTwo.getBuffer() )
 					}
 				]
