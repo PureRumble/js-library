@@ -2,10 +2,9 @@ ourglobe.define(
 [
 	"ourglobe/dual/moremath",
 	"./storedataruntimeerror",
+	"./store",
 	"./id",
-	"./binary",
-	"./link",
-	"./cache"
+	"./binary"
 ],
 function( mods )
 {
@@ -28,8 +27,6 @@ var Class = ourGlobe.Class;
 
 var Id = mods.get( "id" );
 var Binary = mods.get( "binary" );
-var Link = mods.get( "link" );
-var Cache = mods.get( "cache" );
 
 var StoreConHandler =
 Class.create(
@@ -122,7 +119,6 @@ StoreConHandler,
 	,
 	
 	STORE_NAME_S: storeNameS,
-	COLLECTION_NAME_S: getV.PROPER_STR_L,
 	GET_OPEN_CON_V:
 	getV(
 		getA(
@@ -134,10 +130,6 @@ StoreConHandler,
 			"func"
 		)
 	),
-	OUR_GLOBE_SYS_KEY: "ourGlobeSysSet",
-	OUR_GLOBE_SYS_VALUE:
-		"={F|6yOA&,3J)d,{b+$~7q__=W&>{Z7]"+
-		"*5;J^1'730O3#3l1814_D13{S7hL",
 	ID_STR_S: Id.ID_STR_S
 });
 
@@ -164,10 +156,9 @@ var MoreMath = mods.get( "moremath" ).MoreMath;
 var StoreDataRuntimeError =
 	mods.get( "storedataruntimeerror" )
 ;
+var Store = mods.get( "store" );
 var Id = mods.get( "id");
 var Binary = mods.get( "binary" );
-var Link = mods.get( "link" );
-var Cache = mods.get( "cache" );
 
 Class.add(
 StoreConHandler,
@@ -327,50 +318,74 @@ function( set )
 		
 		if( hasT( source, "obj", "arr" ) === false )
 		{
-			dest[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
-				StoreConHandler.OUR_GLOBE_SYS_VALUE
-			;
-			
 			if( source instanceof Id === true )
 			{
-				dest.type = "Id";
-				dest.id = this.getIdStoreObj( source );
+				var id = this.getIdStoreObj( source );
+				
+				if(
+					hasT( id, "str", "obj", "inst" ) === false ||
+					hasT( id, "arr", "func" ) === true
+				)
+				{
+					throw new StoreDataRuntimeError(
+						"Inst func getIdStoreObj() (of class "+
+						"StoreConHandler or a sub class) must return "+
+						"a str, obj or an inst that isnt an arr or func",
+						{ faultyReturnedVar: id }
+					);
+				}
+				
+				dest.id = id;
 				
 				continue;
 			}
 			else if( source instanceof Binary === true )
 			{
-				dest.type = "Binary";
-				dest.binary = this.getBinaryStoreObj( source );
+				var binary = this.getBinaryStoreObj( source );
+				
+				if(
+					hasT( binary, "str", "obj", "inst" ) === false ||
+					hasT( binary, "arr", "func" ) === true
+				)
+				{
+					throw new StoreDataRuntimeError(
+						"Inst func getBinaryStoreObj() (of class "+
+						"StoreConHandler or a sub class) must return "+
+						"a str, obj or an inst that isnt an arr or func",
+						{ faultyReturnedVar: binary }
+					);
+				}
+				
+				dest.binary = binary;
 				
 				continue;
 			}
 			else if( source instanceof Date === true )
 			{
-				dest.type = "Date";
-				dest.date = this.getDateStoreObj( source );
+				var date = this.getDateStoreObj( source );
+				
+				if(
+					hasT( date, "str", "obj", "inst" ) === false ||
+					hasT( date, "arr", "func" ) === true
+				)
+				{
+					throw new StoreDataRuntimeError(
+						"Inst func getDateStoreObj() (of class "+
+						"StoreConHandler or a sub class) must return "+
+						"a str, obj or an inst that isnt an arr or func",
+						{ faultyReturnedVar: date }
+					);
+				}
+				
+				dest.date = date;
 				
 				continue;
-			}
-			else if( source instanceof Link === true )
-			{
-				dest.type = "Link";
-				dest.collection = source.getCollection();
-				
-				stack.push( { id: source.getId() } );
-				stack.push( dest );
-				
-				continue;
-			}
-			else if( source instanceof Cache === true )
-			{
-				dest.type = "Cache";
 			}
 		}
 		
 		for( var key in source )
 		{
-			if( key === "__proto__" )
+			if( key === "__proto__" || key === Store.STORE_SYS_PROP )
 			{
 				continue;
 			}
@@ -388,29 +403,60 @@ function( set )
 				hasT( nextSrc, "obj", "arr", "func" ) === false
 			)
 			{
-				if(
-					nextSrc instanceof Id === true ||
-					nextSrc instanceof Binary === true ||
-					nextSrc instanceof Date === true ||
-					nextSrc instanceof Link === true ||
-					nextSrc instanceof Cache === true
-				)
+				dest[ key ] = {};
+				
+				stack.push( nextSrc );
+				stack.push( dest[ key ] );
+				
+				if( nextSrc instanceof Date === false )
 				{
-					dest[ key ] = {};
+					var srcClass = Class.getClass( nextSrc );
 					
-					stack.push( nextSrc );
-					stack.push( dest[ key ] );
+					if(
+						hasT( srcClass, "func" ) === false ||
+						hasT( srcClass.getStoreName, "func" ) === false
+					)
+					{
+						throw new StoreDataRuntimeError(
+							"The set that is to be prepared for the store "+
+							"contains an instance of a class that isnt "+
+							"Storable",
+							{ faultyInst: nextSrc },
+							undefined
+						);
+					}
+					
+					var storeName = srcClass.getStoreName();
+					
+					if(
+						hasT( storeName, "str" ) === false  ||
+						false ===
+							Store.storableClasses.hasOwnProperty( storeName )
+						||
+						Store.storableClasses[ storeName ] !== srcClass
+					)
+					{
+						throw new StoreDataRuntimeError(
+							"The set that is to be prepared for the store "+
+							"contains an instance of a Storable class that "+
+							"hasnt been registered with Store.init() for "+
+							"having its instances stored",
+							{
+								faultyInst: nextSrc,
+								faultyClass: Class.getName( srcClass ),
+								classStoreName: storeName
+							},
+							undefined
+						);
+					}
+					
+					dest[ key ][ Store.STORE_SYS_PROP ] = storeName;
 				}
 				else
 				{
-					throw new StoreDataRuntimeError(
-						"The set that is to be prepared for the store "+
-						"contains an instance of a class that isnt "+
-						"allowed",
-						{ invalidClass: Class.getClassName( nextSrc ) },
-						undefined,
-						StoreConHandler.getStoreObj
-					);
+					dest[ key ][ Store.STORE_SYS_PROP ] =
+						Store.DATE_STORE_NAME
+					;
 				}
 			}
 			else if( hasT( nextSrc, "obj", "arr" ) === true )
@@ -427,14 +473,13 @@ function( set )
 				stack.push( nextSrc );
 				stack.push( dest[ key ] );
 			}
-			else if( hasT( nextSrc, "func" ) === true )
+			else if( hasT( nextSrc, "undef", "func" ) === false )
 			{
 				throw new StoreDataRuntimeError(
 					"The set that is to be prepared for the store "+
 					"has a var of a type that isnt allowed",
 					undefined,
-					undefined,
-					StoreConHandler.getStoreObj
+					undefined
 				);
 			}
 		}
@@ -466,8 +511,7 @@ function( err, restoringSet, systemObj )
 				"An error occurred while restoring a system obj in the "+
 				"set from the store: "+err.message,
 				ourGlobeVar,
-				undefined,
-				StoreConHandler.restoreObj
+				undefined
 			)
 		;
 	}
@@ -477,199 +521,212 @@ function( err, restoringSet, systemObj )
 
 restoreObj:
 [
-"extendable",
+"final",
 getA( "obj/arr" ),
+getR( "obj/arr" ),
 function( set )
 {
-	var stack = [ { init: set }, "init" ];
+	var initObj = { init:{ init: set } };
 	
-	while( stack.length > 0 )
+	var nextStack = [];
+	var stack = [ initObj, "init" ];
+	
+	for( var currItem = 0; currItem < stack.length; currItem+=2 )
 	{
-		var pointingKey = stack.pop();
-		var holdingSet = stack.pop();
+		var outerSet = stack[ currItem ];
+		var outerKey = stack[ currItem+1 ];
 		
-		var currVar = holdingSet[ pointingKey ];
+		var currSet = outerSet[ outerKey ];
+		
+		var currStoreName = currSet[ Store.STORE_SYS_PROP ];
 		
 		if(
-			hasT( currVar, "null", "bool", "number", "str" ) === true
+			currStoreName === Store.DATE_STORE_NAME ||
+			currStoreName === Store.ID_STORE_NAME ||
+			currStoreName === Store.BINARY_STORE_NAME
 		)
 		{
 			continue;
 		}
-		else if(
-			hasT( currVar, "obj", "arr" ) === true &&
-			currVar[ StoreConHandler.OUR_GLOBE_SYS_KEY ] !==
-				StoreConHandler.OUR_GLOBE_SYS_VALUE
-		)
+		
+		for( var currKey in currSet )
 		{
-			for( var key in currVar )
-			{
-				stack.push( currVar );
-				stack.push( key );
-			}
-		}
-		else if( hasT( currVar, "obj" ) === true )
-		{
-			var typeValue = currVar[ "type" ];
+			var currVar = currSet[ currKey ];
 			
-			if( typeValue === "Date" )
+			if( hasT( currVar, "obj", "arr" ) === true )
 			{
-				var date = undefined;
-				try
+				if( Store.STORE_SYS_PROP in currVar === true )
 				{
-					date = this.restoreDate( currVar[ "date" ] );
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
-				}
-				
-				holdingSet[ pointingKey ] = date;
-			}
-			else if( typeValue === "Id" )
-			{
-				var id = undefined;
-				try
-				{
-					id = this.restoreId( currVar[ "id" ] );
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
-				}
-				
-				holdingSet[ pointingKey ] = id;
-			}
-			else if( typeValue === "Link" )
-			{
-				var id = undefined;
-				try
-				{
-					id = this.restoreId( currVar[ "id" ][ "id" ] );
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
-				}
-				
-				var collection = currVar[ "collection" ];
-				
-				if( Link.verStoreVars( collection ) === false )
-				{
-					throw new StoreDataRuntimeError(
-						"A system obj (in the set that is to be restored) "+
-						"represents a Link but its props have invalid "+
-						"values",
-						{ restoringSet: set, systemObj: currVar },
-						undefined,
-						StoreConHandler.restoreObj
-					);
-				}
-				
-				holdingSet[ pointingKey ] = new Link( collection, id );
-			}
-			else if( typeValue === "Cache" )
-			{
-				var id = undefined;
-				try
-				{
-					id =
-						this.restoreId( currVar[ "link" ][ "id" ][ "id" ] )
-					;
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
-				}
-				
-				var refreshedDate = undefined;
-				try
-				{
-					refreshedDate =
-						this.restoreDate(
-							currVar[ "refreshedDate" ][ "date" ]
-						)
-					;
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
-				}
-				
-				var cacheVar = currVar[ "cache" ];
-				var collection = currVar[ "link" ][ "collection" ];
-				
-				if(
-					Link.verStoreVars( collection ) === false ||
-					Cache.verStoreVars( cacheVar, refreshedDate ) ===
-						false
-				)
-				{
-					throw new StoreDataRuntimeError(
-						"A system obj (in the set that is to be restored) "+
-						"represents a Cache but its props have invalid "+
-						"values",
-						{ restoringSet: set, systemObj: currVar },
-						undefined,
-						StoreConHandler.restoreObj
-					);
-				}
-				
-				holdingSet[ pointingKey ] =
-					new Cache(
-						cacheVar, new Link( collection, id ), refreshedDate
+					if( hasT( currVar, "arr" ) === true )
+					{
+						throw new StoreDataRuntimeError(
+							"An arr with a Store name has been found in a "+
+							"set that is to be restored, but only objs may "+
+							"have Store names"
+						);
+					}
+					
+					var currVarStoreName = currVar[ Store.STORE_SYS_PROP ];
+					
+// This check must be performed by hasOwnProperty() and NOT with
+// []-lookup since if for instance currVarStoreName has been set
+// to 'toString' then a []-lookup would approve and later when
+// the inst is to be restored, the stored obj would be given to
+// Object.toString() for restoration. Imagine now if Object is
+// extended in the future with an eval() func...
+					
+					if(
+						false ===
+							Store.storableClasses.hasOwnProperty(
+								currVarStoreName
+							)
 					)
-				;
-				
-				stack.push( holdingSet[ pointingKey ] );
-				stack.push( "cache" );
-			}
-			else if( typeValue === "Binary" )
-			{
-				var binary = undefined;
-				
-				try
-				{
-					binary = this.restoreBinary( currVar[ "binary" ] );
-				}
-				catch( e )
-				{
-					StoreConHandler.throwRestoreErr( e, set, currVar );
+					{
+						throw new StoreDataRuntimeError(
+							"A Store name, that hasnt been registered to a "+
+							"Storable class with Store.init(), has been "+
+							"found in a set that is to be restored"
+						);
+					}
+					
+					nextStack.push( currSet );
+					nextStack.push( currKey );
 				}
 				
-				holdingSet[ pointingKey ] = binary;
+				stack.push( currSet );
+				stack.push( currKey );
 			}
-			else
+			else if(
+				
+// currVar is allowed to be a func. Recall that currVar comes
+// from currSet, which in turn has been give by the api/framework
+// of the store in question. Such framework may do strange things
+// to the objs such as currSet that it uses to relay the fetched
+// query result to the caller
+				
+				false ===
+					hasT(
+						currVar,
+						"undef",
+						"null",
+						"bool",
+						"number",
+						"str",
+						"func"
+					)
+			)
 			{
 				throw new StoreDataRuntimeError(
-					"A system obj (in the set that is to be restored) "+
-					"has the prop 'type' set to an invalid value",
-					{
-						restoringSet: set,
-						systemObj: currVar,
-						invalidValue: typeValue
-					},
-					undefined,
-					StoreConHandler.restoreObj
+					"A set that is to be restored from a store contains "+
+					"a var that has an invalid type",
+					{ faultyVar: currVar }
 				);
 			}
 		}
+	}
+	
+	while( nextStack.length > 0 )
+	{
+		var pointingKey = nextStack.pop();
+		var holdingSet = nextStack.pop();
+		
+		var currVar = holdingSet[ pointingKey ];
+		
+		var typeValue = currVar[ Store.STORE_SYS_PROP ];
+		
+		if( typeValue === Store.DATE_STORE_NAME )
+		{
+			var date = undefined;
+			try
+			{
+				date = this.restoreDate( currVar[ "date" ] );
+			}
+			catch( e )
+			{
+				StoreConHandler.throwRestoreErr( e, set, currVar );
+			}
+			
+			if( date instanceof Date === false )
+			{
+				throw new StoreDataRuntimeError(
+					"Inst funcs restoreDate() (of Class StoreConHandler "+
+					"or a sub class of it) must return an inst of Date",
+					{ faultyReturnedVar: date }
+				);
+			}
+			
+			holdingSet[ pointingKey ] = date;
+		}
+		else if( typeValue === Store.BINARY_STORE_NAME )
+		{
+			var binary = undefined;
+			try
+			{
+				binary = this.restoreBinary( currVar[ "binary" ] );
+			}
+			catch( e )
+			{
+				StoreConHandler.throwRestoreErr( e, set, currVar );
+			}
+			
+			if( binary instanceof Binary === false )
+			{
+				throw new StoreDataRuntimeError(
+					"Inst funcs restoreBinary() (of Class "+
+					"StoreConHandler or a sub class of it) must return "+
+					"an inst of Binary",
+					{ faultyReturnedVar: binary }
+				);
+			}
+			
+			holdingSet[ pointingKey ] = binary;
+		}
+		else if( typeValue === Store.ID_STORE_NAME )
+		{
+			var id = undefined;
+			try
+			{
+				id = this.restoreId( currVar[ "id" ] );
+			}
+			catch( e )
+			{
+				StoreConHandler.throwRestoreErr( e, set, currVar );
+			}
+			
+			if( id instanceof Id === false )
+			{
+				throw new StoreDataRuntimeError(
+					"Inst funcs restoreId() (of Class StoreConHandler "+
+					"or a sub class of it) must return an inst of Id",
+					{ faultyReturnedVar: id }
+				);
+			}
+			
+			holdingSet[ pointingKey ] = id;
+		}
 		else
 		{
-			throw new StoreDataRuntimeError(
-				"A set (in the bigger set that is to be restored) "+
-				"contains an invalid value",
-				{
-					restoringSet: set,
-					invalidSet: holdingSet,
-					invalidValue: currVar,
-					keyToValue: pointingKey,
-				},
-				undefined,
-				StoreConHandler.restoreObj
-			);
+			var ClassVar = Store.storableClasses[ typeValue ];
+			
+			var inst = ClassVar.restoreObj( currVar );
+			
+			if( inst instanceof ClassVar === false )
+			{
+				throw new StoreDataRuntimeError(
+					"The static func restoreObj() of a Storable class "+
+					"must return an instance of that class",
+					{
+						faultyClass: Class.getName( ClassVar ),
+						faultyClassStoreName:typeValue
+					}
+				);
+			}
+			
+			holdingSet[ pointingKey ] = inst;
 		}
 	}
+	
+	return initObj.init.init;
 }]
 
 });

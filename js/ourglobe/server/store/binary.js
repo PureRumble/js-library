@@ -1,4 +1,7 @@
 ourglobe.define(
+[
+	"./store"
+],
 function( mods )
 {
 
@@ -51,9 +54,20 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var Store = mods.get( "store" );
+
 Class.add(
 Binary,
 {
+
+getStoreName:
+[
+"static",
+Store.GET_STORE_NAME_V,
+function()
+{
+	return Store.BINARY_STORE_NAME;
+}],
 
 verStoreVars:
 [

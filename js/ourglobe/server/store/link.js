@@ -1,7 +1,7 @@
 ourglobe.define(
 [
 	"./id",
-	"./storeconhandler"
+	"./store"
 ],
 function( mods )
 {
@@ -19,13 +19,13 @@ var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
 var Id = undefined;
-var StoreConHandler = undefined;
+var Store = undefined;
 
 mods.delay(
 function()
 {
 	Id = mods.get( "id" );
-	StoreConHandler = mods.get( "storeconhandler" );
+	Store = mods.get( "store" );
 });
 
 var Link =
@@ -37,7 +37,7 @@ constr:
 [
 function()
 {
-	return [ getA( StoreConHandler.COLLECTION_NAME_S, Id ) ];
+	return [ getA( Store.COLLECTION_NAME_S, Id ) ];
 },
 function( collection, id )
 {
@@ -66,28 +66,33 @@ var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
 var Id = mods.get( "id" );
-var StoreConHandler = mods.get( "storeconhandler" );
+var Store = mods.get( "store" );
 
 Class.add(
 Link,
 {
 
-verStoreVars:
+getStoreName:
 [
 "static",
-getA( "any" ),
-getR( "bool" ),
-function( collection )
+Store.GET_STORE_NAME_V,
+function()
 {
-	return(
-		hasT( collection, "str" ) === true &&
-		collection.length > 0
-	);
+	return "org.ourGlobe.server.store.Link";
+}],
+
+restoreObj:
+[
+"static",
+Store.RESTORE_OBJ_V,
+function( obj )
+{
+	return new Link( obj.collection, obj.id );
 }],
 
 getCollection:
 [
-getR( StoreConHandler.COLLECTION_NAME_S ),
+getR( Store.COLLECTION_NAME_S ),
 function()
 {
 	return this.collection;

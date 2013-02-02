@@ -35,6 +35,7 @@ var ElasticsearchConnection =
 	mods.get( "elasticsearchconnection" )
 ;
 
+var Store = mods.get( "store" ).Store;
 var StoreMapper = mods.get( "store" ).StoreMapper;
 
 var Id = mods.get( "store" ).Id;
@@ -251,6 +252,8 @@ function( objs, timeout )
 		)
 	));
 });
+
+Store.init();
 
 var suite = vows.describe( "elasticsearchconhandler" );
 suite.options.error = false;

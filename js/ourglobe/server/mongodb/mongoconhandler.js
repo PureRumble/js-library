@@ -88,6 +88,7 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var Store = mods.get( "store" ).Store;
 var StoreConHandler = mods.get( "store" ).StoreConHandler;
 
 var Id = mods.get( "store" ).Id;
@@ -228,7 +229,7 @@ function( conParams, cb )
 insert:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
+	Store.COLLECTION_NAME_S,
 	{ types:[ objS, "arr" ], extraItems: objS },
 	"func"
 ),
@@ -295,9 +296,7 @@ function( collectionName, objs, cb )
 query:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
-	MongoConHandler.QUERY_OBJ_S,
-	"func"
+	Store.COLLECTION_NAME_S, MongoConHandler.QUERY_OBJ_S, "func"
 ),
 function( collectionName, queryObj, cb )
 {
@@ -380,9 +379,7 @@ function( collectionName, queryObj, cb )
 delete:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
-	MongoConHandler.QUERY_OBJ_S,
-	"func"
+	Store.COLLECTION_NAME_S, MongoConHandler.QUERY_OBJ_S, "func"
 ),
 function( collectionName, queryObj, cb )
 {

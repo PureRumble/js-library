@@ -1,5 +1,6 @@
 ourglobe.define(
 [
+	"./store",
 	"./id",
 	"./link",
 	"./binary",
@@ -78,22 +79,28 @@ var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
 var Link = mods.get( "./link" );
+var Store = mods.get( "./store" );
 
 Class.add(
 Cache,
 {
 
-verStoreVars:
+getStoreName:
 [
 "static",
-getA( "any", "any" ),
-getR( "bool" ),
-function( cacheVar, refreshedDate )
+Store.GET_STORE_NAME_V,
+function()
 {
-	return(
-		cacheVar !== undefined &&
-		refreshedDate instanceof Date === true
-	);
+	return "org.ourGlobe.server.store.Cache";
+}],
+
+restoreObj:
+[
+"static",
+Store.RESTORE_OBJ_V,
+function( obj )
+{
+	return new Cache( obj.cache, obj.link, obj.refreshedDate );
 }],
 
 getCache:

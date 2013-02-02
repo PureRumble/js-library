@@ -54,6 +54,7 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var Store = mods.get( "store" ).Store;
 var StoreConHandler = mods.get( "store" ).StoreConHandler;
 
 var StoreDataRuntimeError =
@@ -185,7 +186,7 @@ function( method, path, opts, cb )
 insert:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
+	Store.COLLECTION_NAME_S,
 	{ types:[ objsS, "arr" ], extraItems: objsS },
 	"func"
 ),
@@ -248,7 +249,7 @@ function( indexName, objs, cb )
 delete:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
+	Store.COLLECTION_NAME_S,
 	{ types:[ "arr", Id, getV.PROPER_OBJ ], extraItems: Id },
 	"func"
 ),
@@ -316,7 +317,7 @@ function( indexName, query, cb )
 query:
 [
 getA(
-	StoreConHandler.COLLECTION_NAME_S,
+	Store.COLLECTION_NAME_S,
 	{ types:[ Id, "arr", getV.PROPER_OBJ ], extraItems: Id },
 	"func"
 ),

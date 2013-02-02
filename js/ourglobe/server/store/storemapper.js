@@ -1,5 +1,6 @@
 ourglobe.define(
 [
+	"./store",
 	"./storeconhandler"
 ],
 function( mods )
@@ -91,6 +92,7 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var Store = mods.get( "store" );
 var StoreConHandler = mods.get( "storeconhandler" );
 
 Class.add(
@@ -99,7 +101,7 @@ StoreMapper,
 
 getConHandler:
 [
-getA( StoreConHandler.COLLECTION_NAME_S ),
+getA( Store.COLLECTION_NAME_S ),
 getR( StoreConHandler ),
 function( collection )
 {

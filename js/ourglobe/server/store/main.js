@@ -1,6 +1,7 @@
 ourglobe.define(
 [
 "./storedataruntimeerror",
+"./store",
 "./storeconhandler",
 "./storemapper",
 "./binary",
@@ -15,6 +16,7 @@ return(
 	{
 		StoreDataRuntimeError:
 			mods.get( "storedataruntimeerror" ),
+		Store: mods.get( "store" ),
 		StoreConHandler: mods.get( "storeconhandler" ),
 		StoreMapper: mods.get( "storemapper" ),
 		Binary: mods.get( "binary" ),

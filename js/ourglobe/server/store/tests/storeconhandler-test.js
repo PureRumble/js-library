@@ -30,6 +30,7 @@ var crypto = mods.get( "crypto" );
 
 var Test = mods.get( "testing" ).Test;
 
+var Store = mods.get( "store" ).Store;
 var StoreConHandler = mods.get( "store" ).StoreConHandler;
 var StoreDataRuntimeError =
 	mods.get( "store" ).StoreDataRuntimeError
@@ -39,8 +40,6 @@ var Id = mods.get( "store" ).Id;
 var Binary = mods.get( "store" ).Binary;
 var Link = mods.get( "store" ).Link;
 var Cache = mods.get( "store" ).Cache;
-
-var sysValue = StoreConHandler.OUR_GLOBE_SYS_VALUE;
 
 var IdCont =
 getF(
@@ -91,15 +90,21 @@ function(
 	
 	var returnVar =
 	{
-		type: "Cache",
+		"ourGlobeServerStore={F|6yOA&]#":
+			"org.ourGlobe.server.store.Cache"
+		,
 		cache: preparedCacheObj,
 		link:
 		{
-			type: "Link",
+			"ourGlobeServerStore={F|6yOA&]#":
+				"org.ourGlobe.server.store.Link"
+			,
 			collection: cache.getLink().getCollection(),
 			id:
 			{
-				type: "Id",
+				"ourGlobeServerStore={F|6yOA&]#":
+					"org.ourGlobe.server.store.Id"
+				,
 				id:
 					preparingIdUsed === false ?
 						cache.getLink().getId().toString() :
@@ -108,32 +113,15 @@ function(
 		},
 		refreshedDate:
 		{
-			type: "Date",
+			"ourGlobeServerStore={F|6yOA&]#":
+				"org.ourGlobe.server.store.Date"
+			,
 			date: 
 				preparingDateUsed === false ?
 					cache.getRefreshedDate().toISOString() :
 					new DateCont( cache.getRefreshedDate() )
 		}
 	};
-	
-	returnVar[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
-		StoreConHandler.OUR_GLOBE_SYS_VALUE
-	;
-	
-	var link = returnVar[ "link" ];
-	var refreshedDate = returnVar[ "refreshedDate" ];
-	
-	link[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
-		StoreConHandler.OUR_GLOBE_SYS_VALUE
-	;
-	
-	link[ "id" ][ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
-		StoreConHandler.OUR_GLOBE_SYS_VALUE
-	;
-	
-	refreshedDate[ StoreConHandler.OUR_GLOBE_SYS_KEY ] =
-		StoreConHandler.OUR_GLOBE_SYS_VALUE
-	;
 	
 	return returnVar;
 });
@@ -374,6 +362,8 @@ function(
 	});
 });
 
+Store.init();
+
 var suite = vows.describe( "storeconhandler" );
 suite.options.error = false;
 
@@ -458,8 +448,9 @@ suite.addBatch( Test.getTests(
 			{
 				date:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Date",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Date"
+					,
 					date: new DateCont( date )
 				}
 			}
@@ -477,8 +468,9 @@ suite.addBatch( Test.getTests(
 			{
 				date:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Date",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Date"
+					,
 					date: date.toISOString()
 				}
 			},
@@ -498,8 +490,9 @@ suite.addBatch( Test.getTests(
 			{
 				id:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Id",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Id"
+					,
 					id: new IdCont( id.toString() )
 				}
 			}
@@ -517,8 +510,9 @@ suite.addBatch( Test.getTests(
 			{
 				id:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Id",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Id"
+					,
 					id: id.toString()
 				}
 			},
@@ -541,8 +535,9 @@ suite.addBatch( Test.getTests(
 			{
 				binary:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Binary",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Binary"
+					,
 					binary: new BinaryCont( binary.getBuffer() )
 				}
 			}
@@ -561,13 +556,15 @@ suite.addBatch( Test.getTests(
 			[ {
 				link:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Link",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Link"
+					,
 					collection: collection,
 					id:
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Id",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Id"
+						,
 						id: new IdCont( id.toString() )
 					}
 				}
@@ -587,13 +584,15 @@ suite.addBatch( Test.getTests(
 			[ {
 				link:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Link",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Link"
+					,
 					collection: collection,
 					id:
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Id",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Id"
+						,
 						id: id.toString()
 					}
 				}
@@ -645,8 +644,9 @@ suite.addBatch( Test.getTests(
 					getPreparedCache(
 						cache,
 						{
-							ourGlobeSysSet: sysValue,
-							type: "Id",
+							"ourGlobeServerStore={F|6yOA&]#":
+								"org.ourGlobe.server.store.Id"
+							,
 							id: new IdCont( cachedId.toString() )
 						}
 					)
@@ -773,8 +773,9 @@ suite.addBatch( Test.getTests(
 				dingo:
 				[
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Id",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Id"
+						,
 						id: new IdCont( idOne.toString() )
 					},
 					"dingi",
@@ -783,13 +784,15 @@ suite.addBatch( Test.getTests(
 						{
 							dingi:
 							{
-								ourGlobeSysSet: sysValue,
-								type: "Link",
+								"ourGlobeServerStore={F|6yOA&]#":
+									"org.ourGlobe.server.store.Link"
+								,
 								collection: "DingaWork",
 								id:
 								{
-									ourGlobeSysSet: sysValue,
-									type: "Id",
+									"ourGlobeServerStore={F|6yOA&]#":
+										"org.ourGlobe.server.store.Id"
+									,
 									id: new IdCont( idTwo.toString() )
 								}
 							},
@@ -806,14 +809,16 @@ suite.addBatch( Test.getTests(
 										dango: "Dango",
 										dongo:
 										{
-											ourGlobeSysSet: sysValue,
-											type: "Id",
+											"ourGlobeServerStore={F|6yOA&]#":
+												"org.ourGlobe.server.store.Id"
+											,
 											id: new IdCont( idOne.toString() )
 										},
 										dengo:
 										{
-											ourGlobeSysSet: sysValue,
-											type: "Date",
+											"ourGlobeServerStore={F|6yOA&]#":
+												"org.ourGlobe.server.store.Date"
+											,
 											date: new DateCont( dateTwo )
 										}
 									}
@@ -881,16 +886,18 @@ suite.addBatch( Test.getTests(
 			{
 				idOne:
 				{
-					ourGlobeSysSet: sysValue,
-					type: "Id",
+					"ourGlobeServerStore={F|6yOA&]#":
+						"org.ourGlobe.server.store.Id"
+					,
 					id: new IdCont( idOne.toString() )
 				},
 				ids:
 				[
 					42,
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Id",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Id"
+						,
 						id: new IdCont( idTwo.toString() )
 					},
 					"dingo"
@@ -900,20 +907,23 @@ suite.addBatch( Test.getTests(
 					dingo: "dingo",
 					dateOne:
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Date",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Date"
+						,
 						date: new DateCont( dateOne )
 					},
 					dates:
 					[
 						{
-							ourGlobeSysSet: sysValue,
-							type: "Date",
+							"ourGlobeServerStore={F|6yOA&]#":
+								"org.ourGlobe.server.store.Date"
+							,
 							date: new DateCont( dateOne )
 						},
 						{
-							ourGlobeSysSet: sysValue,
-							type: "Date",
+							"ourGlobeServerStore={F|6yOA&]#":
+								"org.ourGlobe.server.store.Date"
+							,
 							date: new DateCont( dateTwo )
 						}
 					]
@@ -928,25 +938,29 @@ suite.addBatch( Test.getTests(
 						{
 							dango:
 							{
-								ourGlobeSysSet: sysValue,
-								type: "Link",
+								"ourGlobeServerStore={F|6yOA&]#":
+									"org.ourGlobe.server.store.Link"
+								,
 								collection: collectionOne,
 								id:
 								{
-									ourGlobeSysSet: sysValue,
-									type: "Id",
+									"ourGlobeServerStore={F|6yOA&]#":
+										"org.ourGlobe.server.store.Id"
+									,
 									id: new IdCont( idLinkOne.toString() )
 								}
 							},
 							dongo:
 							{
-								ourGlobeSysSet: sysValue,
-								type: "Link",
+								"ourGlobeServerStore={F|6yOA&]#":
+									"org.ourGlobe.server.store.Link"
+								,
 								collection: collectionTwo,
 								id:
 								{
-									ourGlobeSysSet: sysValue,
-									type: "Id",
+									"ourGlobeServerStore={F|6yOA&]#":
+										"org.ourGlobe.server.store.Id"
+									,
 									id: new IdCont( idLinkTwo.toString() )
 								}
 							}
@@ -958,20 +972,23 @@ suite.addBatch( Test.getTests(
 					{
 						binaryOne:
 						{
-							ourGlobeSysSet: sysValue,
-							type: "Binary",
+							"ourGlobeServerStore={F|6yOA&]#":
+								"org.ourGlobe.server.store.Binary"
+							,
 							binary: new BinaryCont( binaryOne.getBuffer() )
 						},
 						date:
 						{
-							ourGlobeSysSet: sysValue,
-							type: "Date",
+							"ourGlobeServerStore={F|6yOA&]#":
+								"org.ourGlobe.server.store.Date"
+							,
 							date: new DateCont( dateOne )
 						}
 					},
 					{
-						ourGlobeSysSet: sysValue,
-						type: "Binary",
+						"ourGlobeServerStore={F|6yOA&]#":
+							"org.ourGlobe.server.store.Binary"
+						,
 						binary: new BinaryCont( binaryTwo.getBuffer() )
 					}
 				]

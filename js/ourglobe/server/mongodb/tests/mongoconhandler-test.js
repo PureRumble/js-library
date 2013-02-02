@@ -38,6 +38,7 @@ var mongoDbServer = mods.get( "ourglobe/server/mongodb" );
 var MongoDb = mongoDbServer.MongoDb;
 var MongoConHandler = mongoDbServer.MongoConHandler;
 
+var Store = mods.get( "store" ).Store;
 var StoreMapper = mods.get( "store" ).StoreMapper;
 var Id = mods.get( "store" ).Id;
 var Link = mods.get( "store" ).Link;
@@ -263,6 +264,8 @@ function( objs, timeout )
 	
 	return returnVar;
 });
+
+Store.init();
 
 var suite = vows.describe( "mongodbconhandler" );
 suite.options.error = false;

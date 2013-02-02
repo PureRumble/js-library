@@ -1,6 +1,7 @@
 ourglobe.define(
 [
-	"crypto"
+	"crypto",
+	"./store"
 ],
 function( mods )
 {
@@ -45,7 +46,7 @@ function( idStr )
 		idStr = new Buffer( rb ).toString( "hex" );
 	}
 	
-	this.idStr = idStr;
+	this.id = idStr;
 }]
 
 });
@@ -78,6 +79,8 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
+var Store = mods.get( "store" );
+
 Class.add(
 Id,
 {
@@ -95,6 +98,15 @@ function( idStr )
 	);
 }],
 
+getStoreName:
+[
+"static",
+Store.GET_STORE_NAME_V,
+function()
+{
+	return Store.ID_STORE_NAME;
+}],
+
 verStoreVars:
 [
 "static",
@@ -110,7 +122,7 @@ toString:
 getR( Id.ID_STR_S ),
 function()
 {
-	return this.idStr;
+	return this.id;
 }]
 
 });
