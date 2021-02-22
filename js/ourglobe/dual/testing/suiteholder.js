@@ -7,10 +7,18 @@ ourglobe.define(
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
-var sys = ourglobe.sys;
-var FuncVer = ourglobe.FuncVer;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+var FuncVer = ourGlobe.FuncVer;
 
 var Suite;
 
@@ -29,13 +37,26 @@ function()
 			.addA(
 				FuncVer.PROPER_STR,
 				Suite,
-				"obj",
+				"any",
 				 [ SuiteHolder, "bool/undef" ]
 			)
+			.addA( SuiteHolder, "any" )
 	);
 },
 function( name, suite, suiteObj, parentSuite )
 {
+	var baseSuiteHolder = undefined;
+	
+	if( name instanceof SuiteHolder === true )
+	{
+		suiteObj = suite;
+		
+		var baseSuiteHolder = name;
+		name = baseSuiteHolder.name;
+		suite = baseSuiteHolder.suite;
+		parentSuite = baseSuiteHolder.parent;
+	}
+	
 	var forSuite = false;
 	
 	if( parentSuite === true )
@@ -48,7 +69,9 @@ function( name, suite, suiteObj, parentSuite )
 		parentSuite = undefined;
 	}
 	
-	if( parentSuite === undefined )
+	if(
+		baseSuiteHolder !== undefined || parentSuite === undefined
+	)
 	{
 		SuiteHolder.verSuiteObj(
 			name, suite, suiteObj, undefined, forSuite
@@ -58,6 +81,7 @@ function( name, suite, suiteObj, parentSuite )
 	this.name = name;
 	this.suite = suite;
 	this.parent = parentSuite;
+	this.getSuite = suiteObj.getSuite;
 	this.before = suiteObj.before;
 	this.beforeCb = suiteObj.beforeCb;
 	this.topic = suiteObj.topic;
@@ -152,10 +176,18 @@ return SuiteHolder;
 function( mods, SuiteHolder )
 {
 
-var FuncVer = ourglobe.FuncVer;
-var sys = ourglobe.sys;
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getF = ourGlobe.getF;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+var FuncVer = ourGlobe.FuncVer;
 
 var TestRuntimeError = mods.get( "testruntimeerror" );
 var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
@@ -165,15 +197,30 @@ SuiteHolder.verSuiteObj =
 getF(
 getV()
 	.addA(
-		[ FuncVer.PROPER_STR, Suite.SUITE_NAMES_S ],
+		[ SuiteHolder, FuncVer.PROPER_STR, Suite.SUITE_NAMES_S ],
 		Suite,
-		"obj",
+		"any",
 		"bool/undef",
 		"bool/undef"
 	),
 function( suiteNames, suite, suiteObj, topicFound, forSuite )
 {
-	if( sys.hasType( suiteNames, "str" ) === true )
+	if( suiteNames instanceof SuiteHolder === true )
+	{
+		var newSuiteNames = [];
+		
+		for(
+			var suiteHolder = suiteNames;
+			suiteHolder !== undefined;
+			suiteHolder = suiteHolder.parent
+		)
+		{
+			newSuiteNames.unshift( suiteHolder.name );
+		}
+		
+		suiteNames = newSuiteNames;
+	}
+	else if( sys.hasType( suiteNames, "str" ) === true )
 	{
 		suiteNames = [ suiteNames ];
 	}
@@ -192,31 +239,50 @@ function( suiteNames, suite, suiteObj, topicFound, forSuite )
 		forSuite = false;
 	}
 	
+	if( sys.hasType( suiteObj, "obj" ) === false )
+	{
+		throw new SuiteRuntimeError(
+			suiteNames,
+			"A suite must be an obj",
+			{ invalidSuite: suiteObj },
+			"SuiteRepresentationNotValid"
+		);
+	}
+	
+	var nrProps = 0;
+	
 	for( var prop in suiteObj )
 	{
-		if(
-			prop !== "conf" &&
-			prop !== "vars" &&
-			prop !== "before" &&
-			prop !== "beforeCb" &&
-			prop !== "topic" &&
-			prop !== "topicCb" &&
-			prop !== "argsVer" &&
-			prop !== "vows" &&
-			prop !== "next" &&
-			prop !== "after" &&
-			prop !== "afterCb"
-		)
+		if( suiteObj[ prop ] !== undefined )
 		{
-			throw new SuiteRuntimeError(
-				suiteNames,
-				"Prop "+prop+" isnt a valid suite prop",
-				{ invalidProp: prop },
-				"UnknownSuitePropFound"
-			);
+			nrProps++;
+			
+			if(
+				prop !== "conf" &&
+				prop !== "vars" &&
+				prop !== "before" &&
+				prop !== "beforeCb" &&
+				prop !== "topic" &&
+				prop !== "topicCb" &&
+				prop !== "argsVer" &&
+				prop !== "vows" &&
+				prop !== "next" &&
+				prop !== "after" &&
+				prop !== "afterCb" &&
+				prop !== "getSuite"
+			)
+			{
+				throw new SuiteRuntimeError(
+					suiteNames,
+					"Prop "+prop+" isnt a valid suite prop",
+					{ invalidProp: prop },
+					"UnknownSuitePropFound"
+				);
+			}
 		}
 	}
 	
+	var getSuite = suiteObj[ "getSuite" ];
 	var conf = suiteObj[ "conf" ];
 	var vars = suiteObj[ "vars" ];
 	var before = suiteObj[ "before" ];
@@ -228,6 +294,34 @@ function( suiteNames, suite, suiteObj, topicFound, forSuite )
 	var next = suiteObj[ "next" ];
 	var after = suiteObj[ "after" ];
 	var afterCb = suiteObj[ "afterCb" ];
+	
+	if( getSuite !== undefined )
+	{
+		if( hasT( getSuite, "func" ) === false )
+		{
+			throw new SuiteRuntimeError(
+				suiteNames,
+				"Suite prop getSuite must be undef or a func",
+				{ before: before },
+				"GetSuiteIsNotValid"
+			);
+		}
+		
+		if( nrProps > 1 )
+		{
+			throw new SuiteRuntimeError(
+				suiteNames,
+				"Suite prop getSuite may not be accompanied by any "+
+				"other Suite props",
+				undefined,
+				"SuitePropGetSuiteNotAlone"
+			);
+		}
+		
+// When the func assigned to Suite prop getSuite is ran will
+// return the actual Suite to run.
+		return;
+	}
 	
 	if( topicFound === false )
 	{
@@ -606,6 +700,9 @@ function( suiteNames, suite, suiteObj, topicFound, forSuite )
 		);
 	}
 	
+// forSuite indicates if this is the root SuiteHolder created
+// for a Suite. In such case the child Suites kept by next have
+//already been verified and this doesnt have to be done again
 	if( next !== undefined && forSuite === false )
 	{
 		var suiteDic = {};
@@ -638,18 +735,6 @@ function( suiteNames, suite, suiteObj, topicFound, forSuite )
 			}
 			
 			suiteDic[ suiteName ] = true;
-			
-			if( sys.hasType( suiteObj, "obj" ) === false )
-			{
-				throw new SuiteRuntimeError(
-					suiteNames,
-					"In the suite prop next suites must be non-empty "+
-					"objs but this isnt so for the suite named '"+
-					suiteName+"'",
-					undefined,
-					"NextSuitesAreNotValid"
-				);
-			}
 			
 			var SuiteNamesWithChild = suiteNames.slice();
 			

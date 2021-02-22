@@ -1,6 +1,7 @@
 ourglobe.define(
 [
-	"./suitestep"
+	"./suitestep",
+	"./suitestepobject"
 ],
 function( mods )
 {
@@ -47,6 +48,15 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteStep = mods.get( "suitestep" );
+var SuiteStepObject = mods.get( "suitestepobject" );
+
+ReturnStep.prototype.getStepObj =
+getF(
+SuiteStep.GET_STEP_OBJ_FV,
+function()
+{
+	return new SuiteStepObject( this );
+});
 
 ReturnStep.prototype.landReturnStep =
 getF(

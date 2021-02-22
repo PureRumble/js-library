@@ -1,25 +1,31 @@
 ourglobe.require(
 [
-	"ourglobe/dual/testing/suiteruntimeerror",
-	"ourglobe/dual/testing/testruntimeerror",
-	"ourglobe/dual/testing/testingerror",
-	"ourglobe/dual/testing/test",
-	"ourglobe/dual/testing/suite"
+	"ourglobe/dual/testing"
 ],
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
-var sys = ourglobe.sys;
+var RuntimeError = ourGlobe.RuntimeError;
 
-var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
-var TestRuntimeError = mods.get( "testruntimeerror" );
-var TestingError = mods.get( "testingerror" );
-var test = mods.get( "test" );
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+var getF = ourGlobe.getF;
+
+var SuiteRuntimeError = mods.get( "testing" ).SuiteRuntimeError;
+var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
+var TestingError = mods.get( "testing" ).TestingError;
+var test = mods.get( "testing" ).Test;
+var Suite = mods.get( "testing" ).Suite;
+var TestQueue = mods.get( "testing" ).TestQueue;
+
 var expectErr = test.expectErr;
 var assert = test.assert;
-var Suite = mods.get( "suite" );
 
 // There must be a great difference between CB_TIMES_OUT and
 // TEST_TIME_LIMIT because in many tests the test suite is
@@ -40,6 +46,7 @@ var TEST_TIME_LIMIT = Suite.DEFAULT_CB_TIMEOUT + 35000;
 
 var faultyFunc = function() { throw new TestingError(); };
 var emptyFunc = function() {};
+var emptyCbFunc = function() { this.callCb(); };
 var undefVer = [ "undef" ];
 
 var healthySuite =
@@ -49,35 +56,7 @@ var healthySuite =
 	vows:[ "dango", emptyFunc ]
 };
 
-var popTest =
-function()
-{
-	if( nrCurrentTests < 10 )
-	{
-		if( testStack.length > 0 )
-		{
-			nrCurrentTests++;
-			
-			var func = testStack.shift();
-			
-			func();
-		}
-	}
-};
-
-var pushTest =
-function( func )
-{
-	testStack.push( func );
-	popTest();
-};
-
-var markTestDone =
-function()
-{
-	nrCurrentTests--;
-	popTest();
-};
+var testQueue = new TestQueue( 10 );
 
 var getCbFunc =
 getF(
@@ -145,7 +124,7 @@ function(
 	testName, errClass, errCode, faultySuite, healthySuite
 )
 {
-	pushTest(
+	testQueue.pushTest(
 	function()
 	{
 		test.expectCbErr(
@@ -177,7 +156,7 @@ function(
 			},
 			function()
 			{
-				markTestDone();
+				testQueue.markTestDone();
 			}
 		);
 	});
@@ -192,7 +171,7 @@ function(
 )
 {
 	expectSingleSuiteCbErr(
-		testName+" - plain suite",
+		testName+" - test suite is used plainly without nesting",
 		errClass,
 		errCode,
 		faultySuiteObj,
@@ -200,33 +179,82 @@ function(
 	);
 	
 	expectSingleSuiteCbErr(
-		testName+" - nested suite",
+		testName+" - test suite is returned by suite step getSuite",
 		errClass,
 		errCode,
-		{
-			next:[ "nested suite", faultySuiteObj ]
-		},
-		{
-			next:[ "nested suite", healthySuiteObj ]
-		}
+		{ getSuite: function() { return faultySuiteObj; } },
+		{ getSuite: function() { return healthySuiteObj; } }
 	);
 	
 	expectSingleSuiteCbErr(
-		testName+" - two nested suites",
+		testName+" - test suite is nested one level and then "+
+		"returned by suite step getSuite",
 		errClass,
 		errCode,
 		{
 			next:
 			[
-				"first nested suite (healthy)", healthySuiteObj,
-				"second nested suite (faulty)", faultySuiteObj
+				"first level of suite added by expectSuiteCbErr()",
+				{ getSuite: function() { return faultySuiteObj; } }
 			]
 		},
 		{
 			next:
 			[
-				"first nested suite (healthy)", healthySuiteObj,
-				"second nested suite (healthy)", healthySuiteObj
+				"first level of suite added by expectSuiteCbErr()",
+				{ getSuite: function() { return healthySuiteObj; } }
+			]
+		}
+	);
+	
+	expectSingleSuiteCbErr(
+		testName+" - test suite is nested one level",
+		errClass,
+		errCode,
+		{
+			next:
+			[
+				"first level of suite added by expectSuiteCbErr()",
+				faultySuiteObj
+			]
+		},
+		{
+			next:
+			[
+				"first level of suite added by expectSuiteCbErr()",
+				healthySuiteObj
+			]
+		}
+	);
+	
+	expectSingleSuiteCbErr(
+		testName+" - test suite is nested two levels",
+		errClass,
+		errCode,
+		{
+			next:
+			[
+				"first level of suite added by expectSuiteCbErr()",
+				{
+					next:
+					[
+						"second level of suite added by expectSuiteCbErr()",
+						faultySuiteObj
+					]
+				}
+			]
+		},
+		{
+			next:
+			[
+				"first level of suite added by expectSuiteCbErr()",
+				{
+					next:
+					[
+						"second level of suite added by expectSuiteCbErr()",
+						healthySuiteObj
+					]
+				}
 			]
 		}
 	);
@@ -242,13 +270,13 @@ getV()
 function( testName, suiteObj, nrSlots, verify )
 {
 	var suite = undefined;
-	var suiteGiven = undefined;
+	var suiteInstGiven = undefined;
 	
 	if( suiteObj instanceof Suite === true )
 	{
 		suite = suiteObj;
 		
-		suiteGiven = true;
+		suiteInstGiven = true;
 	}
 	else
 	{
@@ -259,7 +287,7 @@ function( testName, suiteObj, nrSlots, verify )
 		;
 		suite.add( "suite to test", suiteObj );
 		
-		suiteGiven = false;
+		suiteInstGiven = false;
 	}
 	
 	console.log( testName );
@@ -270,7 +298,7 @@ function( testName, suiteObj, nrSlots, verify )
 		"An err occurred when testing '"+testName+"':\n"
 	;
 	
-	pushTest(
+	testQueue.pushTest(
 	function()
 	{
 		var testTimeout =
@@ -316,7 +344,7 @@ function( testName, suiteObj, nrSlots, verify )
 					
 					try
 					{
-						if( suiteGiven === true )
+						if( suiteInstGiven === true )
 						{
 							verify( resSuiteRun );
 						}
@@ -331,7 +359,7 @@ function( testName, suiteObj, nrSlots, verify )
 						throw e;
 					}
 					
-					markTestDone();
+					testQueue.markTestDone();
 				})
 			);
 		}
@@ -375,6 +403,7 @@ getV()
 			types: "obj/undef",
 			props:
 			{
+				"useGetSuite": "bool/undef",
 				"testAsChild": "bool/undef",
 				"nrSlots":{ types: "int/undef", gt: 0 }
 			}
@@ -397,10 +426,16 @@ function( testName, args, cb )
 	
 	var testAsChild = args.testAsChild;
 	var nrSlots = args.nrSlots;
+	var useGetSuite = args.useGetSuite;
 	
 	if( testAsChild === undefined )
 	{
 		testAsChild = true;
+	}
+	
+	if( useGetSuite === undefined )
+	{
+		useGetSuite = true;
 	}
 	
 	if( nrSlots === undefined )
@@ -433,69 +468,274 @@ function( testName, args, cb )
 		return returnVar;
 	};
 	
-	var returnVar = getTestObj();
-	var suite = returnVar.suite;
-	var firstCb = returnVar.cb;
-	
-	var suiteGiven = undefined;
-	if( suite instanceof Suite === true )
+	var testWithGetSuite =
+	getF(
+	getA( "func" ),
+	function( cb )
 	{
-		suiteGiven = true;
-	}
-	else
-	{
-		suiteGiven = false;
-	}
-	
-	testSingleSuiteRun(
-		testName+" - plain suite",
-		suite,
-		nrSlots,
-		function( suiteRun )
+		if( useGetSuite === false )
 		{
-			firstCb( suiteRun );
+			cb();
 			
-			if( testAsChild === false || suiteGiven === true )
+			return;
+		}
+		
+		var returnVar = getTestObj();
+		var suite = returnVar.suite;
+		var verify = returnVar.cb;
+		
+		if( suite instanceof Suite === true )
+		{
+			cb();
+			
+			return;
+		}
+		
+		testSingleSuiteRun(
+			testName+" - test suite is returned by suite "+
+			"step getSuite",
 			{
-				return;
+				getSuite:
+				function()
+				{
+					return suite;
+				}
+			},
+			nrSlots,
+			function( suiteRun )
+			{
+				assert(
+					suiteRun.getSuite.stepOk === true,
+					"Step getSuite of a suite added by "+
+					"testSuiteRun() hasnt been executed successfully"
+				);
+				
+				verify( suiteRun, 1 );
+				
+				cb();
 			}
+		);
+	});
+	
+	var testWithNestedGetSuite =
+	getF(
+	getA( "func" ),
+	function( cb )
+	{
+		if( useGetSuite === false || testAsChild === false )
+		{
+			cb();
 			
-			var returnVar = getTestObj();
-			var suite = returnVar.suite;
-			var secondCb = returnVar.cb;
+			return;
+		}
+		
+		var returnVar = getTestObj();
+		var suite = returnVar.suite;
+		var verify = returnVar.cb;
+		
+		if( suite instanceof Suite === true )
+		{
+			cb();
 			
-			testSingleSuiteRun(
-				testName+" - nested suite",
+			return;
+		}
+		
+		testSingleSuiteRun(
+			testName+" - test suite is nested one level and then "+
+			"returned by suite step getSuite",
+			{
+				before: emptyFunc,
+				after: emptyFunc,
+				next:
+				[
+					"first level of suite added by testSuiteRun()",
+					{ getSuite: function() { return suite; } }
+				]
+			},
+			nrSlots,
+			function( suiteRun )
+			{
+				assert(
+					suiteRun.before.stepOk === true &&
+					suiteRun.after.stepOk === true &&
+					suiteRun.next[ 0 ].getSuite.stepOk === true,
+					"Step getSuite of a suite added by "+
+					"testSuiteRun() hasnt been executed successfully"
+				);
+				
+				verify( suiteRun.next[ 0 ], 2 );
+				
+				cb();
+			}
+		);
+	});
+	
+	var testDeeplyNested =
+	getF(
+	getA( "func" ),
+	function( cb )
+	{
+		if( testAsChild === false )
+		{
+			cb();
+			
+			return;
+		}
+		
+		var returnVar = getTestObj();
+		var suite = returnVar.suite;
+		var verify = returnVar.cb;
+		
+		if( suite instanceof Suite === true )
+		{
+			cb();
+			
+			return;
+		}
+		
+		testSingleSuiteRun(
+			testName+" - test suite is nested two levels",
+			{
+				before: emptyFunc,
+				after: emptyFunc,
+				next:
+				[
+					"first level of suite added by testSuiteRun()",
+					{
+						beforeCb: emptyCbFunc,
+						afterCb: emptyCbFunc,
+						next:
+						[
+							"second level of suite added by "+
+							"testSuiteRun()",
+							suite
+						]
+					}
+				]
+			},
+			nrSlots,
+			function( suiteRun )
+			{
+				assert(
+					suiteRun.before.stepOk === true &&
+					suiteRun.after.stepOk === true &&
+					suiteRun.next[ 0 ].before.stepOk === true &&
+					suiteRun.next[ 0 ].after.stepOk === true,
+					"Some steps of a nesting suite added by "+
+					"testSuiteRun() havent been executed successfully"
+				);
+				
+				verify( suiteRun.next[ 0 ].next[ 0 ], 3 );
+				
+				cb();
+			}
+		);
+	});
+	
+	var testNested =
+	getF(
+	getA( "func" ),
+	function( cb )
+	{
+		if( testAsChild === false )
+		{
+			cb();
+			
+			return;
+		}
+		
+		var returnVar = getTestObj();
+		var suite = returnVar.suite;
+		var verify = returnVar.cb;
+		
+		if( suite instanceof Suite === true )
+		{
+			cb();
+			
+			return;
+		}
+		
+		testSingleSuiteRun(
+			testName+" - test suite is nested one level",
+			{
+				before: emptyFunc,
+				after: emptyFunc,
+				next:
+				[
+					"first level of suite added by testSuiteRun()",
+					suite
+				]
+			},
+			nrSlots,
+			function( suiteRun )
+			{
+				assert(
+					suiteRun.before.stepOk === true &&
+					suiteRun.after.stepOk === true,
+					"Some steps of a nesting suite added by "+
+					"testSuiteRun() havent been executed successfully"
+				);
+				
+				verify( suiteRun.next[ 0 ], 2 );
+				
+				cb();
+			}
+		);
+	});
+	
+	var testPlainly =
+	getF(
+	getA( "func" ),
+	function( cb )
+	{
+		var returnVar = getTestObj();
+		var suite = returnVar.suite;
+		var verify = returnVar.cb;
+		
+		testSingleSuiteRun(
+			testName+" - test suite is used plainly without nesting",
+			suite,
+			nrSlots,
+			function( suiteRun )
+			{
+				var nrParentsAbove = undefined;
+				
+				if( suite instanceof Suite === true )
 				{
-					next:[ "nested suite", suite ]
-				},
-				nrSlots,
-				function( suiteRun )
+					nrParentsAbove = 0;
+				}
+				else
 				{
-					secondCb( suiteRun.next[ 0 ] );
-					
-					var returnVarOne = getTestObj();
-					var suiteOne = returnVarOne.suite;
-					var thirdCbOne = returnVarOne.cb;
-					
-					var returnVarTwo = getTestObj();
-					var suiteTwo = returnVarTwo.suite;
-					var thirdCbTwo = returnVarTwo.cb;
-					
-					testSingleSuiteRun(
-						testName+" - two nested suites",
+					nrParentsAbove = 1;
+				}
+				
+				verify( suiteRun, nrParentsAbove );
+				
+				cb();
+			}
+		);
+	});
+	
+	testPlainly(
+		function()
+		{
+			testWithGetSuite(
+				function()
+				{
+					testWithNestedGetSuite(
+						function()
 						{
-							next:
-							[
-								"first nested suite", suiteOne,
-								"second nested suite", suiteTwo
-							]
-						},
-						nrSlots,
-						function( suiteRun )
-						{
-							thirdCbOne( suiteRun.next[ 0 ] );
-							thirdCbTwo( suiteRun.next[ 1 ] );
+							testNested(
+								function()
+								{
+									testDeeplyNested(
+										function()
+										{
+											
+										}
+									);
+								}
+							);
 						}
 					);
 				}
@@ -554,6 +794,656 @@ function( cbTime, testStr )
 		)
 	);
 });
+
+// test group
+// testing suites and child suites with suite step getSuite
+
+testSuiteRunWithCb(
+	"Suite step getSuite in a child suite checks it has a parent "+
+	"suite and reads some data from the parent suite. This is "+
+	"done by using the inst funcs of suite step getSuite. The "+
+	"child suite also has two other child suites and one of them "+
+	"in turn also has suite step getSuite. The other one is a "+
+	"plain suite. Both of these lowest child suites also check "+
+	"if they have parents and read their data",
+	function()
+	{
+		var suiteOneGetSuiteHasParent = undefined;
+		var suiteOneGetSuiteGetTopicRes = undefined;
+		var suiteOneGetSuiteGetTopicErr = undefined;
+		var suiteOneGetSuiteHasGrandParent = undefined;
+		
+		var suiteOneTopicHasParent = undefined;
+		var suiteOneTopicGetTopicRes = undefined;
+		var suiteOneTopicGetTopicErr = undefined;
+		var suiteOneTopicHasGrandParent = undefined;
+		
+		var suiteOneOneTopicHasParent = undefined;
+		var suiteOneOneTopicGetTopicRes = undefined;
+		var suiteOneOneTopicGetTopicErr = undefined;
+		
+		var suiteOneTwoGetSuiteHasParent = undefined;
+		var suiteOneTwoGetSuiteGetTopicRes = undefined;
+		var suiteOneTwoGetSuiteGetTopicErr = undefined;
+		
+		var suiteOneTwoTopicHasParent = undefined;
+		var suiteOneTwoTopicGetTopicRes = undefined;
+		var suiteOneTwoTopicGetTopicErr = undefined;
+		
+		var returnVar =
+			{
+				suite:
+				{
+					topic:
+					function()
+					{
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					next:
+					[
+						"suiteOne",
+						{
+							getSuite:
+							function( topic )
+							{
+								suiteOneGetSuiteHasParent = this.hasParent();
+								
+								suiteOneGetSuiteGetTopicRes =
+									this.getParent().getTopicRes()
+								;
+								
+								suiteOneGetSuiteGetTopicErr =
+									this.getParent().topicErrOccurred() ||
+									this.getParent().topicErrThrown()
+								;
+								
+								suiteOneGetSuiteHasGrandParent =
+									this.getParent().getParent().hasParent()
+								;
+								
+								return(
+									{
+										conf:
+										{
+											allowThrownErr: true
+										},
+										topic:
+										function( topic )
+										{
+											suiteOneTopicHasParent = this.hasParent();
+											
+											suiteOneTopicGetTopicRes =
+												this.getParent().getTopicRes()
+											;
+											
+											suiteOneTopicGetTopicErr =
+												this.getParent().topicErrOccurred() ||
+												this.getParent().topicErrThrown()
+											;
+											
+											suiteOneTopicHasGrandParent =
+												this.getParent().getParent().hasParent()
+											;
+											
+											throw new TestingError();
+										},
+										argsVer:[ TestingError ],
+										next:
+										[
+											"suiteOneOne",
+											{
+												topic:
+												function( topic )
+												{
+													suiteOneOneTopicHasParent =
+														this.hasParent()
+													;
+													
+													suiteOneOneTopicGetTopicRes =
+														this.getParent().getTopicRes()
+													;
+													
+													suiteOneOneTopicGetTopicErr =
+														this.getParent().topicErrOccurred()
+														&&
+														this.getParent().topicErrThrown()
+													;
+												},
+												argsVer:[ "undef" ]
+											},
+											"suiteOneTwo",
+											{
+												getSuite:
+												function( topic )
+												{
+													suiteOneTwoGetSuiteHasParent =
+														this.hasParent()
+													;
+													
+													suiteOneTwoGetSuiteGetTopicRes =
+														this.getParent().getTopicRes()
+													;
+													
+													suiteOneTwoGetSuiteGetTopicErr =
+														this
+															.getParent()
+															.topicErrOccurred()
+														&&
+														this
+															.getParent().topicErrThrown()
+													;
+													
+													return(
+														{
+															topic:
+															function( topic )
+															{
+																suiteOneTwoTopicHasParent =
+																	this.hasParent()
+																;
+																
+																suiteOneTwoTopicGetTopicRes =
+																	this.getParent().getTopicRes()
+																;
+																
+																suiteOneTwoTopicGetTopicErr =
+																	this
+																		.getParent()
+																		.topicErrOccurred()
+																	&&
+																	this
+																		.getParent().topicErrThrown()
+																;
+															},
+															argsVer:[ "undef" ]
+														}
+													);
+												}
+											}
+										]
+									}
+								);
+							}
+						}
+					]
+				},
+				cb:
+				function( run, nrParents )
+				{
+					assert(
+						suiteOneGetSuiteHasParent === true &&
+						suiteOneGetSuiteGetTopicErr === false &&
+						suiteOneGetSuiteHasGrandParent ===
+							( nrParents > 1 )
+						&&
+						suiteOneGetSuiteGetTopicRes.length === 1 &&
+						suiteOneGetSuiteGetTopicRes[ 0 ] === "dingo" &&
+						
+						suiteOneTopicHasParent === true &&
+						suiteOneTopicGetTopicErr === false &&
+						suiteOneTopicHasGrandParent === ( nrParents > 1 ) &&
+						suiteOneTopicGetTopicRes.length === 1 &&
+						suiteOneTopicGetTopicRes[ 0 ] === "dingo" &&
+						
+						suiteOneOneTopicHasParent === true &&
+						suiteOneOneTopicGetTopicErr === true &&
+						suiteOneOneTopicGetTopicRes.length === 1 &&
+						suiteOneOneTopicGetTopicRes[ 0 ]
+							instanceof TestingError ===
+								true
+						&&
+						
+						suiteOneTwoGetSuiteHasParent === true &&
+						suiteOneTwoGetSuiteGetTopicErr === true &&
+						suiteOneTwoGetSuiteGetTopicRes.length === 1 &&
+						suiteOneTwoGetSuiteGetTopicRes[ 0 ]
+							instanceof TestingError ===
+								true
+						&&
+						
+						suiteOneTwoTopicHasParent === true &&
+						suiteOneTwoTopicGetTopicErr === true &&
+						suiteOneTwoTopicGetTopicRes.length === 1 &&
+						suiteOneTwoTopicGetTopicRes[ 0 ]
+							instanceof TestingError ===
+								true
+						&&
+						
+						run.runOk === true &&
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].getSuite.stepOk === true &&
+						run.next[ 0 ].next[ 0 ].runOk === true &&
+						run.next[ 0 ].next[ 1 ].getSuite.stepOk === true,
+						"run result is invalid"
+					);
+				}
+			}
+		;
+		
+		return returnVar;
+	}
+);
+
+testSuiteRunWithCb(
+	"Suite step getSuite in a child suite receives the topic "+
+	"from the parent suite as an arg. The child suite has two "+
+	"other child suites that also receive their parent suite's "+
+	"topic. One of these two child suites also has step getSuite "+
+	"while the other one is a plain suite",
+	function()
+	{
+		var suiteOneGetSuiteArgs = undefined;
+		var suiteOneTopicArgs = undefined;
+		
+		var suiteOneTwoGetSuiteArgs = undefined;
+		var suiteOneOneTopicArgs = undefined;
+		var suiteOneTwoTopicArgs = undefined;
+		
+		var returnVar =
+			{
+				suite:
+				{
+					topic:
+					function()
+					{
+						debugger;
+						
+						return "dingo";
+					},
+					argsVer:[ "str" ],
+					next:
+					[
+						"suiteOne",
+						{
+							getSuite:
+							function( topic )
+							{
+								suiteOneGetSuiteArgs = topic;
+								
+								return(
+									{
+										topic:
+										function( topic )
+										{
+											suiteOneTopicArgs = topic;
+											
+											return 42;
+										},
+										argsVer:[ "int" ],
+										next:
+										[
+											"suiteOneOne",
+											{
+												topic:
+												function( topic )
+												{
+													suiteOneOneTopicArgs = topic;
+												},
+												argsVer:[ "undef" ]
+											},
+											"suiteOneTwo",
+											{
+												getSuite:
+												function( topic )
+												{
+													suiteOneTwoGetSuiteArgs = topic;
+													
+													return(
+														{
+															topic:
+															function( topic )
+															{
+																suiteOneTwoTopicArgs = topic;
+															},
+															argsVer:[ "undef" ]
+														}
+													);
+												}
+											}
+										]
+									}
+								);
+							}
+						}
+					]
+				},
+				cb:
+				function( run )
+				{
+					assert(
+						suiteOneGetSuiteArgs === "dingo" &&
+						suiteOneTopicArgs === "dingo" &&
+						suiteOneOneTopicArgs === 42 &&
+						suiteOneTwoGetSuiteArgs === 42 &&
+						suiteOneTwoTopicArgs === 42 &&
+						
+						run.runOk === true &&
+						run.next[ 0 ].runOk === true &&
+						run.next[ 0 ].getSuite.stepOk === true &&
+						run.next[ 0 ].next[ 0 ].runOk === true &&
+						run.next[ 0 ].next[ 1 ].getSuite.stepOk === true,
+						"run result is invalid"
+					);
+				}
+			}
+		;
+		
+		return returnVar;
+	}
+);
+
+testSuiteRun(
+	"healthy suite with suite step getSuite that returns a "+
+	"healthy suite",
+	{ useGetSuite: false },
+	{
+		getSuite:
+		function()
+		{
+			return(
+				{
+					before: emptyFunc,
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc, "vow two", emptyFunc ],
+					next:
+					[
+						"suite one", healthySuite,
+						"suite two", healthySuite
+					]
+				}
+			);
+		}
+	},
+	function( run )
+	{
+		assert(
+			run.runOk === true &&
+			run.getSuite.stepOk === true &&
+			run.getSuite.err === undefined &&
+			run.before.stepOk === true &&
+			run.topic.stepOk === true &&
+			run.argsVer.stepOk === true &&
+			run.vows[ 0 ].stepOk === true &&
+			run.vows[ 1 ].stepOk === true &&
+			run.next[ 0 ].runOk === true &&
+			run.next[ 1 ].runOk === true,
+			"run result is invalid"
+		);
+	}
+);
+
+testSuiteRunWithCb(
+	"healthy suite with suite vars and two levles of child "+
+	"suites. The child suites use suite step getSuite to create "+
+	"new suites that replace the child suites. The root suite's "+
+	"vars are read by getSuite and the new child suites",
+	function()
+	{
+		var suiteOneGetSuiteVarOne = undefined;
+		var suiteOneGetSuiteVarTwo = undefined;
+		var suiteOneBeforeVarOne = undefined;
+		var suiteOneBeforeVarTwo = undefined;
+		var suiteOneBeforeVarFive = undefined;
+		var suiteOneTopicVarOne = undefined;
+		var suiteOneTopicVarTwo = undefined;
+		var suiteOneTopicVarFive = undefined;
+		
+		var suiteOneOneGetSuiteVarOne = undefined;
+		var suiteOneOneGetSuiteVarTwo = undefined;
+		var suiteOneOneBeforeVarOne = undefined;
+		var suiteOneOneBeforeVarTwo = undefined;
+		var suiteOneOneBeforeVarFive = undefined;
+		var suiteOneOneTopicVarOne = undefined;
+		var suiteOneOneTopicVarTwo = undefined;
+		var suiteOneOneTopicVarFive = undefined;
+		
+		var suiteOneTwoBeforeVarThree = undefined;
+		var suiteOneTwoBeforeVarFour = undefined;
+		var suiteOneTwoTopicVarThree = undefined;
+		var suiteOneTwoTopicVarFour = undefined;
+		
+		var returnVar =
+		{
+			suite:
+			{
+				vars:
+				{
+					"varOne": "firstValueVarOne",
+					"varTwo": "firstValueVarTwo",
+					"varThree": "firstValueVarThree",
+					"varFour": "firstValueVarFour",
+					"varFive": "firstValueVarFive",
+					"varSix": "firstValueVarSix",
+				}
+				,
+				next:
+				[
+					"suiteOne",
+					{
+						getSuite:
+						function()
+						{
+							suiteOneGetSuiteVarOne = this.getV( "varOne" );
+							suiteOneGetSuiteVarTwo = this.getV( "varTwo" );
+							
+							return(
+								{
+									vars:
+									{
+										"varFive": "firstValueVarFiveSuiteOne"
+									},
+									before:
+									function()
+									{
+										suiteOneBeforeVarOne = this.getV( "varOne" );
+										suiteOneBeforeVarTwo = this.getV( "varTwo" );
+										suiteOneBeforeVarFive =
+											this.getV( "varFive" )
+										;
+										
+										this.setV(
+											"varOne", "forSuiteOneTopicVarOne"
+										);
+										this.setV(
+											"varTwo", "forSuiteOneTopicVarTwo"
+										);
+										this.setV(
+											"varFive", "forSuiteOneTopicVarFive"
+										);
+									},
+									topic:
+									function()
+									{
+										suiteOneTopicVarOne = this.getV( "varOne" );
+										suiteOneTopicVarTwo = this.getV( "varTwo" );
+										suiteOneTopicVarFive =
+											this.getV( "varFive" )
+										;
+										
+										this.setV(
+											"varOne", "forSuiteOneOneBeforeVarOne"
+										);
+										this.setV(
+											"varTwo", "forSuiteOneOneBeforeVarTwo"
+										);
+									},
+									argsVer:[ "undef" ],
+									next:
+									[
+										"suiteOneOne",
+										{
+											getSuite:
+											function()
+											{
+												suiteOneOneGetSuiteVarOne =
+													this.getV( "varOne" )
+												;
+												suiteOneOneGetSuiteVarTwo =
+													this.getV( "varTwo" )
+												;
+												
+												var returnVar =
+												{
+													vars:
+													{
+														"varFive":
+															"firstValueVarFiveSuiteOneOne"
+													},
+													before:
+													function()
+													{
+														suiteOneOneBeforeVarOne =
+															this.getV( "varOne" )
+														;
+														suiteOneOneBeforeVarTwo =
+															this.getV( "varTwo" )
+														;
+														suiteOneOneBeforeVarFive =
+															this.getV( "varFive" )
+														;
+														
+														this.setV(
+															"varOne",
+															"forSuiteOneOneTopicVarOne"
+														);
+														this.setV(
+															"varTwo",
+															"forSuiteOneOneTopicVarTwo"
+														);
+														this.setV(
+															"varFive",
+															"forSuiteOneOneTopicVarFive"
+														);
+													},
+													topic:
+													function()
+													{
+														suiteOneOneTopicVarOne =
+															this.getV( "varOne" )
+														;
+														suiteOneOneTopicVarTwo =
+															this.getV( "varTwo" )
+														;
+														suiteOneOneTopicVarFive =
+															this.getV( "varFive" )
+														;
+													},
+													argsVer:[ "undef" ]
+												};
+												
+												return returnVar;
+											}
+										},
+										"suiteOneTwo",
+										{
+											before:
+											function()
+											{
+												suiteOneTwoBeforeVarThree =
+													this.getV( "varThree" )
+												;
+												suiteOneTwoBeforeVarFour =
+													this.getV( "varFour" )
+												;
+												
+												this.setV(
+													"varThree",
+													"forSuiteOneTwoTopicVarThree"
+												);
+												this.setV(
+													"varFour",
+													"forSuiteOneTwoTopicVarFour"
+												);
+											},
+											topic:
+											function()
+											{
+												suiteOneTwoTopicVarThree =
+													this.getV( "varThree" )
+												;
+												suiteOneTwoTopicVarFour =
+													this.getV( "varFour" )
+												;
+											},
+											argsVer:[ "undef" ]
+										}
+									]
+								}
+							);
+						}
+					}
+				]
+			},
+			cb:
+			function( run )
+			{
+				assert(
+					suiteOneGetSuiteVarOne === "firstValueVarOne" &&
+					suiteOneGetSuiteVarTwo === "firstValueVarTwo" &&
+					suiteOneBeforeVarOne === "firstValueVarOne" &&
+					suiteOneBeforeVarTwo === "firstValueVarTwo" &&
+					suiteOneBeforeVarFive ===
+						"firstValueVarFiveSuiteOne"
+					&&
+					suiteOneTopicVarOne === "forSuiteOneTopicVarOne" &&
+					suiteOneTopicVarTwo === "forSuiteOneTopicVarTwo" &&
+					suiteOneTopicVarFive === "forSuiteOneTopicVarFive" &&
+					
+					suiteOneOneGetSuiteVarOne ===
+						"forSuiteOneOneBeforeVarOne"
+					&&
+					suiteOneOneGetSuiteVarTwo ===
+						"forSuiteOneOneBeforeVarTwo"
+					&&
+					suiteOneOneBeforeVarOne ===
+						"forSuiteOneOneBeforeVarOne"
+					&&
+					suiteOneOneBeforeVarTwo ===
+						"forSuiteOneOneBeforeVarTwo"
+					&&
+					suiteOneOneBeforeVarFive ===
+						"firstValueVarFiveSuiteOneOne"
+					&&
+					suiteOneOneTopicVarOne ===
+						"forSuiteOneOneTopicVarOne"
+					&&
+					suiteOneOneTopicVarTwo ===
+						"forSuiteOneOneTopicVarTwo"
+					&&
+					suiteOneOneTopicVarFive ===
+						"forSuiteOneOneTopicVarFive"
+					&&
+					
+					suiteOneTwoBeforeVarThree ===
+						"firstValueVarThree"
+					&&
+					suiteOneTwoBeforeVarFour ===
+						"firstValueVarFour"
+					&&
+					suiteOneTwoTopicVarThree ===
+						"forSuiteOneTwoTopicVarThree"
+					&&
+					suiteOneTwoTopicVarFour ===
+						"forSuiteOneTwoTopicVarFour"
+					&&
+					
+					run.runOk === true &&
+					run.next[ 0 ].runOk === true &&
+					run.next[ 0 ].getSuite.stepOk === true &&
+					run.next[ 0 ].getSuite.err === undefined &&
+					run.next[ 0 ].next[ 0 ].getSuite.stepOk === true &&
+					run.next[ 0 ].next[ 0 ].getSuite.err === undefined,
+					"run result is invalid"
+				);
+			}
+		};
+		
+		return returnVar;
+	}
+);
+
 
 // test group
 // testing simple suites with topic and vows
@@ -7185,5 +8075,4 @@ testSuiteRunWithCb(
 		);
 	}
 );
-
 });

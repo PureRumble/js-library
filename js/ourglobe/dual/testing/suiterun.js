@@ -4,6 +4,7 @@ ourglobe.define(
 	"./cbstepqueue",
 	"./suiteresult",
 	"./suitestep",
+	"./getsuite",
 	"./before",
 	"./beforecb",
 	"./topic",
@@ -22,6 +23,7 @@ var getV = ourglobe.getV;
 var CbStepQueue = undefined;
 var SuiteHolder = undefined;
 var SuiteStep = undefined;
+var GetSuite = undefined;
 var Before = undefined;
 var BeforeCb = undefined;
 var Topic = undefined;
@@ -37,6 +39,7 @@ mods.delay(
 		CbStepQueue = mods.get( "cbstepqueue" );
 		SuiteHolder = mods.get( "suiteholder" );
 		SuiteStep = mods.get( "suitestep" );
+		GetSuite = mods.get( "getsuite" );
 		Before = mods.get( "before" );
 		BeforeCb = mods.get( "beforecb" );
 		Topic = mods.get( "topic" );
@@ -103,17 +106,19 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 	}
 	
 	this.parentRun = parentRun;
-	this.suiteHolder = suiteHolder;
+	this.suiteHolder = undefined;
+	this.origSuiteHolder = suiteHolder;
 	this.stepStartsCb = stepStartsCb;
 	this.stepEndsCb = stepEndsCb;
-	
 	this.nrChildSuitesDone = 0;
 	this.suiteErrOccurred = false;
-	
 	this.suiteRunCb = undefined;
 	this.runOk = undefined;
+	this.local = {};
+	
 	this.failedSteps =
 	{
+		getSuite: undefined,
 		before: undefined,
 		topic: undefined,
 		argsVer: undefined,
@@ -122,18 +127,60 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 		after: undefined
 	};
 	
-	this.vars = SuiteHolder.copySet( suiteHolder.vars );
-	this.local = {};
+	this.setSuiteHolder( suiteHolder );
 	
 	if( parentRun === undefined )
 	{
 		this.cbStepQueue =
-			new CbStepQueue( this.suiteHolder.suite.maxNrConcCbs )
+			new CbStepQueue( suiteHolder.suite.maxNrConcCbs )
 		;
 	}
 	else
 	{
 		this.cbStepQueue = parentRun.cbStepQueue;
+	}
+});
+
+SuiteRun.RUN_CB_FV =
+	getV()
+		.addA( Error )
+		.addA( "undef", SuiteRun )
+;
+
+return SuiteRun;
+
+},
+function( mods, SuiteRun )
+{
+
+var getF = ourglobe.getF;
+var getV = ourglobe.getV;
+
+var SuiteHolder = mods.get( "suiteholder" );
+var SuiteResult = mods.get( "suiteresult" );
+var SuiteStep = mods.get( "suitestep" );
+var GetSuite = mods.get( "getsuite" );
+var Before = mods.get( "before" );
+var BeforeCb = mods.get( "beforecb" );
+var Topic = mods.get( "topic" );
+var TopicCb = mods.get( "topiccb" );
+var ArgsVer = mods.get( "argsver" );
+var Vow = mods.get( "vow" );
+var After = mods.get( "after" );
+var AfterCb = mods.get( "aftercb" );
+
+SuiteRun.prototype.setSuiteHolder =
+getF(
+getV()
+	.addA( SuiteHolder ),
+function( suiteHolder )
+{
+	this.suiteHolder = suiteHolder;
+	this.vars = SuiteHolder.copySet( suiteHolder.vars );
+	
+	if( suiteHolder.getSuite !== undefined )
+	{
+		this.getSuite = new GetSuite( this );
 	}
 	
 	if( suiteHolder.beforeCb !== undefined )
@@ -180,32 +227,6 @@ function( suiteHolder, stepStartsCb, stepEndsCb )
 		this.after = new After( this );
 	}
 });
-
-SuiteRun.RUN_CB_FV =
-	getV()
-		.addA( Error )
-		.addA( "undef", SuiteRun )
-;
-
-return SuiteRun;
-
-},
-function( mods, SuiteRun )
-{
-
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
-
-var SuiteResult = mods.get( "suiteresult" );
-var SuiteStep = mods.get( "suitestep" );
-var Before = mods.get( "before" );
-var BeforeCb = mods.get( "beforecb" );
-var Topic = mods.get( "topic" );
-var TopicCb = mods.get( "topiccb" );
-var ArgsVer = mods.get( "argsver" );
-var Vow = mods.get( "vow" );
-var After = mods.get( "after" );
-var AfterCb = mods.get( "aftercb" );
 
 SuiteRun.prototype.markChildSuiteDone =
 getF(
@@ -345,6 +366,53 @@ function( err )
 	}
 });
 
+SuiteRun.prototype.runGetSuite =
+getF(
+getV(),
+function()
+{
+	if( this.getSuite === undefined )
+	{
+		this.runBefore();
+		
+		return;
+	}
+	else
+	{
+		var suiteRun = this;
+		
+		this.getSuite.takeStep(
+			getF(
+			SuiteStep.TAKE_STEP_CB_FV,
+			function( err, stepOk )
+			{
+				if( err !== undefined )
+				{
+					suiteRun.suiteRunCb( err );
+					
+					return;
+				}
+				
+				if( stepOk === false )
+				{
+					suiteRun.markRunFailed( suiteRun.getSuite );
+					
+// It is true that if a Suite has SuiteStep getSuite then it cant
+// have after nor afterCb, but runAfter() calls finishAfter()
+// that in turn makes some final touches to the SuiteRun
+					suiteRun.runAfter();
+					
+					return;
+				}
+				
+				suiteRun.setSuiteHolder( suiteRun.getSuite.suiteHolder );
+				
+				suiteRun.runBefore();
+			})
+		);
+	}
+});
+
 SuiteRun.prototype.runBefore =
 getF(
 getV(),
@@ -419,35 +487,31 @@ function()
 		return;
 	}
 	
-	var argsVerErr = undefined;
-	var argsVerOk = undefined;
+	var suiteRun = this;
 	
 	this.argsVer.takeStep(
 		getF(
 		SuiteStep.TAKE_STEP_CB_FV,
 		function( err, stepOk )
 		{
-			argsVerErr = err;
-			argsVerOk = stepOk;
+			if( err !== undefined )
+			{
+				suiteRun.suiteRunCb( err );
+				
+				return;
+			}
+			
+			if( stepOk === false )
+			{
+				suiteRun.markRunFailed( suiteRun.argsVer );
+				suiteRun.runAfter();
+				
+				return;
+			}
+			
+			suiteRun.runVows();
 		})
 	);
-	
-	if( argsVerErr !== undefined )
-	{
-		this.suiteRunCb( argsVerErr );
-		
-		return;
-	}
-	
-	if( argsVerOk === false )
-	{
-		this.markRunFailed( this.argsVer );
-		this.runAfter();
-		
-		return;
-	}
-	
-	this.runVows();
 });
 
 SuiteRun.prototype.runVows =
@@ -547,13 +611,37 @@ function()
 
 SuiteRun.prototype.markRunFailed =
 getF(
+// The FuncVer lists all individual SuiteSteps instead of using
+// the base class SuiteStep in order to avoid that some new
+// SuiteStep is added in the future but it is missed to update
+// this inst func
 getV()
-	.addA( [ SuiteStep, SuiteRun, "undef" ] ),
+	.addA(
+		[
+			GetSuite,
+			Before,
+			BeforeCb,
+			Topic,
+			TopicCb,
+			ArgsVer,
+			Vow,
+			After,
+			AfterCb,
+			SuiteRun,
+			"undef"
+		]
+	),
 function( failedStep )
 {
 	this.runOk = false;
 	
 	if(
+		failedStep instanceof GetSuite === true
+	)
+	{
+		this.failedSteps.getSuite = failedStep;
+	}
+	else if(
 		failedStep instanceof Before === true ||
 		failedStep instanceof BeforeCb === true
 	)
@@ -623,7 +711,7 @@ function( cb )
 	
 	this.stepStartsCb( this );
 	
-	this.runBefore();
+	this.runGetSuite();
 	
 // If this SuiteRun has no parent then it must make sure the
 // CbStepQueue is initiated for the first time so the CbSteps

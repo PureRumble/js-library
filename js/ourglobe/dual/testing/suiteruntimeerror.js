@@ -31,7 +31,12 @@ function()
 	return(
 		getV()
 			.addA(
-				[ Suite.SUITE_NAMES_S, SuiteHolder, "undef" ],
+				[
+					SuiteRuntimeError,
+					Suite.SUITE_NAMES_S,
+					SuiteHolder,
+					"undef"
+				],
 				RuntimeError.MSG_S,
 				RuntimeError.VAR_S,
 				RuntimeError.CODE_S,
@@ -47,12 +52,19 @@ function()
 },
 function( suite, msg, errorVar, errorCode, errorPlace )
 {
+	var suiteErr = undefined;
+	
 	if( hasT( suite, "str" ) === true )
 	{
 		errorPlace = errorCode;
 		errorCode = errorVar;
 		errorVar = msg;
 		msg = suite;
+		suite = undefined;
+	}
+	else if( suite instanceof SuiteRuntimeError === true )
+	{
+		suiteErr = suite;
 		suite = undefined;
 	}
 	
@@ -62,6 +74,7 @@ function( suite, msg, errorVar, errorCode, errorPlace )
 	}
 	
 	this.suite = suite;
+	this.suiteErr = suiteErr;
 	
 	if( suite !== undefined )
 	{

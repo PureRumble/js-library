@@ -1,6 +1,7 @@
 ourglobe.define(
 [
 	"./suiterun",
+	"./basicsuitestepobject",
 	"./suitestepobject"
 ],
 function( mods )
@@ -10,13 +11,13 @@ var getF = ourglobe.getF;
 var getV = ourglobe.getV;
 
 var SuiteRun = undefined;
-var SuiteStepObject = undefined;
+var BasicSuiteStepObject = undefined;
 
 mods.delay(
 function()
 {
 	SuiteRun = mods.get( "suiterun" );
-	SuiteStepObject = mods.get( "suitestepobject" );
+	BasicSuiteStepObject = mods.get( "basicsuitestepobject" );
 	
 	SuiteStep.CONSTR_FV =
 		getV()
@@ -25,7 +26,7 @@ function()
 	
 	SuiteStep.GET_STEP_OBJ_FV =
 		getV()
-			.setR( SuiteStepObject )
+			.setR( BasicSuiteStepObject )
 	;
 });
 
@@ -98,14 +99,6 @@ function()
 			[] :
 			parentRun.suiteRes.getTopicRes()
 	);
-});
-
-SuiteStep.prototype.getStepObj =
-getF(
-SuiteStep.GET_STEP_OBJ_FV,
-function()
-{
-	return new SuiteStepObject( this );
 });
 
 SuiteStep.prototype.takeStep =

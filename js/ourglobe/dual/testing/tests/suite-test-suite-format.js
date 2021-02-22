@@ -1,20 +1,32 @@
 ourglobe.require(
 [
-	"ourglobe/dual/testing",
-	"ourglobe/dual/testing/suite"
+	"ourglobe/dual/testing"
 ],
 function( mods )
 {
 
-var getF = ourglobe.getF;
-var getV = ourglobe.getV;
-var sys = ourglobe.sys;
+var RuntimeError = ourGlobe.RuntimeError;
+
+var sys = ourGlobe.sys;
+var hasT = ourGlobe.hasT;
+var getCb = ourGlobe.getCb;
+var getV = ourGlobe.getV;
+var getA = ourGlobe.getA;
+var getE = ourGlobe.getE;
+var getR = ourGlobe.getR;
+var Class = ourGlobe.Class;
+var getF = ourGlobe.getF;
 var FuncVer = ourglobe.FuncVer;
 
 var SuiteRuntimeError = mods.get( "testing" ).SuiteRuntimeError;
 var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
 var test = mods.get( "testing" ).Test;
-var Suite = mods.get( "suite" );
+var Suite = mods.get( "testing" ).Suite;
+var TestQueue = mods.get( "testing" ).TestQueue;
+
+var TEST_TIME_LIMIT = Suite.DEFAULT_CB_TIMEOUT + 1000;
+
+var testQueue = new TestQueue( 10 );
 
 var emptyFunc = function() {};
 var emptyCbFunc =
@@ -34,102 +46,253 @@ var healthySuite =
 var expectErr =
 getF(
 getV()
-	.addA( "str", "str/undef", "obj", "obj", "bool/undef" )
+	.addA(
+		"str",
+		"str/undef",
+		"obj",
+		"obj",
+		"bool/undef"
+	)
+	.addA(
+		"str",
+		"str/undef",
+		{
+			types: "obj/undef",
+			props:
+			{
+				testAsChild: "bool/undef",
+				testWithGetSuite: "bool/undef"
+			}
+		},
+		"obj",
+		"obj"
+	)
 	.addA( "str", "str/undef", "func" ),
 function(
-	testName, errCode, faultySuite, healthySuite, doRecTest
+	testName, errCode, opts, faultySuite, healthySuite
 )
 {
-	if(
-		sys.hasType( faultySuite, "obj" ) === true &&
-		doRecTest === undefined
-	)
+	var func = undefined;
+	
+	if( hasT( opts, "func" ) === true )
 	{
-		doRecTest = true;
+		func = opts;
+	}
+	else if( hasT( healthySuite, "bool", "undef" ) === true )
+	{
+		var testAsChild = healthySuite;
+		healthySuite = faultySuite;
+		faultySuite = opts;
+		
+		opts = { testAsChild: testAsChild };
 	}
 	
-	if( sys.hasType( faultySuite, "func" ) === true )
+	var testAsChild = undefined;
+	var testWithGetSuite = undefined;
+	
+	if( hasT( opts, "obj" ) === true )
 	{
-		var returnVar = faultySuite();
+		testAsChild = opts.testAsChild;
+		testWithGetSuite = opts.testWithGetSuite;
 		
-		faultySuite = returnVar.faulty;
-		healthySuite = returnVar.healthy;
+		if( testAsChild === undefined )
+		{
+			testAsChild = true;
+		}
+		
+		if( testWithGetSuite === undefined )
+		{
+			testWithGetSuite = true;
+		}
+	}
+	
+	testQueue.pushTest(
+	function()
+	{
+		if( func !== undefined )
+		{
+			var returnVar = func();
+			
+			faultySuite = returnVar.faulty;
+			healthySuite = returnVar.healthy;
+			
+			test.expectErr(
+				testName,
+				SuiteRuntimeError,
+				errCode,
+				function()
+				{
+					faultySuite.run( emptyFunc );
+				},
+				function()
+				{
+					healthySuite.run( emptyFunc );
+				}
+			);
+			
+			return;
+		}
 		
 		test.expectErr(
-			testName,
+			testName + " - testing with ordinary suite",
 			SuiteRuntimeError,
 			errCode,
 			function()
 			{
-				faultySuite.run( emptyFunc );
+				new Suite( "suite for testing purposes" )
+					.add( "faulty suite", faultySuite )
+				;
 			},
 			function()
 			{
-				healthySuite.run( emptyFunc );
+				new Suite( "suite for testing purposes" )
+					.add( "healthy suite", healthySuite )
+				;
 			}
 		);
 		
-		return;
-	}
-	
-	test.expectErr(
-		testName + " - testing with ordinary suite",
-		SuiteRuntimeError,
-		errCode,
-		function()
+		if( testAsChild === true )
 		{
-			var suite =
-				new Suite( "suite for testing purposes" )
-					.add( "faulty suite", faultySuite )
-			;
-		},
-		function()
-		{
-			var suite =
-				new Suite( "suite for testing purposes" )
-					.add( "healthy suite", healthySuite )
-			;
-		}
-	);
-	
-	if( doRecTest === false )
-	{
-		return;
-	}
-	
-	test.expectErr(
-		testName + " - testing with child suites",
-		SuiteRuntimeError,
-		errCode,
-		function()
-		{
-			var suite = new Suite( "suite for testing purposes" );
-			
-			suite.add(
-				"recursive suite obj",
+			test.expectErr(
+				testName + " - testing with child suites",
+				SuiteRuntimeError,
+				errCode,
+				function()
 				{
-					topic: emptyFunc,
-					argsVer:[ "undef" ],
-					vows:[ "vow one", emptyFunc ],
-					next:[ "faulty suite", faultySuite ]
-				}
-			);
-		},
-		function()
-		{
-			var suite = new Suite( "suite for testing purposes" );
-			
-			suite.add(
-				"recursive suite obj",
+					var suite = new Suite( "suite for testing purposes" );
+					
+					suite.add(
+						"recursive suite obj",
+						{
+							topic: emptyFunc,
+							argsVer:[ "undef" ],
+							vows:[ "vow one", emptyFunc ],
+							next:[ "faulty suite", faultySuite ]
+						}
+					);
+				},
+				function()
 				{
-					topic: emptyFunc,
-					argsVer:[ "undef" ],
-					vows:[ "vow one", emptyFunc ],
-					next:[ "healthy suite", healthySuite ]
+					var suite = new Suite( "suite for testing purposes" );
+					
+					suite.add(
+						"recursive suite obj",
+						{
+							topic: emptyFunc,
+							argsVer:[ "undef" ],
+							vows:[ "vow one", emptyFunc ],
+							next:[ "healthy suite", healthySuite ]
+						}
+					);
 				}
 			);
 		}
-	);
+		
+		if( testWithGetSuite === true )
+		{
+			test.expectCbErr(
+				testName + " - test suite is returned by suite step "+
+				"getSuite",
+				SuiteRuntimeError,
+				errCode,
+				TEST_TIME_LIMIT,
+				function( cb )
+				{
+					var suite =
+						new Suite( "test suite created by expectErr()" )
+					;
+					
+					suite.add(
+						"nested suite added by expectErr()",
+						{ getSuite: function() { return faultySuite; } }
+					);
+					
+					suite.run(
+						function( err, suiteRun )
+						{
+							if( err !== undefined )
+							{
+								cb(
+									new TestRuntimeError(
+										"An unexpected err occurred when the suite "+
+										"was run. This fails the test",
+										{ err: err }
+									)
+								);
+								
+								return;
+							}
+							
+							if(
+								suiteRun.next[ 0 ].getSuite.err !== undefined &&
+								suiteRun.next[ 0 ].getSuite.err.suiteErr !==
+									undefined
+							)
+							{
+								cb( suiteRun.next[ 0 ].getSuite.err.suiteErr );
+								
+								return;
+							}
+						}
+					);
+				},
+				function( cb )
+				{
+					var suite =
+						new Suite( "test suite created by expectErr()" )
+					;
+					
+					suite.add(
+						"nested suite added by expectErr()",
+						{ getSuite: function() { return healthySuite; } }
+					);
+					
+					suite.run(
+						function( err, suiteRun )
+						{
+							if( err !== undefined )
+							{
+								cb(
+									new TestRuntimeError(
+										"An unexpected err occurred when the suite "+
+										"was run. This fails the test",
+										{ err: err }
+									)
+								);
+								
+								return;
+							}
+							
+							if( suiteRun.next[ 0 ].getSuite.err !== undefined )
+							{
+								cb(
+									new TestRuntimeError(
+										"Suite step getSuite failed by an err",
+										{
+											suiteStepErr:
+												suiteRun.next[ 0 ].getSuite.err
+										}
+									)
+								);
+								
+								return;
+							}
+							
+							cb();
+						}
+					);
+				},
+				function()
+				{
+					testQueue.markTestDone();
+				}
+			);
+		}
+		else
+		{
+			testQueue.markTestDone();
+		}
+	});
 });
 
 // testing verification of that a suite has necessary props
@@ -224,13 +387,13 @@ expectErr(
 	"Suite prop beforeCb must be a func",
 	"BeforeIsNotValid",
 	{
-		beforeCb:[ emptyFunc ],
+		beforeCb:[ emptyCbFunc ],
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
 	},
 	{
-		beforeCb: emptyFunc,
+		beforeCb: emptyCbFunc,
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
@@ -242,7 +405,7 @@ expectErr(
 	"BeforeIsNotValid",
 	{
 		before: emptyFunc,
-		beforeCb: emptyFunc,
+		beforeCb: emptyCbFunc,
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ]
@@ -277,7 +440,7 @@ expectErr(
 	"TopicIsNotValid",
 	{
 		topic: emptyFunc,
-		topicCb: emptyFunc,
+		topicCb: emptyCbFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	},
@@ -511,7 +674,7 @@ expectErr(
 				{
 					allowThrownErr: true
 				},
-				topicCb: emptyFunc,
+				topicCb: emptyCbFunc,
 				argsVer:[],
 				vows:
 				[
@@ -560,7 +723,7 @@ expectErr(
 		{
 			allowCbErr: true
 		},
-		topicCb: emptyFunc,
+		topicCb: emptyCbFunc,
 		argsVer: [ "undef" ],
 		vows:[ "dango", emptyFunc ]
 	}
@@ -682,7 +845,7 @@ expectErr(
 
 expectErr(
 	"every odd next item must be a suite",
-	"NextSuitesAreNotValid",
+	"SuiteRepresentationNotValid",
 	{
 		topic: emptyFunc,
 		argsVer: [ "undef" ],
@@ -846,13 +1009,13 @@ expectErr(
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
-		afterCb:{ func: emptyFunc }
+		afterCb:{ func: emptyCbFunc }
 	},
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
-		afterCb: emptyFunc
+		afterCb: emptyCbFunc
 	}
 );
 
@@ -864,20 +1027,86 @@ expectErr(
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
 		after: emptyFunc,
-		afterCb:
-		function()
-		{
-			var cb = this.getCb();
-		}
+		afterCb: emptyCbFunc
 	},
 	{
 		topic: emptyFunc,
 		argsVer:[ "undef" ],
 		vows:[ "dingo", emptyFunc ],
-		afterCb:
-		function()
+		afterCb: emptyCbFunc
+	}
+);
+
+// test group
+// testing verification of Suite prop getSuite
+
+expectErr(
+	"Suite prop getSuite must be a func or undef",
+	"GetSuiteIsNotValid",
+	{ testWithGetSuite: false },
+	{
+		getSuite:
+		[
+			function( topic )
+			{
+				var returnVar =
+				{
+					topic: emptyFunc,
+					argsVer:[ "undef" ],
+					vows:[ "vow one", emptyFunc ]
+				};
+				
+				return returnVar;
+			}
+		]
+	},
+	{
+		getSuite:
+		function( topic )
 		{
-			var cb = this.getCb();
+			var returnVar =
+			{
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "vow one", emptyFunc ]
+			};
+			
+			return returnVar;
+		}
+	}
+);
+
+expectErr(
+	"Suite prop getSuite must be alone",
+	"SuitePropGetSuiteNotAlone",
+	{ testWithGetSuite: false },
+	{
+		getSuite:
+		function( topic )
+		{
+			var returnVar =
+			{
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "vow one", emptyFunc ]
+			};
+			
+			return returnVar;
+		},
+		next:[ "suite one", healthySuite ]
+	},
+	{
+		getSuite:
+		function( topic )
+		{
+			var returnVar =
+			{
+				topic: emptyFunc,
+				argsVer:[ "undef" ],
+				vows:[ "vow one", emptyFunc ]
+			};
+			
+			return returnVar;
 		}
 	}
 );

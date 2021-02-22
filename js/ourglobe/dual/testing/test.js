@@ -339,6 +339,7 @@ function(
 	
 	if( cbTime instanceof Function === true && cb === undefined )
 	{
+		cb = refFunc;
 		refFunc = errFunc;
 		errFunc = cbTime;
 		cbTime = 200;

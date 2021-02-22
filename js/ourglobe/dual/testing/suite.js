@@ -3,15 +3,7 @@ ourGlobe.define(
 	"./suiteruntimeerror",
 	"./suiteholder",
 	"./suiterun",
-	"./suitestep",
-	"./before",
-	"./beforecb",
-	"./topic",
-	"./topiccb",
-	"./argsver",
-	"./vow",
-	"./after",
-	"./aftercb"
+	"./suitestep"
 ],
 function( mods )
 {
@@ -163,14 +155,6 @@ var SuiteRuntimeError = mods.get( "suiteruntimeerror" );
 var SuiteHolder = mods.get( "suiteholder" );
 var SuiteRun = mods.get( "suiterun" );
 var SuiteStep = mods.get( "suitestep" );
-var Before = mods.get( "before" );
-var BeforeCb = mods.get( "beforecb" );
-var Topic = mods.get( "topic" );
-var TopicCb = mods.get( "topiccb" );
-var ArgsVer = mods.get( "argsver" );
-var Vow = mods.get( "vow" );
-var After = mods.get( "after" );
-var AfterCb = mods.get( "aftercb" );
 
 Suite.getErrMsg =
 getF(
@@ -516,6 +500,7 @@ function( err, suiteRun )
 		var suiteStep = undefined;
 		
 		if(
+			failedSteps.getSuite !== undefined ||
 			failedSteps.before !== undefined ||
 			failedSteps.topic !== undefined ||
 			failedSteps.argsVer !== undefined ||
@@ -531,6 +516,11 @@ function( err, suiteRun )
 				suiteRun.suiteHolder.toString()+
 				"\u001b[0m"
 			);
+			
+			if( failedSteps.getSuite !== undefined )
+			{
+				Suite.declareFailedSuiteStep( failedSteps.getSuite );
+			}
 			
 			if( failedSteps.before !== undefined )
 			{

@@ -181,6 +181,11 @@ function( stepName )
 		);
 	}
 	
+// This inst func doesnt handle SuiteStep getSuite because the
+// latter is unique; getSuite may not be accompanied by any other
+// SuiteSteps. Therefore SuiteSteps after and afterCb never need
+// to check if getSuite has run successfully
+	
 	if(
 		stepName !== "before" &&
 		stepName !== "beforeCb" &&

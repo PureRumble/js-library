@@ -1,4 +1,4 @@
-ourglobe.require(
+ourGlobe.require(
 [
 	"crypto",
 	"ourglobe/lib/server/vows",
@@ -20,14 +20,16 @@ var getE = ourGlobe.getE;
 var getR = ourGlobe.getR;
 var Class = ourGlobe.Class;
 
-var conf = ourglobe.conf;
-var assert = ourglobe.assert;
-var FuncVer = ourglobe.FuncVer;
+var conf = ourGlobe.conf;
+var assert = ourGlobe.assert;
+var FuncVer = ourGlobe.FuncVer;
 
 vows = mods.get( "vows" );
 
 var crypto = mods.get( "crypto" );
 
+var TestRuntimeError = mods.get( "testing" ).TestRuntimeError;
+var Suite = mods.get( "testing" ).Suite;
 var Test = mods.get( "testing" ).Test;
 
 var Store = mods.get( "store" ).Store;
@@ -40,6 +42,340 @@ var Id = mods.get( "store" ).Id;
 var Binary = mods.get( "store" ).Binary;
 var Link = mods.get( "store" ).Link;
 var Cache = mods.get( "store" ).Cache;
+
+var StoreConHandlerTest =
+Class.create(
+{
+	name: "StoreConHandlerTest"
+});
+
+Class.add(
+StoreConHandlerTest,
+{
+
+getStoreTest:
+[
+"static",
+getA( "func" ),
+getA(
+	"obj/arr",
+	"obj/arr",
+	"obj/arr/undef",
+	"bool/undef",
+	"bool/undef"
+),
+getR( "obj" ),
+function(
+	setBeforePrep,
+	setAfterPrep,
+	setAfterRest,
+	useDateFuncs,
+	useIdFuncs
+)
+{
+	var func = undefined;
+	
+	if( hasT( setBeforePrep, "func" ) === true )
+	{
+		func = setBeforePrep;
+	}
+	else
+	{
+		func =
+		function()
+		{
+			var returnVar =
+			{
+				obj: setBeforePrep,
+				storeObj: setAfterPrep,
+				restoredObj: setAfterRest,
+				dateFuncs: useDateFuncs,
+				idFuncs: useIdFuncs
+			};
+			
+			return returnVar;
+		};
+	}
+	
+	var cloneOne = undefined;
+	var cloneTwo = undefined;
+	var firstTopic = undefined;
+	var testConHandler = undefined;
+	
+	var returnObj =
+	{
+		topic:
+		function()
+		{
+			var returnObj = func();
+			
+			if( hasT( returnObj, "obj" ) === false )
+			{
+				throw new TestRuntimeError(
+					"The func given to getStoreTest must return an obj",
+					{ returnedVar: returnObj }
+				);
+			}
+			
+			var obj = returnObj.obj;
+			var storeObj = returnObj.storeObj;
+			var restoredObj = returnObj.restoredObj;
+			var dateFuncs = returnObj.dateFuncs;
+			var idFuncs = returnObj.idFuncs;
+			
+			if( hasT( obj, "obj", "arr" ) === false )
+			{
+				throw new TestRuntimeError(
+					"Prop obj returned by the func given to getStoreTest "+
+					"must be an obj or arr",
+					{ propValue: obj }
+				);
+			}
+			
+			if( hasT( storeObj, "obj", "arr" ) === false )
+			{
+				throw new TestRuntimeError(
+					"Prop storeObj returned by the func given to "+
+					"getStoreTest must be an obj or arr",
+					{ propValue: storeObj }
+				);
+			}
+			
+			if( hasT( restoredObj, "obj", "arr", "undef" ) === false )
+			{
+				throw new TestRuntimeError(
+					"Prop restoredObj returned by the func given to "+
+					"getStoreTest must be an obj, arr or undef",
+					{ propValue: restoredObj }
+				);
+			}
+			
+			if( hasT( dateFuncs, "bool", "undef" ) === false )
+			{
+				throw new TestRuntimeError(
+					"Prop dateFuncs returned by the func given to "+
+					"getStoreTest must be a bool or undef",
+					{ propValue: dateFuncs }
+				);
+			}
+			
+			if( hasT( idFuncs, "bool", "undef" ) === false )
+			{
+				throw new TestRuntimeError(
+					"Prop idFuncs returned by the func given to "+
+					"getStoreTest must be a bool or undef",
+					{ propValue: idFuncs }
+				);
+			}
+			
+			if( useDateFuncs === undefined )
+			{
+				useDateFuncs = true;
+			}
+			
+			if( useIdFuncs === undefined )
+			{
+				useIdFuncs = true;
+			}
+			
+			cloneOne = Test.clone( setBeforePrep );
+			cloneTwo = Test.clone( setAfterPrep );
+			
+			var TestStoreConHandler =
+			Class.create(
+			{
+				name: "TestStoreConHandler",
+				extends: StoreConHandler
+			});
+			
+			var addObj = {};
+			
+			addObj.getBinaryStoreObj =
+			[
+				StoreConHandler.GET_BINARY_STORE_OBJ_V,
+				function( binary )
+				{
+					return new BinaryCont( binary.getBuffer() );
+				}
+			];
+			
+			addObj.restoreBinary =
+			[
+				StoreConHandler.RESTORE_BINARY_V,
+				function( binaryCont )
+				{
+					if( binaryCont instanceof BinaryCont === false )
+					{
+						throw new StoreDataRuntimeError(
+							"A BinaryCont must be provided when restoring "+
+							"a Binary",
+							{ providedVar: binaryCont }
+						);
+					}
+					
+					return new Binary( binaryCont.buffer );
+				}
+			];
+			
+			if( useIdFuncs === true )
+			{
+				addObj.getIdStoreObj =
+				[
+					StoreConHandler.GET_ID_STORE_OBJ_V,
+					function( id )
+					{
+						return new IdCont( id.toString() );
+					}
+				];
+				
+				addObj.restoreId =
+				[
+					StoreConHandler.RESTORE_ID_V,
+					function( idCont )
+					{
+						if( idCont instanceof IdCont === false )
+						{
+							throw new StoreDataRuntimeError(
+								"An IdCont must be provided when restoring an Id",
+								{ providedVar: idCont }
+							);
+						}
+						
+						return new Id( idCont.idStr );
+					}
+				];
+			}
+			
+			if( useDateFuncs === true )
+			{
+				addObj.getDateStoreObj =
+				[
+					StoreConHandler.GET_DATE_STORE_OBJ_V,
+					function( date )
+					{
+						return new DateCont( date );
+					}
+				];
+				
+				addObj.restoreDate =
+				[
+					StoreConHandler.RESTORE_DATE_V,
+					function( dateCont )
+					{
+						if( dateCont instanceof DateCont === false )
+						{
+							throw new StoreDataRuntimeError(
+								"A DateCont must be provided when restoring a Date",
+								{ providedVar: dateCont }
+							);
+						}
+						
+						return dateCont.date;
+					}
+				];
+			}
+			
+			Class.add( TestStoreConHandler, addObj );
+			
+			testConHandler =
+				new TestStoreConHandler(
+					"testStore", [ { host: "testHost", port: 0 } ]
+				)
+			;
+			
+			firstTopic = testConHandler.getStoreObj( cloneOne );
+			
+			return firstTopic;
+		},
+		
+		argsVer:[ "any" ],
+		
+		vows:
+		[
+		"get properly prepared",
+		function( topic )
+		{
+			var diff = Test.compare( topic, setAfterPrep );
+			
+			if( diff !== undefined )
+			{
+				throw new RuntimeError(
+					"Preparing the objs for store doesnt yield "+
+					"expected objs",
+					{
+						result: topic,
+						expected: setAfterPrep,
+						diff: diff
+					}
+				);
+			}
+		},
+		
+		"while the set itself is intact",
+		function( topic )
+		{
+			var diff = Test.compare( cloneOne, setBeforePrep );
+			
+			if( diff !== undefined )
+			{
+				throw new RuntimeError(
+					"Restoring objs after preparing them for store "+
+					"doesnt yield original objs",
+					{
+						result: cloneOne, original: setBeforePrep, diff: diff
+					}
+				);
+			}
+		}
+		],
+		
+		next:
+		[
+		"and finally restoring the objs",
+		{
+			topic:
+			function()
+			{
+				testConHandler.restoreObj( cloneTwo );
+			},
+			
+			argsVer:[ "any" ],
+			
+			vows:
+			[
+			"makes them properly restored",
+			function( topic )
+			{
+				var objsToCompare =
+					setAfterRest !== undefined ?
+						setAfterRest :
+						setBeforePrep
+				;
+				
+				var diff = Test.compare( objsToCompare, cloneTwo );
+				
+				if( diff !== undefined )
+				{
+					throw new RuntimeError(
+						"Restoring objs from store doesnt yield "+
+						"expected objs",
+						{
+							restoredObj: cloneTwo,
+							expectedObj: objsToCompare,
+							diff: diff
+						}
+					);
+				}
+			}
+			]
+		}
+		]
+	};
+	
+	return returnObj;
+}]
+
+});
 
 var IdCont =
 getF(
@@ -364,13 +700,45 @@ function(
 
 Store.init();
 
-var suite = vows.describe( "storeconhandler" );
-suite.options.error = false;
+Class.add(
+StoreConHandlerTest,
+{
+
+getSuite:
+[
+getR( Suite ),
+function()
+{
+
+var suite = new Suite( "StoreConHandler" );
+
+suite.add(
+"Preparing and restoring simple objs and arrs",
+[
+
+"An empty arr", StoreConHandlerTest.getStoreTest( [], [] ),
+"An empty obj", StoreConHandlerTest.getStoreTest( {}, {} ),
+
+]
+);
+
+return suite;
+
+}]
+
+});
+
+var storeConHandlerTest = new StoreConHandlerTest();
+
+var suite = storeConHandlerTest.getSuite();
+
+suite.run();
+
+var oldSuite = vows.describe( "storeconhandler" );
+oldSuite.options.error = false;
 
 // Preparing and restoring simple objs and ars
-suite.addBatch( Test.getTests(
-	"empty arr", prepareObjsTest( [], [] ),
-	"empty obj", prepareObjsTest( {}, {} ),
+oldSuite.addBatch( Test.getTests(
 	
 	"objs and arrs with undefs",
 	Test.getVar(
@@ -384,9 +752,7 @@ suite.addBatch( Test.getTests(
 		arr[ 4 ] = [];
 		arr[ 5 ] = "";
 		
-		var obj =
-			{ dingo: "dingo", dango: "dango", dingi: arr }
-		;
+		var obj = { dingo: "dingo", dango: "dango", dingi: arr };
 		
 		return prepareObjsTest(
 			{
@@ -435,7 +801,7 @@ suite.addBatch( Test.getTests(
 ));
 
 // Id/Binary/Date/Link/Cache tests
-suite.addBatch( Test.getTests(
+oldSuite.addBatch( Test.getTests(
 	
 	"single date with date func",
 	Test.getVar(
@@ -997,6 +1363,6 @@ suite.addBatch( Test.getTests(
 	})
 ));
 
-suite.run();
+oldSuite.run();
 
 });
